@@ -1,0 +1,131 @@
+/*
+ * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
+ */
+
+package it.mirkoscotti.nio.s3.functions;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+/**
+ * @author mirko.scotti
+ * @version Oct 24, 2024
+ */
+public class Try<T>
+	implements Supplier<T>, Runnable
+{
+
+	private final Converter<Map<String, AutoCloseable>, T> tryBlock;
+
+	private final Map<String, AutoCloseable> withResources = new HashMap<>();
+
+	private Consumer<? super Exception> catchBlock = this::toRuntimeException;
+
+	private Callable<Void> finallyBlock = this::doNothing;
+
+	/**
+	 * @param tryBlock
+	 */
+	private Try(Callable<T> tryBlock)
+	{
+		Objects.requireNonNull(tryBlock, () -> "Missing try block.");
+		this.tryBlock = item -> tryBlock.call();
+	}
+
+	/**
+	 * @param tryBlock
+	 */
+	private Try(Converter<Map<String, AutoCloseable>, T> tryBlock)
+	{
+		this.tryBlock = Objects.requireNonNull(tryBlock, () -> "Missing try block.");
+	}
+
+	public static <T> Try<T> to(Callable<T> callable)
+	{
+		return new Try<>(callable);
+	}
+
+	public static <T> Try<T> withResource(Converter<Map<String, AutoCloseable>, T> withResources,
+										  String name,
+										  AutoCloseable resource)
+	{
+		return new Try<>(withResources).and(name, resource);
+	}
+
+	public Try<T> and(String name, AutoCloseable resource)
+	{
+		withResources.put(Objects.requireNonNull(name, () -> "Missing resource name."),
+						  Objects.requireNonNull(resource, () -> "Missing resource."));
+		return this;
+	}
+
+	public Try<T> onCatch(Consumer<? super Exception> catchBlock)
+	{
+		this.catchBlock = Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
+		return this;
+	}
+
+	public Try<T> onFinally(Callable<Void> finallyBlock)
+	{
+		this.finallyBlock = Objects.requireNonNull(finallyBlock, () -> "Missing finally block.");
+		return this;
+	}
+
+	@Override
+	public T get()
+	{
+		T result = null;
+		Exception exception = null;
+		try
+		{
+			result = tryBlock.apply(withResources);
+		}
+		catch (Exception x)
+		{
+			exception = x;
+		}
+		finally
+		{
+			exception = toException(exception);
+		}
+		Optional.ofNullable(exception).ifPresent(catchBlock::accept);
+		return result;
+	}
+
+	@Override
+	public void run()
+	{
+		get();
+	}
+
+	private void toRuntimeException(Exception exception)
+	{
+		throw new IllegalStateException(exception);
+	}
+
+	private Exception toException(Exception exception)
+	{
+		var result = exception;
+		try
+		{
+			finallyBlock.call();
+		}
+		catch (Exception x)
+		{
+			var optional = Optional.ofNullable(exception);
+			optional.ifPresent(x::addSuppressed);
+			result = x;
+		}
+		return result;
+	}
+
+	private Void doNothing()
+	{
+		return null;
+	}
+}
