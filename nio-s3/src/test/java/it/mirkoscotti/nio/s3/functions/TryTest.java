@@ -4,7 +4,6 @@
 
 package it.mirkoscotti.nio.s3.functions;
 
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -24,24 +23,12 @@ class TryTest
 {
 
 	@Test
-	<T> void nullTest(@Mock Callable<T> callable,
-					  @Mock Converter<Map<String, AutoCloseable>, T> converter,
-					  @Mock AutoCloseable resource)
+	<T> void nullTest(@Mock Callable<T> callable, @Mock AutoCloseable resource)
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> Try.to(null));
 		var basicTry = Try.to(callable);
 		Assertions.assertThrows(NullPointerException.class, () -> basicTry.onCatch(null));
 		Assertions.assertThrows(NullPointerException.class, () -> basicTry.onFinally(null));
-		Assertions.assertThrows(NullPointerException.class,
-								() -> Try.withResource(null, null, null));
-		Assertions.assertThrows(NullPointerException.class,
-								() -> Try.withResource(converter, null, null));
-		Assertions.assertThrows(NullPointerException.class,
-								() -> Try.withResource(converter, "key", null));
-		var tryWithResource = Try.withResource(converter, "key1", resource);
-		Assertions.assertThrows(NullPointerException.class, () -> tryWithResource.and(null, null));
-		Assertions.assertThrows(NullPointerException.class,
-								() -> tryWithResource.and("key2", null));
 	}
 
 	@Test
@@ -51,7 +38,7 @@ class TryTest
 		{
 			Mockito.when(tryCallable.call()).thenThrow(Exception.class);
 			var tryStatement = Try.to(tryCallable);
-			Assertions.assertThrows(IllegalStateException.class, () -> tryStatement.run());
+			Assertions.assertThrows(IllegalStateException.class, tryStatement::run);
 		}
 		catch (Exception x)
 		{

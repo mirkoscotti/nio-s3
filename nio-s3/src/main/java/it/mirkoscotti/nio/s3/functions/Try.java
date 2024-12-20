@@ -4,8 +4,6 @@
 
 package it.mirkoscotti.nio.s3.functions;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -20,9 +18,7 @@ public class Try<T>
 	implements Supplier<T>, Runnable
 {
 
-	private final Converter<Map<String, AutoCloseable>, T> tryBlock;
-
-	private final Map<String, AutoCloseable> withResources = new HashMap<>();
+	private final Callable<T> tryBlock;
 
 	private Consumer<? super Exception> catchBlock = this::toRuntimeException;
 
@@ -34,34 +30,12 @@ public class Try<T>
 	private Try(Callable<T> tryBlock)
 	{
 		Objects.requireNonNull(tryBlock, () -> "Missing try block.");
-		this.tryBlock = item -> tryBlock.call();
-	}
-
-	/**
-	 * @param tryBlock
-	 */
-	private Try(Converter<Map<String, AutoCloseable>, T> tryBlock)
-	{
-		this.tryBlock = Objects.requireNonNull(tryBlock, () -> "Missing try block.");
+		this.tryBlock = tryBlock;
 	}
 
 	public static <T> Try<T> to(Callable<T> callable)
 	{
 		return new Try<>(callable);
-	}
-
-	public static <T> Try<T> withResource(Converter<Map<String, AutoCloseable>, T> withResources,
-										  String name,
-										  AutoCloseable resource)
-	{
-		return new Try<>(withResources).and(name, resource);
-	}
-
-	public Try<T> and(String name, AutoCloseable resource)
-	{
-		withResources.put(Objects.requireNonNull(name, () -> "Missing resource name."),
-						  Objects.requireNonNull(resource, () -> "Missing resource."));
-		return this;
 	}
 
 	public Try<T> onCatch(Consumer<? super Exception> catchBlock)
@@ -83,7 +57,7 @@ public class Try<T>
 		Exception exception = null;
 		try
 		{
-			result = tryBlock.apply(withResources);
+			result = tryBlock.call();
 		}
 		catch (Exception x)
 		{

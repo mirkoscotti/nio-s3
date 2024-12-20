@@ -34,11 +34,12 @@ class AwsConnectorIntegrationTest
 		var endpoint = CONTAINER.getEndpoint();
 		CONTAINER.createBucketPolicy(BUCKET_NAME);
 		var policy = CONTAINER.bucketPolicy(BUCKET_NAME);
-		var connector = AwsConnector.createFor(BUCKET_NAME)
-									.withEndpoint(endpoint)
-									.withRegion(CONTAINER.getRegion())
-									.withCredentials(CONTAINER.getAccessKey(),
-													 CONTAINER.getSecretKey())
-									.isBucketReadOnly();
+		var connector = S3Connector.create()
+								   .withEndpoint(endpoint)
+								   .withRegion(CONTAINER.getRegion())
+								   .withCredentials(CONTAINER.getAccessKey(),
+													CONTAINER.getSecretKey())
+								   .build()
+								   .isBucketReadOnly(BUCKET_NAME);
 	}
 }

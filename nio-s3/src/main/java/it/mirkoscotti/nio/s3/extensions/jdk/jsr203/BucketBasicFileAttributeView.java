@@ -2,7 +2,7 @@
  * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
  */
 
-package it.mirkoscotti.nio.s3.extensions.jdknio;
+package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -13,7 +13,7 @@ import java.nio.file.attribute.FileTime;
  * @author mirko.scotti
  * @version Oct 29, 2024
  */
-public class S3BasicFileAttributeView
+public class BucketBasicFileAttributeView
 	implements BasicFileAttributeView
 {
 

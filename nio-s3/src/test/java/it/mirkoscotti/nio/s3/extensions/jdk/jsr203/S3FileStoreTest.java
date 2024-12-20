@@ -2,10 +2,10 @@
  * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
  */
 
-package it.mirkoscotti.nio.s3.extensions.jdknio;
+package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.operations.AwsConnector;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.nio.file.attribute.FileAttributeView;
 
@@ -27,58 +27,59 @@ class S3FileStoreTest
 	private static final String BUCKET_NAME = "test-bucket";
 
 	@Mock
-	private AwsConnector connector;
+	private S3Connector connector;
 
 	@Test
 	void nullTest()
 	{
-		Assertions.assertThrows(NullPointerException.class, () -> new S3FileStore(null, null));
-		Assertions.assertThrows(NullPointerException.class, () -> new S3FileStore(connector, null));
+		Assertions.assertThrows(NullPointerException.class, () -> new BucketFileStore(null, null));
+		Assertions.assertThrows(NullPointerException.class,
+								() -> new BucketFileStore(connector, null));
 	}
 
 	@Test
 	void nameTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
 		Assertions.assertEquals(BUCKET_NAME, fileStore.name());
 	}
 
 	@Test
 	void typeTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
 		Assertions.assertEquals("AWS S3 Bucket", fileStore.type());
 	}
 
 	@Test
 	void isReadOnlyTest()
 	{
-		Mockito.when(connector.isBucketReadOnly()).thenReturn(true);
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
+		Mockito.when(connector.isBucketReadOnly(BUCKET_NAME)).thenReturn(true);
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.isReadOnly());
 	}
 
 	@Test
 	void getTotalSpaceTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
-		var totalSpace = Try.to(() -> fileStore.getTotalSpace()).onCatch(Assertions::fail).get();
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var totalSpace = Try.to(fileStore::getTotalSpace).onCatch(Assertions::fail).get();
 		Assertions.assertEquals(Long.MAX_VALUE, totalSpace);
 	}
 
 	@Test
 	void getUsableSpaceTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
-		var usableSpace = Try.to(() -> fileStore.getUsableSpace()).onCatch(Assertions::fail).get();
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var usableSpace = Try.to(fileStore::getUsableSpace).onCatch(Assertions::fail).get();
 		Assertions.assertEquals(Long.MAX_VALUE, usableSpace);
 	}
 
 	@Test
 	void getUnallocatedSpaceTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
-		var unallocatedSpace = Try.to(() -> fileStore.getUnallocatedSpace())
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var unallocatedSpace = Try.to(fileStore::getUnallocatedSpace)
 								  .onCatch(Assertions::fail)
 								  .get();
 		Assertions.assertEquals(Long.MAX_VALUE, unallocatedSpace);
@@ -87,15 +88,15 @@ class S3FileStoreTest
 	@Test
 	void supportsFileAttributesViewByClassTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
-		Assertions.assertTrue(fileStore.supportsFileAttributeView(S3BasicFileAttributeView.class));
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertTrue(fileStore.supportsFileAttributeView(BucketBasicFileAttributeView.class));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView(FileAttributeView.class));
 	}
 
 	@Test
 	void supportsFileAttributesViewByNameTest()
 	{
-		var fileStore = new S3FileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.supportsFileAttributeView("basic"));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView("other"));
 	}
