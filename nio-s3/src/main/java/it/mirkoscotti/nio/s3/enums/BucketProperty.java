@@ -5,6 +5,7 @@
 package it.mirkoscotti.nio.s3.enums;
 
 import java.nio.file.attribute.FileStoreAttributeView;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import software.amazon.awssdk.regions.Region;
@@ -74,11 +75,10 @@ public enum BucketProperty
 	 * @throws UnsupportedOperationException
 	 *             if the given name does not correspond to any item of this <code>enum</code>
 	 */
-	public static BucketProperty of(String name)
+	public static Optional<BucketProperty> of(String name)
 	{
 		return Stream.of(BucketProperty.values())
 					 .filter(item -> item.toProperty().equals(name))
-					 .findAny()
-					 .orElseThrow(() -> new UnsupportedOperationException("Unsupported S3 property: %s.".formatted(name)));
+					 .findAny();
 	}
 }

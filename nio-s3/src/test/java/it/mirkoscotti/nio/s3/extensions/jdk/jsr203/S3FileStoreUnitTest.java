@@ -4,15 +4,20 @@
 
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.FileStoreAttributeView;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,6 +30,8 @@ class S3FileStoreUnitTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";
+
+	private static final String VALUE = "value";
 
 	@Mock
 	private S3Connector connector;
@@ -99,5 +106,34 @@ class S3FileStoreUnitTest
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.supportsFileAttributeView("basic"));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView("other"));
+	}
+
+	@Test
+	void getFileStoreAttributeViewTest()
+	{
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertNull(fileStore.getFileStoreAttributeView(FileStoreAttributeView.class));
+		Assertions.assertNotNull(fileStore.getFileStoreAttributeView(BucketFileStoreAttributeView.class));
+	}
+
+	@Test
+	void getAttributeTest(@Mock BucketProperty bucketProperty)
+	{
+		try (var propertyMock = Mockito.mockStatic(BucketProperty.class);
+			 var viewMock = Mockito.mockConstruction(BucketFileStoreAttributeView.class,
+													 this::initializeBucketFileStoreAttributeView))
+		{
+			propertyMock.when(() -> BucketProperty.of(Mockito.anyString()))
+						.thenReturn(Optional.of(bucketProperty));
+			var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+			Assertions.assertEquals(VALUE,
+									JunitHelper.tryCall(() -> fileStore.getAttribute("attribute")));
+		}
+	}
+
+	private void initializeBucketFileStoreAttributeView(BucketFileStoreAttributeView view,
+														Context context)
+	{
+		Mockito.when(view.get(Mockito.any(BucketProperty.class))).thenReturn(VALUE);
 	}
 }

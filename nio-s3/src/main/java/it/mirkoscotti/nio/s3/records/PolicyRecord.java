@@ -33,7 +33,7 @@ public record PolicyRecord(@JsonbProperty("Version") String version,
 						  .orElseGet(List::of)
 						  .stream()
 						  .flatMap(Stream::of)
-						  .collect(Collectors.groupingBy(item -> BucketEffect.effect(item.effect())))
+						  .collect(Collectors.groupingBy(item -> BucketEffect.of(item.effect())))
 						  .entrySet()
 						  .stream()
 						  .collect(Collectors.toMap(Entry::getKey,

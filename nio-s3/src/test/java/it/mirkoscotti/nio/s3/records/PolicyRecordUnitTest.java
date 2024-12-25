@@ -38,7 +38,7 @@ class PolicyRecordUnitTest
 	void readOnlyActionsAllowedTest()
 	{
 		var effect = BucketEffect.ALLOW.toString();
-		var actions = BucketAction.readOnlyActions().map(BucketAction::getAction).toList();
+		var actions = BucketAction.readOnlyActions().map(BucketAction::tag).toList();
 		var statement = new StatementRecord(effect, PRINCIPAL, actions, List.of());
 		var policyRecord = new PolicyRecord(VERSION, List.of(statement));
 		Assertions.assertTrue(policyRecord.isReadOnly());
@@ -48,7 +48,7 @@ class PolicyRecordUnitTest
 	void allWriteActionsDeniedTest()
 	{
 		var effect = BucketEffect.DENY.toString();
-		var actions = BucketAction.writeActions().map(BucketAction::getAction).toList();
+		var actions = BucketAction.writeActions().map(BucketAction::tag).toList();
 		var statement = new StatementRecord(effect, PRINCIPAL, actions, List.of());
 		var policyRecord = new PolicyRecord(VERSION, List.of(statement));
 		Assertions.assertTrue(policyRecord.isReadOnly());
@@ -58,7 +58,7 @@ class PolicyRecordUnitTest
 	void oneWriteActionAllowedTest()
 	{
 		var effect = BucketEffect.ALLOW.toString();
-		var action = BucketAction.writeActions().iterator().next().getAction();
+		var action = BucketAction.writeActions().iterator().next().tag();
 		var statement = new StatementRecord(effect, PRINCIPAL, List.of(action), List.of());
 		var policyRecord = new PolicyRecord(VERSION, List.of(statement));
 		Assertions.assertFalse(policyRecord.isReadOnly());

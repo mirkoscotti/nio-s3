@@ -120,34 +120,34 @@ public enum BucketAction
 	S3_REPLICATE_OBJECT("s3:ReplicateObject", false),
 	S3_RESTORE_OBJECT("s3:RestoreObject", false);
 
-	private final String action;
+	private final String tag;
 
-	private final boolean readOnly;
+	private final boolean isReadOnly;
 
 	private BucketAction(String tag, boolean readOnly)
 	{
-		action = tag;
-		this.readOnly = readOnly;
+		this.tag = tag;
+		isReadOnly = readOnly;
 	}
 
 	/**
-	 * The wrapper method of the {@link #action} property.
+	 * The wrapper method of the {@link #tag} property.
 	 *
 	 * @return the value of the property
 	 */
-	public String getAction()
+	public String tag()
 	{
-		return action;
+		return tag;
 	}
 
 	/**
-	 * The wrapper method of the {@link #readOnly} property.
+	 * The wrapper method of the {@link #isReadOnly} property.
 	 *
 	 * @return the value of the property
 	 */
 	public boolean isReadOnly()
 	{
-		return readOnly;
+		return isReadOnly;
 	}
 
 	public boolean matches(String action)
@@ -158,7 +158,7 @@ public enum BucketAction
 		// are not 2 ^ 2 but 2 ^ 2 - 1
 		var isPattern = action != null && action.endsWith(wildcard);
 		var prefix = isPattern ? action.substring(0, action.indexOf(wildcard)) : action;
-		var targetAction = getAction();
+		var targetAction = tag();
 		// SONAR: partially covered by tests (5 of 6 conditions). This is a false positive if the
 		// first condition is true, Java does not evaluate the second, thus real conditions are not
 		// 2 ^ 3 but 2 ^ 3 - 2 ^ 2 - 1

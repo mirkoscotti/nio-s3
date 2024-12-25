@@ -14,7 +14,6 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * According to the {@link FileStore} specification, this one represents a single bucket in the same
@@ -93,22 +92,19 @@ public class BucketFileStore
 	public <V extends FileStoreAttributeView> V getFileStoreAttributeView(Class<V> type)
 	{
 		return Optional.ofNullable(type)
-					   .filter(BucketFileStoreAttributeView.class::isInstance)
+					   .filter(BucketFileStoreAttributeView.class::isAssignableFrom)
 					   .map(item -> Try.to(() -> item.getConstructor(S3Connector.class,
 																	 String.class)
 													 .newInstance(connector, bucketName))
 									   .get())
-					   .orElseThrow(() -> new IllegalArgumentException("Expected type: %s. Found: %s".formatted(BucketFileStoreAttributeView.class.getSimpleName(),
-																												type.getSimpleName())));
+					   .orElse(null);
 	}
 
 	@Override
 	public Object getAttribute(String attribute) throws IOException
 	{
-		return Stream.of(BucketProperty.values())
-					 .filter(item -> item.toProperty().equals(attribute))
-					 .findAny()
-					 .map(getFileStoreAttributeView(BucketFileStoreAttributeView.class)::get)
-					 .orElse(null);
+		return BucketProperty.of(attribute)
+							 .map(getFileStoreAttributeView(BucketFileStoreAttributeView.class)::get)
+							 .orElse(null);
 	}
 }

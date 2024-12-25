@@ -25,7 +25,7 @@ public enum BucketEffect
 		return name.substring(0, 1).concat(name.substring(1).toLowerCase());
 	}
 
-	public static Optional<BucketEffect> effect(String effect)
+	public static Optional<BucketEffect> of(String effect)
 	{
 		return Stream.of(BucketEffect.values())
 					 .filter(item -> Objects.equals(item.name(), effect.toUpperCase()))
