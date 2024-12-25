@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
- */
-
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
@@ -26,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 22, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class S3FileStoreUnitTest
+class BucketFileStoreUnitTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

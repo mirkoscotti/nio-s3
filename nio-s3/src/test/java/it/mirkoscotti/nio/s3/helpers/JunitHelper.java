@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
- */
-
 package it.mirkoscotti.nio.s3.helpers;
 
 import java.lang.reflect.Field;
@@ -13,7 +9,7 @@ import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.commons.util.ReflectionUtils.HierarchyTraversalMode;
 
 /**
- * @author Add Value S.R.L by mirko.scotti
+ * @author mirko.scotti
  * @version Dec 19, 2024
  */
 public final class JunitHelper

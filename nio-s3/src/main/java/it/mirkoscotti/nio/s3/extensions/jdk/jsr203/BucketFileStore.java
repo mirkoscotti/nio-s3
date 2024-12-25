@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2024 - Add Value S.R.L - All rights reserved.
- */
-
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
