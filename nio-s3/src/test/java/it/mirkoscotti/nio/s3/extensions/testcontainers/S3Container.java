@@ -27,8 +27,6 @@ public class S3Container
 
 	private static final String IMAGE_NAME = "%1$s/%1$s".formatted(LOCALSTACK);
 
-	private static final String PROVIDER_OVERRIDE_S3 = "PROVIDER_OVERRIDE_S3";
-
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
 	private static final String POLICY_FILE = "/tmp/bucket-policy.json";
@@ -68,17 +66,22 @@ public class S3Container
 
 	private static final String HEAD_BUCKET_COMMAND = "awslocal s3api head-bucket --bucket %s";
 
+	private static final String DELETE_BUCKET_COMMAND = "awslocal s3api delete-bucket --bucket %s";
+
 	private static final String PUT_BUCKET_POLICY_COMMAND = "awslocal s3api put-bucket-policy --bucket %%s --policy file://%s".formatted(POLICY_FILE);
 
 	private static final String GET_BUCKET_POLICY_COMMAND = "awslocal s3api get-bucket-policy --bucket %s";
 
+	private static final String DELETE_BUCKET_POLICY_COMMAND = "awslocal s3api delete-bucket-policy --bucket %s";
+
 	private static final String DELETE_POLICY_FILE_COMMAND = "rm -f %s".formatted(POLICY_FILE);
+
+	private static final String PUT_BUCKET_ACL_COMMAND = "awslocal s3api put-bucket-acl --bucket %s --acl %s";
 
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
 		withServices(Service.S3);
-		withEnv(PROVIDER_OVERRIDE_S3, "v3");
 	}
 
 	public S3Container withBucket(String bucketName)
@@ -86,7 +89,7 @@ public class S3Container
 		Objects.requireNonNull(bucketName, () -> "Missing bucket name.");
 		var command = CREATE_BUCKET_COMMAND.formatted(bucketName);
 		var script = GENERIC_COMMAND.formatted(command);
-		withCopyToContainer(Transferable.of(script.getBytes(StandardCharsets.UTF_8), 0700),
+		withCopyToContainer(Transferable.of(script.getBytes(StandardCharsets.UTF_8), 755),
 							INITIALIZATION_FILE);
 		return this;
 	}
@@ -97,11 +100,9 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Optional.of(output)
-					.map(ExecResult::getExitCode)
-					.filter(item -> item == 0)
-					.orElseThrow(() -> new IllegalStateException("Failed to create bucket %s: %s".formatted(bucketName,
-																											output.getStderr())));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to create bucket %s".formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -135,6 +136,27 @@ public class S3Container
 		return result;
 	}
 
+	public void deleteBucket(String bucketName)
+	{
+		var command = DELETE_BUCKET_COMMAND.formatted(bucketName);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to delete bucket %s".formatted(bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
 	public void createBucketPolicy(String bucketName)
 	{
 		try
@@ -143,7 +165,9 @@ public class S3Container
 			copyFileToContainer(Transferable.of(policy), POLICY_FILE);
 			var command = PUT_BUCKET_POLICY_COMMAND.formatted(bucketName);
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0, output.getExitCode());
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to create policy for bucket %s".formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -184,12 +208,60 @@ public class S3Container
 		return result;
 	}
 
+	public void deleteBucketPolicy(String bucketName)
+	{
+		var command = DELETE_BUCKET_POLICY_COMMAND.formatted(bucketName);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to delete policy for bucket %s".formatted(bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void createBucketAcl(String bucketName, String acl)
+	{
+		try
+		{
+			var command = PUT_BUCKET_ACL_COMMAND.formatted(bucketName, acl);
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to create ACL for bucket %s".formatted(bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+		finally
+		{
+			deletePolicyFile();
+		}
+	}
+
 	private void deletePolicyFile()
 	{
 		try
 		{
 			var output = execInContainer(DELETE_POLICY_FILE_COMMAND.split(" "));
-			Assertions.assertEquals(0, output.getExitCode());
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to delete temporary policy file.");
 		}
 		catch (InterruptedException x)
 		{

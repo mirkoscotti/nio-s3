@@ -15,9 +15,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
@@ -28,7 +26,6 @@ import software.amazon.awssdk.services.s3.S3CrtAsyncClientBuilder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
@@ -57,8 +54,9 @@ public final class S3Connector
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
 								  .thenApply(this::permissions)
-								  .exceptionally(this::guessPermissions)
+								  .exceptionally(this::redirectException)
 								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(this::redirectException)
 				  .get();
 	}
 
@@ -73,6 +71,7 @@ public final class S3Connector
 								  .thenApply(this::isBucketReadOnly)
 								  .exceptionally(this::guessReadOnly)
 								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(this::guessReadOnly)
 				  .get();
 	}
 
@@ -88,6 +87,7 @@ public final class S3Connector
 								  .thenApply(this::isBucketReadOnly)
 								  .exceptionally(this::guessReadOnly)
 								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(this::guessReadOnly)
 				  .get();
 	}
 
@@ -102,9 +102,13 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		return !toS3Exception(throwable).awsErrorDetails()
-										.errorCode()
-										.contains("NoSuchBucketPolicy");
+		var exception = toS3Exception(throwable);
+		var errorCode = exception.awsErrorDetails().errorCode();
+		return switch (errorCode)
+		{
+			case "NoSuchBucketPolicy" -> false;
+			default -> throw new IllegalStateException(exception);
+		};
 	}
 
 	private String permissions(GetBucketAclResponse response)
@@ -115,14 +119,10 @@ public final class S3Connector
 					   .collect(Collectors.joining(";"));
 	}
 
-	private <T> T guessPermissions(Throwable throwable)
+	private <T> T redirectException(Throwable throwable)
 	{
 		var exception = toS3Exception(throwable);
-		if (exception instanceof NoSuchBucketException)
-		{
-			return null;
-		}
-		throw new IllegalStateException(toS3Exception(throwable));
+		throw new IllegalStateException(exception);
 	}
 
 	private PolicyRecord deserializePolicy(String policy)
@@ -135,38 +135,20 @@ public final class S3Connector
 		catch (Exception x)
 		{
 			LOGGER.log(Level.ERROR, () -> "Policy deserialization error.%n%s".formatted(policy), x);
-			result = null;
+			throw new IllegalStateException("Failed to read the bucket policy.", x);
 		}
 		return result;
 	}
 
 	private S3Exception toS3Exception(Throwable throwable)
 	{
-		var cause = throwable instanceof CompletionException completionException
-			? completionException.getCause()
-			: throwable;
-		return switch (cause)
+		return switch (throwable)
 		{
-			case InterruptedException exception -> interrupt(exception);
-			case ExecutionException exception -> toCause(exception);
-			case TimeoutException exception -> toCause(exception);
 			case S3Exception exception -> exception;
+			case CompletionException exception -> toS3Exception(exception.getCause());
+			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};
-	}
-
-	private <T> T interrupt(InterruptedException exception)
-	{
-		Thread.currentThread().interrupt();
-		throw new IllegalStateException(exception);
-	}
-
-	private <T> T toCause(Exception exception)
-	{
-		var cause = exception.getCause();
-		throw cause instanceof RuntimeException runtimeException
-			? runtimeException
-			: new IllegalStateException(cause);
 	}
 
 	static final class S3ConnectorBuilder

@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 24, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class TryTest
+class TryUnitTest
 {
 
 	@Test

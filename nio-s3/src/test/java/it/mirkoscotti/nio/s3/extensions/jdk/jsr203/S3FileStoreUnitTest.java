@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 22, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class S3FileStoreTest
+class S3FileStoreUnitTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

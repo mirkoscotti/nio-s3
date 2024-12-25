@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
  * @author mirko.scotti
  * @version Oct 29, 2024
  */
-class S3BasicFileSAttributeViewTest
+class S3BasicFileSAttributeViewUnitTest
 {
 
 	@Test

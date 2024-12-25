@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 27, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class PolicyRecordTest
+class PolicyRecordUnitTest
 {
 
 	private static final String VERSION = "version";
