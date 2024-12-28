@@ -74,13 +74,13 @@ public class BucketFileStore
 	@Override
 	public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type)
 	{
-		return type == BucketBasicFileAttributeView.class;
+		return type == ObjectBasicFileAttributeView.class;
 	}
 
 	@Override
 	public boolean supportsFileAttributeView(String name)
 	{
-		var supportedName = new BucketBasicFileAttributeView().name();
+		var supportedName = new ObjectBasicFileAttributeView(connector, bucketName, "/").name();
 		return supportedName.equals(name);
 	}
 

@@ -26,6 +26,8 @@ class S3ConnectorIntegrationTest
 
 	private static final String PUBLIC_READ = "public-read";
 
+	private static final String KEY = "key";
+
 	@Container
 	private static final S3Container CONTAINER = new S3Container();
 
@@ -44,7 +46,7 @@ class S3ConnectorIntegrationTest
 	@AfterEach
 	void afterEach()
 	{
-		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(CONTAINER::deleteBucket);
+		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
 	}
 
 	@Test
@@ -83,5 +85,25 @@ class S3ConnectorIntegrationTest
 	{
 		Assertions.assertThrows(IllegalStateException.class,
 								() -> connector.bucketAcl(BUCKET_NAME));
+	}
+
+	@Test
+	void objectMetadataTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, KEY);
+		var basicFileAttributes = connector.objectMetadata(BUCKET_NAME, KEY);
+		var lastModified = basicFileAttributes.lastModifiedTime();
+		Assertions.assertEquals(CONTAINER.lastModified(BUCKET_NAME, KEY), lastModified.toInstant());
+		Assertions.assertEquals(0, basicFileAttributes.size());
+		Assertions.assertEquals(KEY, basicFileAttributes.fileKey());
+	}
+
+	private void deleteBucket(String bucketName)
+	{
+		Optional.of(KEY)
+				.filter(item -> CONTAINER.objectExists(bucketName, item))
+				.ifPresent(item -> CONTAINER.deleteObject(bucketName, item));
+		CONTAINER.deleteBucket(bucketName);
 	}
 }

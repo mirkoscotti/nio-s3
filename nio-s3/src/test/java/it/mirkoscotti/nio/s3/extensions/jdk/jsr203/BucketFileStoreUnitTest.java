@@ -92,7 +92,7 @@ class BucketFileStoreUnitTest
 	void supportsFileAttributesViewByClassTest()
 	{
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
-		Assertions.assertTrue(fileStore.supportsFileAttributeView(BucketBasicFileAttributeView.class));
+		Assertions.assertTrue(fileStore.supportsFileAttributeView(ObjectBasicFileAttributeView.class));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView(FileAttributeView.class));
 	}
 

@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.operations;
 
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
@@ -8,6 +9,7 @@ import it.mirkoscotti.nio.s3.records.PolicyRecord;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.URI;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
@@ -23,6 +25,7 @@ import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * @author mirko.scotti
@@ -50,6 +53,21 @@ public final class S3Connector
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
 								  .thenApply(this::permissions)
+								  .exceptionally(this::redirectException)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(this::redirectException)
+				  .get();
+	}
+
+	public BasicFileAttributes objectMetadata(String bucketName, String key)
+	{
+		return Try.to(() -> client.headObject(item -> item.bucket(bucketName).key(key))
+								  .thenApply(item -> S3Object.builder()
+															 .key(key)
+															 .size(item.contentLength())
+															 .lastModified(item.lastModified())
+															 .build())
+								  .thenApply(ObjectBasicFileAttributes::new)
 								  .exceptionally(this::redirectException)
 								  .get(30, TimeUnit.SECONDS))
 				  .onCatch(this::redirectException)
