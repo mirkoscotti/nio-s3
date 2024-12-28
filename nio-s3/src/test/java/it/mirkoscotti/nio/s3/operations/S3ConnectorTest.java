@@ -26,7 +26,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  */
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("unchecked")
-class S3ConnectorUnitTest
+class S3ConnectorTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

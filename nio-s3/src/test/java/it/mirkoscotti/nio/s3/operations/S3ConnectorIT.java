@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Testcontainers
 @ExtendWith(MockitoExtension.class)
-class S3ConnectorIntegrationTest
+class S3ConnectorIT
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

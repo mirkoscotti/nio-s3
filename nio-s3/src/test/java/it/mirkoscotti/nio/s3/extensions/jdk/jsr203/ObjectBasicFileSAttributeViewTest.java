@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 29, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class ObjectBasicFileSAttributeViewUnitTest
+class ObjectBasicFileSAttributeViewTest
 {
 
 	private static final String BUCKET_NAME = "bucketName";

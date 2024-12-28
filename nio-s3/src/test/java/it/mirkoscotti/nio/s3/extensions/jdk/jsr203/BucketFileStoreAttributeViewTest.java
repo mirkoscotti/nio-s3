@@ -15,7 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Dec 25, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class BucketFileStoreAttributeViewUnitTest
+class BucketFileStoreAttributeViewTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

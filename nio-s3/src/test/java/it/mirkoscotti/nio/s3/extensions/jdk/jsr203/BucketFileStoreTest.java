@@ -22,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @version Oct 22, 2024
  */
 @ExtendWith(MockitoExtension.class)
-class BucketFileStoreUnitTest
+class BucketFileStoreTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";

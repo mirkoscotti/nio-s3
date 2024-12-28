@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
  * @author mirko.scotti
  * @version Dec 25, 2024
  */
-class BucketEffectUnitTest
+class BucketEffectTest
 {
 
 	private static final String ALLOW = "Allow";

@@ -16,7 +16,7 @@ import org.junit.platform.commons.util.ReflectionUtils;
  * @author mirko.scotti
  * @version Dec 25, 2024
  */
-class BucketActionUnitTest
+class BucketActionTest
 {
 
 	private static final String PATTERN = "s3:*";

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
  * @author mirko.scotti
  * @version Dec 25, 2024
  */
-class BucketPropertyUnitTest
+class BucketPropertyTest
 {
 
 	private static final String AWS_ENDPOINT = "aws.endpoint";
