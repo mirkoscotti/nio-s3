@@ -26,7 +26,7 @@ class S3ConnectorIT
 
 	private static final String PUBLIC_READ = "public-read";
 
-	private static final String KEY = "key";
+	private static final String KEY = "..";
 
 	@Container
 	private static final S3Container CONTAINER = new S3Container();
