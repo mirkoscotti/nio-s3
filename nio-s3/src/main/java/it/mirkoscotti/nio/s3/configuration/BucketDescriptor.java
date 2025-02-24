@@ -61,9 +61,9 @@ public class BucketDescriptor
 
 	private final Map<BucketProperty, String> configuration = new EnumMap<>(BucketProperty.class);
 
-	private final BucketRecord bucketRecord;
+	private final BucketRecord bucketKey;
 
-	private final CredentialsRecord credentialsRecord;
+	private final CredentialsRecord credentials;
 
 	public BucketDescriptor(URI uri)
 	{
@@ -90,11 +90,11 @@ public class BucketDescriptor
 		var endpoint = path.isPresent()
 			? uri.getHost()
 			: this.configuration.remove(BucketProperty.ENDPOINT);
-		bucketRecord = new BucketRecord(Optional.ofNullable(endpoint), bucketName);
-		credentialsRecord = Optional.ofNullable(uri.getUserInfo())
-									.map(this::createCredentialsRecord)
-									.orElseGet(() -> new CredentialsRecord(this.configuration.remove(BucketProperty.ACCESS_KEY),
-																		   this.configuration.remove(BucketProperty.SECRET_KEY)));
+		bucketKey = new BucketRecord(Optional.ofNullable(endpoint), bucketName);
+		credentials = Optional.ofNullable(uri.getUserInfo())
+							  .map(this::createCredentialsRecord)
+							  .orElseGet(() -> new CredentialsRecord(this.configuration.remove(BucketProperty.ACCESS_KEY),
+																	 this.configuration.remove(BucketProperty.SECRET_KEY)));
 	}
 
 	/**
@@ -108,23 +108,23 @@ public class BucketDescriptor
 	}
 
 	/**
-	 * The wrapper method of the {@link #bucketRecord} property.
+	 * The wrapper method of the {@link #bucketKey} property.
 	 *
 	 * @return the value of the property
 	 */
-	public BucketRecord bucketRecord()
+	public BucketRecord bucketKey()
 	{
-		return bucketRecord;
+		return bucketKey;
 	}
 
 	/**
-	 * The wrapper method of the {@link #credentialsRecord} property.
+	 * The wrapper method of the {@link #credentials} property.
 	 *
 	 * @return the value of the property
 	 */
-	public CredentialsRecord credentialsRecord()
+	public CredentialsRecord credentials()
 	{
-		return credentialsRecord;
+		return credentials;
 	}
 
 	public Optional<String> region()
@@ -151,7 +151,8 @@ public class BucketDescriptor
 							   () -> System.getProperty(property.toProperty()),
 							   () -> System.getenv(property.toProperty()),
 							   property::defaultValue)
-			  .filter(item -> item.get() != null)
+			  .map(Supplier::get)
+			  .filter(Objects::nonNull)
 			  .findFirst()
 			  .map(Object::toString)
 			  .ifPresent(item -> configuration.put(property, item));

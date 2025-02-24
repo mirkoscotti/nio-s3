@@ -4,7 +4,9 @@
 
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,6 +27,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -72,9 +75,11 @@ import java.util.Set;
  * @author mirko.scotti
  * @version Jan 25, 2025
  */
-public class S3FileSystemProvider
+public class BucketFileSystemProvider
 	extends FileSystemProvider
 {
+
+	private static final Map<BucketRecord, FileSystem> CACHE = new HashMap<>();
 
 	@Override
 	public String getScheme()
@@ -113,8 +118,14 @@ public class S3FileSystemProvider
 	@Override
 	public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		var bucketDescriptor = new BucketDescriptor(uri, env);
+		var bucketKey = bucketDescriptor.bucketKey();
+		if (CACHE.containsKey(bucketKey))
+		{
+			throw new FileSystemAlreadyExistsException("File system for bucket %s already existing.");
+		}
+		CACHE.put(bucketKey, new BucketFileSystem(this, bucketDescriptor));
+		return CACHE.get(bucketKey);
 	}
 
 	@Override

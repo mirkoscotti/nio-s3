@@ -60,6 +60,8 @@ class BucketPath
 	implements Path
 {
 
+	private static final String NOT_SUPPORTED = "Not supported yet.";
+
 	private static final String NOT_CONSECUTIVE_SLASHES = "^(?!.*\\/\\/)(\\/)?[^/]*(\\/[^/]*)?$";
 
 	private static final String NOT_ENDING_WITH_DOT = ".*(?<!\\.)$";
@@ -68,7 +70,7 @@ class BucketPath
 
 	private static final String SPECIAL_CHARACTERS = "[&$@=;:+,?\\s]";
 
-	private final S3FileSystem fileSystem;
+	private final BucketFileSystem fileSystem;
 
 	private final Path root;
 
@@ -89,7 +91,7 @@ class BucketPath
 	 * @param fileSystem
 	 * @param path
 	 */
-	public BucketPath(S3FileSystem fileSystem, String path)
+	public BucketPath(BucketFileSystem fileSystem, String path)
 	{
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
 		root = Objects.requireNonNull(path, () -> "Missing path.")
@@ -99,7 +101,7 @@ class BucketPath
 		objectKey = validatedPath(path);
 	}
 
-	private BucketPath(S3FileSystem fileSystem)
+	private BucketPath(BucketFileSystem fileSystem)
 	{
 		this.fileSystem = fileSystem;
 		root = this;
@@ -127,57 +129,49 @@ class BucketPath
 	@Override
 	public Path getFileName()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public Path getParent()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public int getNameCount()
 	{
-		// TODO Auto-generated method stub
-		return 0;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public Path getName(int index)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public Path subpath(int beginIndex, int endIndex)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public boolean startsWith(Path other)
 	{
-		// TODO Auto-generated method stub
-		return false;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public boolean endsWith(Path other)
 	{
-		// TODO Auto-generated method stub
-		return false;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public Path normalize()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	/**
@@ -209,15 +203,13 @@ class BucketPath
 	@Override
 	public Path relativize(Path other)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public URI toUri()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	/**
@@ -232,23 +224,20 @@ class BucketPath
 	@Override
 	public Path toRealPath(LinkOption... options) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public WatchKey register(WatchService watcher, Kind<?>[] events, Modifier... modifiers)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	@Override
 	public int compareTo(Path other)
 	{
-		// TODO Auto-generated method stub
-		return 0;
+		throw new UnsupportedOperationException(NOT_SUPPORTED);
 	}
 
 	/**
