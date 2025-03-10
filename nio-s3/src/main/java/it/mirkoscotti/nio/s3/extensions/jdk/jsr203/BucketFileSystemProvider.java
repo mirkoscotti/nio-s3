@@ -38,7 +38,7 @@ import java.util.Set;
  * bucket. Region is mandatory but, if not specified, <code>us-east-1</code> is assumed. URIs must
  * be compliant with one of the following formats:
  * <ul>
- * <li><code>s3://bucket-name/</code>
+ * <li><code>s3://bucket-name</code>
  * <p>
  * In this case, the {@link FileSystems#newFileSystem(URI, Map)} must be invoked and the credentials
  * for accessing the bucket must be provided in the environment map through the
@@ -124,7 +124,7 @@ public class BucketFileSystemProvider
 		{
 			throw new FileSystemAlreadyExistsException("File system for bucket %s already existing.");
 		}
-		CACHE.put(bucketKey, new BucketFileSystem(this, bucketDescriptor));
+		CACHE.put(bucketKey, new BucketFileSystem(bucketDescriptor, this));
 		return CACHE.get(bucketKey);
 	}
 
@@ -138,8 +138,11 @@ public class BucketFileSystemProvider
 	@Override
 	public Path getPath(URI uri)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		var bucketDescriptor = new BucketDescriptor(uri);
+		var fileSystem = CACHE.computeIfAbsent(bucketDescriptor.bucketKey(),
+											   item -> new BucketFileSystem(bucketDescriptor,
+																			this));
+		return fileSystem.getPath(uri.getPath());
 	}
 
 	@Override

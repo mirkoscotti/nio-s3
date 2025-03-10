@@ -20,11 +20,10 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
@@ -41,24 +40,25 @@ public class BucketFileSystem
 
 	private final BucketFileSystemProvider fileSystemProvider;
 
-	private final S3Connector connector;
+	private final BucketFileStore fileStore;
 
-	BucketFileSystem(BucketFileSystemProvider fileSystemProvider, BucketDescriptor bucketDescriptor)
+	BucketFileSystem(BucketDescriptor bucketDescriptor, BucketFileSystemProvider fileSystemProvider)
 	{
-		this.fileSystemProvider = fileSystemProvider;
+		var bucketKey = bucketDescriptor.bucketKey();
 		var credentials = bucketDescriptor.credentials();
 		var builder = S3Connector.create()
+								 .withEndpoint(URI.create(bucketKey.endpoint()))
 								 .withCredentials(credentials.accessKey(), credentials.secretKey());
-		bucketDescriptor.bucketKey().endpoint().map(URI::create).ifPresent(builder::withEndpoint);
-		connector = builder.build();
-		bucketDescriptor.configuration().forEach(this::addProperty);
+		var connector = builder.build();
+		ensureBucketExists(bucketDescriptor, connector);
+		this.fileSystemProvider = fileSystemProvider;
+		fileStore = new BucketFileStore(connector, bucketKey.bucketName());
 	}
 
 	@Override
 	public FileSystemProvider provider()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return fileSystemProvider;
 	}
 
 	@Override
@@ -99,8 +99,7 @@ public class BucketFileSystem
 	@Override
 	public Iterable<FileStore> getFileStores()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return List.of(fileStore);
 	}
 
 	@Override
@@ -113,8 +112,7 @@ public class BucketFileSystem
 	@Override
 	public Path getPath(String first, String... more)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return new BucketPath(this, first, more);
 	}
 
 	@Override
@@ -138,22 +136,31 @@ public class BucketFileSystem
 		return null;
 	}
 
-	private void addProperty(String key, Object object)
+	@Override
+	public int hashCode()
 	{
-		BucketProperty.of(key).ifPresent(item -> addProperty(item, object));
+		return Objects.hash(configuration, fileStore, fileSystemProvider);
 	}
 
-	private void addProperty(BucketProperty property, Object object)
+	@Override
+	public boolean equals(Object obj)
 	{
-		Stream.<Supplier<?>>of(() -> object,
-							   () -> System.getProperty(property.toProperty()),
-							   () -> System.getenv(property.toProperty()),
-							   property::defaultValue)
-			  .map(Supplier::get)
-			  .filter(Objects::nonNull)
-			  .findFirst()
-			  .map(Object::toString)
-			  .ifPresent(item -> configuration.put(property, item));
+		if (this == obj)
+		{
+			return true;
+		}
+		if (obj == null)
+		{
+			return false;
+		}
+		if (getClass() != obj.getClass())
+		{
+			return false;
+		}
+		BucketFileSystem other = (BucketFileSystem) obj;
+		return Objects.equals(configuration, other.configuration)
+			&& Objects.equals(fileStore, other.fileStore)
+			&& Objects.equals(fileSystemProvider, other.fileSystemProvider);
 	}
 
 	private void ensureBucketExists(BucketDescriptor bucketDescriptor, S3Connector connector)

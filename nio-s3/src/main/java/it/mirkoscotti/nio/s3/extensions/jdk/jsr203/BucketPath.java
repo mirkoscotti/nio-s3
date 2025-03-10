@@ -17,6 +17,8 @@ import java.nio.file.WatchEvent.Kind;
 import java.nio.file.WatchEvent.Modifier;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -41,17 +43,17 @@ import java.util.stream.Stream;
  * Therefore, any path ending with "/" will be considered a directory, meaning
  * <code>Files.isDirectory(path)</code> will return true. In particular, the root path "/", will be
  * considered a directory even if it cannot correspond to a real object in a bucket. This directory
- * will contain all the objects whose keys does not contains any "/". Since we can always save an
+ * will contain all the objects whose keys does not contain any "/". Since we can always save an
  * object on the root of an S3 bucket, the API <code>Files.exists(path)</code>, where path is "/",
  * will always return true.
  * <p>
  * POSIX relative paths like "." and ".." are treated as their meaning. Thus, even if it is possible
- * to save an object with key <code>abc/xyz/../file.txt</code>, the corresponding path will be
- * considered relative and equivalent to <code>abc/./file.txt</code> and finally to
- * <code>abc/file.txt</code>. S3 does not allow keys where the number of ".." parts exceeds the
- * number of preceding literal parts, like for instance <code>abc/../../file.txt</code>. According
- * to the POSIX rules, even if such a key is forbidden, a path representing this key will be
- * normalized to <code>file.txt</code>.
+ * to save an object with key <code>abc/xyz/../file.txt</code> using the AWS console or AWSCLI, the
+ * corresponding path will be considered relative and equivalent to <code>abc/./file.txt</code> and
+ * finally to <code>abc/file.txt</code>. S3 does not allow keys where the number of ".." parts
+ * exceeds the number of preceding literal parts, like for instance <code>abc/../../file.txt</code>.
+ * According to the POSIX rules, even if such a key is forbidden, a path representing this key will
+ * be normalized to <code>file.txt</code>.
  *
  * @author mirko.scotti
  * @version Jul 14, 2024
@@ -89,15 +91,18 @@ class BucketPath
 	 * </ul>
 	 *
 	 * @param fileSystem
-	 * @param path
+	 * @param first
+	 * @param more
 	 */
-	public BucketPath(BucketFileSystem fileSystem, String path)
+	public BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
-		root = Objects.requireNonNull(path, () -> "Missing path.")
+		root = Objects.requireNonNull(first, () -> "Missing path.")
 					  .startsWith(BucketDescriptor.PATH_SEPARATOR)
 						  ? new BucketPath(fileSystem)
 						  : null;
+		var path = Stream.concat(Stream.of(first), Stream.ofNullable(more).flatMap(Stream::of))
+						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
 		objectKey = validatedPath(path);
 	}
 
@@ -129,49 +134,135 @@ class BucketPath
 	@Override
 	public Path getFileName()
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		return Optional.ofNullable(objectKey)
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
+					   .stream()
+					   .flatMap(Stream::of)
+					   .filter(Predicate.not(String::isEmpty))
+					   .reduce((item1, item2) -> item2)
+					   .map(fileSystem::getPath)
+					   .orElse(null);
 	}
 
 	@Override
 	public Path getParent()
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		return Optional.ofNullable(objectKey)
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
+					   .stream()
+					   .flatMap(Stream::of)
+					   .filter(Predicate.not(String::isBlank))
+					   .reduce((item1, item2) -> item2)
+					   .map(fileSystem::getPath)
+					   .orElse(null);
 	}
 
 	@Override
 	public int getNameCount()
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		return Optional.ofNullable(objectKey)
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
+					   .map(item -> item.length)
+					   .orElse(0);
 	}
 
 	@Override
 	public Path getName(int index)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		if (index < 0)
+		{
+			throw new IllegalArgumentException("Index must not be negative.");
+		}
+		return Optional.ofNullable(objectKey)
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
+					   .filter(item -> item.length > index)
+					   .map(item -> item[index])
+					   .map(fileSystem::getPath)
+					   .orElseThrow(() -> new IllegalArgumentException("Index greater than the number of elements."));
 	}
 
 	@Override
 	public Path subpath(int beginIndex, int endIndex)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		if (beginIndex < 0)
+		{
+			throw new IllegalArgumentException("Begin index must not be negative.");
+		}
+		if (endIndex < 0)
+		{
+			throw new IllegalArgumentException("End index must not be negative.");
+		}
+		if (endIndex <= beginIndex)
+		{
+			throw new IllegalArgumentException("Begin index must be lower than end index.");
+		}
+		var array = elements();
+		if (beginIndex >= array.length)
+		{
+			throw new IllegalArgumentException("Begin index must be greater the number of elements.");
+		}
+		if (beginIndex >= array.length)
+		{
+			throw new IllegalArgumentException("Begin index must be greater the number of elements.");
+		}
+		return new BucketPath(fileSystem,
+							  array[beginIndex],
+							  Stream.of(array)
+									.skip(beginIndex)
+									.limit(endIndex - (long) beginIndex)
+									.toArray(String[]::new));
 	}
 
 	@Override
 	public boolean startsWith(Path other)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		boolean result = false;
+		if (other != null)
+		{
+			var nameCount = other.getNameCount();
+			result = other.getFileSystem().equals(fileSystem)
+				&& nameCount <= getNameCount()
+				&& subpath(0, nameCount).equals(other);
+		}
+		return result;
 	}
 
 	@Override
 	public boolean endsWith(Path other)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		boolean result = false;
+		if (other != null)
+		{
+			var thisNameCount = getNameCount();
+			var otherNameCount = other.getNameCount();
+			result = other.getFileSystem().equals(fileSystem)
+				&& otherNameCount <= thisNameCount
+				&& subpath(thisNameCount - otherNameCount, thisNameCount).equals(other);
+		}
+		return result;
 	}
 
 	@Override
 	public Path normalize()
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		var stack = Stream.of(elements())
+						  .filter(Predicate.not(item -> item.equals(".")))
+						  .collect(Collectors.toCollection(ArrayDeque::new))
+						  .stream()
+						  .reduce(new ArrayDeque<String>(),
+								  this::updateElements,
+								  (item1, item2) -> item1);
+		var prefix = objectKey == null ? root.toString() : "";
+		var suffix = Optional.ofNullable(objectKey)
+							 .orElse(root.toString())
+							 .endsWith(BucketDescriptor.PATH_SEPARATOR)
+								 ? BucketDescriptor.PATH_SEPARATOR
+								 : "";
+		var result = stack.stream()
+						  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
+													  prefix,
+													  suffix));
+		return fileSystem.getPath(result);
 	}
 
 	/**
@@ -188,10 +279,10 @@ class BucketPath
 						   .orElseThrow(() -> new IllegalArgumentException("File system mismatch. Given path belongs to a different S3 bucket."));
 		return switch (path)
 		{
-			case BucketPath s3Path when s3Path.objectKey.isEmpty() -> this;
-			case BucketPath s3Path when s3Path.isAbsolute() -> s3Path;
-			case BucketPath s3Path when objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR) -> new BucketPath(fileSystem,
-																											  objectKey.concat(path.objectKey));
+			case BucketPath bucketPath when bucketPath.objectKey.isEmpty() -> this;
+			case BucketPath bucketPath when bucketPath.isAbsolute() -> bucketPath;
+			case BucketPath bucketPath when objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR) -> new BucketPath(fileSystem,
+																												  objectKey.concat(path.objectKey));
 			default -> objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR)
 				? new BucketPath(fileSystem, objectKey.concat(path.objectKey))
 				: new BucketPath(fileSystem,
@@ -250,10 +341,11 @@ class BucketPath
 	@Override
 	public boolean equals(Object obj)
 	{
-		return obj instanceof BucketPath s3Path
-			&& Objects.equals(fileSystem, s3Path.fileSystem)
-			&& Objects.equals(objectKey, s3Path.objectKey)
-			&& isAbsolute() == s3Path.isAbsolute();
+		return obj instanceof BucketPath bucketPath
+			&& Objects.equals(fileSystem, bucketPath.fileSystem)
+			&& Objects.equals(root, bucketPath.root)
+			&& Objects.equals(objectKey, bucketPath.objectKey)
+			&& isAbsolute() == bucketPath.isAbsolute();
 	}
 
 	/**
@@ -263,7 +355,7 @@ class BucketPath
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(fileSystem, objectKey, isAbsolute());
+		return Objects.hash(fileSystem, root, objectKey, isAbsolute());
 	}
 
 	@Override
@@ -323,5 +415,23 @@ class BucketPath
 							? "%%%02X".formatted((int) result.charAt(i))
 							: String.valueOf(result.charAt(i)))
 						.collect(Collectors.joining());
+	}
+
+	private String[] elements()
+	{
+		return Optional.ofNullable(objectKey)
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
+					   .orElseGet(() -> new String[0]);
+	}
+
+	private Deque<String> updateElements(Deque<String> elements, String element)
+	{
+		Optional.ofNullable(element)
+				.filter(".."::equals)
+				.ifPresentOrElse(item -> Optional.of(elements)
+												 .filter(Predicate.not(Deque::isEmpty))
+												 .ifPresent(Deque::pollLast),
+								 () -> elements.addLast(element));
+		return elements;
 	}
 }
