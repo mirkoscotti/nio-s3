@@ -35,8 +35,6 @@ class BucketDescriptorTest
 
 	private static final String SECRET_KEY = "secret-key";
 
-	private static final String CREDENTIALS = String.join(":", ACCESS_KEY, SECRET_KEY);
-
 	private static final String REGION = "us-east-1";
 
 	@Mock
@@ -97,6 +95,24 @@ class BucketDescriptorTest
 			var region = bucketDescriptor.region();
 			Assertions.assertTrue(region.isPresent());
 			Assertions.assertEquals(REGION, region.get());
+		}
+	}
+
+	@Test
+	void configurationWithCredentialsTest()
+	{
+		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
+												 this::configureOnlyBucketName))
+		{
+			var map = Map.of("aws.access-key", ACCESS_KEY, "aws.secret-key", SECRET_KEY);
+			var bucketDescriptor = new BucketDescriptor(uri, map);
+			var credentials = bucketDescriptor.credentials();
+			Assertions.assertEquals(ACCESS_KEY, credentials.accessKey());
+			Assertions.assertEquals(SECRET_KEY, credentials.secretKey());
+			var configuration = bucketDescriptor.configuration();
+			Assertions.assertFalse(configuration.containsKey(BucketProperty.ACCESS_KEY));
+			Assertions.assertFalse(configuration.containsKey(BucketProperty.SECRET_KEY));
 		}
 	}
 
