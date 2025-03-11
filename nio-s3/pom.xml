@@ -157,12 +157,29 @@
 					<artifactId>maven-failsafe-plugin</artifactId>
 					<version>${maven-failsafe-plugin.version}</version>
 				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco-maven-plugin.version}</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>
+						-javaagent:${settings.localRepository}/org/jacoco/org.jacoco.agent/${jacoco-maven-plugin.version}/org.jacoco.agent-${jacoco-maven-plugin.version}-runtime.jar=destfile=${project.build.directory}/jacoco.exec</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<argLine>
+						-javaagent:${settings.localRepository}/org/jacoco/org.jacoco.agent/${jacoco-maven-plugin.version}/org.jacoco.agent-${jacoco-maven-plugin.version}-runtime.jar=destfile=${project.build.directory}/jacoco-it.exec</argLine>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
@@ -175,24 +192,16 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>${jacoco-maven-plugin.version}</version>
 				<executions>
 					<execution>
-						<id>unit-test</id>
-						<phase>test</phase>
+						<id>unit-report</id>
+						<phase>verify</phase>
 						<goals>
-							<goal>prepare-agent</goal>
+							<goal>report</goal>
 						</goals>
 					</execution>
 					<execution>
-						<id>integration-test</id>
-						<phase>test</phase>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>report</id>
+						<id>integration-report</id>
 						<phase>verify</phase>
 						<goals>
 							<goal>report</goal>
