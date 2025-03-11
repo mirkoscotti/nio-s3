@@ -4,6 +4,7 @@
 
 package it.mirkoscotti.nio.s3.configuration;
 
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
@@ -33,6 +34,8 @@ class BucketDescriptorTest
 	private static final String ACCESS_KEY = "access-key";
 
 	private static final String SECRET_KEY = "secret-key";
+
+	private static final String CREDENTIALS = String.join(":", ACCESS_KEY, SECRET_KEY);
 
 	private static final String REGION = "us-east-1";
 
@@ -87,18 +90,27 @@ class BucketDescriptorTest
 	{
 		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
-												 this::configureOnlyBucketName))
+												 this::configureEmptyCredentials))
 		{
-			var map = Map.of("aws.region",
-							 REGION,
-							 "aws.access-key",
-							 ACCESS_KEY,
-							 "aws.secret-key",
-							 SECRET_KEY);
+			var map = Map.of("aws.region", REGION);
 			var bucketDescriptor = new BucketDescriptor(uri, map);
 			var region = bucketDescriptor.region();
 			Assertions.assertTrue(region.isPresent());
 			Assertions.assertEquals(REGION, region.get());
+		}
+	}
+
+	@Test
+	void configurationTest()
+	{
+		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
+												 this::configureEmptyCredentials))
+		{
+			var map = Map.of("aws.region", REGION);
+			var bucketDescriptor = new BucketDescriptor(uri, map);
+			var configuration = bucketDescriptor.configuration();
+			Assertions.assertEquals(REGION, configuration.get(BucketProperty.REGION));
 		}
 	}
 
@@ -116,6 +128,13 @@ class BucketDescriptorTest
 	{
 		configureBucketName(uriDescriptor, context.arguments().get(0));
 		Mockito.when(uriDescriptor.credentials()).thenReturn(Optional.empty());
+	}
+
+	private void configureEmptyCredentials(UriDescriptor uriDescriptor, Context context)
+	{
+		configureBucketName(uriDescriptor, context.arguments().get(0));
+		var credentials = Mockito.mock(CredentialsRecord.class);
+		Mockito.when(uriDescriptor.credentials()).thenReturn(Optional.of(credentials));
 	}
 
 	private void configureBucketNameAndCredentials(UriDescriptor uriDescriptor, Context context)
