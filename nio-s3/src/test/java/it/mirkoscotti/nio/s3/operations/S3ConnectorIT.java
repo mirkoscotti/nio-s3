@@ -1,6 +1,8 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
 
 import java.util.Optional;
 
@@ -9,6 +11,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -47,6 +51,16 @@ class S3ConnectorIT
 	void afterEach()
 	{
 		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
+	}
+
+	@Test
+	void createBucketTest(@Mock BucketDescriptor bucketDescriptor, @Mock BucketRecord bucketKey)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
+		connector.createBucket(bucketDescriptor);
+		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
 	}
 
 	@Test

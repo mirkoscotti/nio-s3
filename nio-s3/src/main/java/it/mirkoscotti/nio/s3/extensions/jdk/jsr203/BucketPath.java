@@ -12,7 +12,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.ProviderMismatchException;
 import java.nio.file.WatchEvent.Kind;
 import java.nio.file.WatchEvent.Modifier;
 import java.nio.file.WatchKey;
@@ -22,6 +21,7 @@ import java.util.Deque;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  * Although the S3 naming convention does not allow an object name to start with "/", a name with
  * this characteristic is still accepted for correct handling of absolute and relative paths. A path
  * is considered absolute if it starts with "/" and relative otherwise. With this assumption, the
- * root path of an S3 bucket will be "/".
+ * root path of an S3 bucket will be "/" and empty path will be its relative representation.
  * <p>
  * According to the naming convention, an object with key <code>directory/file.txt</code> is
  * considered a file and its logical directory can be an empty object named <code>directory/</code>.
@@ -64,13 +64,15 @@ class BucketPath
 
 	private static final String NOT_SUPPORTED = "Not supported yet.";
 
-	private static final String NOT_CONSECUTIVE_SLASHES = "^(?!.*\\/\\/)(\\/)?[^/]*(\\/[^/]*)?$";
+	private static final String NOT_CONSECUTIVE_SLASHES = "^(?!.*\\/\\/).+$";
 
-	private static final String NOT_ENDING_WITH_DOT = ".*(?<!\\.)$";
+	private static final String NOT_ENDING_WITH_DOT = "^(?:.*(?<![.])|.*/(?:\\.|\\.\\.))$";
 
 	private static final String FORBIDDEN_CHARACTERS = "^[^\\\\{^}%`\\]\">\\[~<#|\\x00-\\x1f\\x7f-\\xff]*$";
 
 	private static final String SPECIAL_CHARACTERS = "[&$@=;:+,?\\s]";
+
+	private static final Supplier<String> MISSING_PATH = () -> "Missing path.";
 
 	private final BucketFileSystem fileSystem;
 
@@ -97,7 +99,7 @@ class BucketPath
 	public BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
-		root = Objects.requireNonNull(first, () -> "Missing path.")
+		root = Objects.requireNonNull(first, MISSING_PATH)
 					  .startsWith(BucketDescriptor.PATH_SEPARATOR)
 						  ? new BucketPath(fileSystem)
 						  : null;
@@ -149,10 +151,12 @@ class BucketPath
 	{
 		return Optional.ofNullable(objectKey)
 					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
-					   .stream()
-					   .flatMap(Stream::of)
-					   .filter(Predicate.not(String::isBlank))
-					   .reduce((item1, item2) -> item2)
+					   .map(item -> Stream.of(item)
+										  .limit(item.length - 1l)
+										  .filter(Predicate.not(String::isBlank))
+										  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
+																	  BucketDescriptor.PATH_SEPARATOR,
+																	  "")))
 					   .map(fileSystem::getPath)
 					   .orElse(null);
 	}
@@ -188,10 +192,6 @@ class BucketPath
 		{
 			throw new IllegalArgumentException("Begin index must not be negative.");
 		}
-		if (endIndex < 0)
-		{
-			throw new IllegalArgumentException("End index must not be negative.");
-		}
 		if (endIndex <= beginIndex)
 		{
 			throw new IllegalArgumentException("Begin index must be lower than end index.");
@@ -199,17 +199,17 @@ class BucketPath
 		var array = elements();
 		if (beginIndex >= array.length)
 		{
-			throw new IllegalArgumentException("Begin index must be greater the number of elements.");
+			throw new IllegalArgumentException("Begin index is greater than the number of elements.");
 		}
-		if (beginIndex >= array.length)
+		if (endIndex > array.length)
 		{
-			throw new IllegalArgumentException("Begin index must be greater the number of elements.");
+			throw new IllegalArgumentException("End index is greater than the number of elements.");
 		}
 		return new BucketPath(fileSystem,
 							  array[beginIndex],
 							  Stream.of(array)
-									.skip(beginIndex)
-									.limit(endIndex - (long) beginIndex)
+									.skip(beginIndex + 1l)
+									.limit(endIndex - beginIndex - 1l)
 									.toArray(String[]::new));
 	}
 
@@ -245,16 +245,13 @@ class BucketPath
 	@Override
 	public Path normalize()
 	{
-		var stack = Stream.of(elements())
-						  .filter(Predicate.not(item -> item.equals(".")))
-						  .collect(Collectors.toCollection(ArrayDeque::new))
-						  .stream()
-						  .reduce(new ArrayDeque<String>(),
-								  this::updateElements,
-								  (item1, item2) -> item1);
-		var prefix = objectKey == null ? root.toString() : "";
+		var stack = new ArrayDeque<String>();
+		Stream.of(elements())
+			  .filter(Predicate.not(item -> item.equals(".")))
+			  .forEach(item -> updateElements(stack, item));
+		var prefix = isAbsolute() ? BucketDescriptor.PATH_SEPARATOR : "";
 		var suffix = Optional.ofNullable(objectKey)
-							 .orElse(root.toString())
+							 .orElse(BucketDescriptor.PATH_SEPARATOR)
 							 .endsWith(BucketDescriptor.PATH_SEPARATOR)
 								 ? BucketDescriptor.PATH_SEPARATOR
 								 : "";
@@ -274,15 +271,16 @@ class BucketPath
 	@Override
 	public Path resolve(Path other)
 	{
-		var path = Optional.of(validatePath(other))
+		Objects.requireNonNull(other, MISSING_PATH);
+		var path = Optional.of(other)
+						   .filter(BucketPath.class::isInstance)
+						   .map(BucketPath.class::cast)
 						   .filter(item -> fileSystem.equals(item.getFileSystem()))
-						   .orElseThrow(() -> new IllegalArgumentException("File system mismatch. Given path belongs to a different S3 bucket."));
+						   .orElseThrow(() -> new IllegalArgumentException("Path '%s' does not belonging to the same AWS S3 bucket.".formatted(other)));
 		return switch (path)
 		{
-			case BucketPath bucketPath when bucketPath.objectKey.isEmpty() -> this;
+			case BucketPath bucketPath when bucketPath.objectKey == null -> this;
 			case BucketPath bucketPath when bucketPath.isAbsolute() -> bucketPath;
-			case BucketPath bucketPath when objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR) -> new BucketPath(fileSystem,
-																												  objectKey.concat(path.objectKey));
 			default -> objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR)
 				? new BucketPath(fileSystem, objectKey.concat(path.objectKey))
 				: new BucketPath(fileSystem,
@@ -343,7 +341,6 @@ class BucketPath
 	{
 		return obj instanceof BucketPath bucketPath
 			&& Objects.equals(fileSystem, bucketPath.fileSystem)
-			&& Objects.equals(root, bucketPath.root)
 			&& Objects.equals(objectKey, bucketPath.objectKey)
 			&& isAbsolute() == bucketPath.isAbsolute();
 	}
@@ -355,7 +352,7 @@ class BucketPath
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(fileSystem, root, objectKey, isAbsolute());
+		return Objects.hash(fileSystem, objectKey, isAbsolute());
 	}
 
 	@Override
@@ -364,30 +361,16 @@ class BucketPath
 		return objectKey;
 	}
 
-	static BucketPath validatePath(Path path)
-	{
-		Objects.requireNonNull(path, () -> "Missing path.");
-		if (path instanceof BucketPath result)
-		{
-			return result;
-		}
-		throw new ProviderMismatchException("Path not compliant with AWS S3 buckets.");
-	}
-
 	/*
 	 * POSIX normalization is not applied here. The aim is only to validate the path against the S3
 	 * rules. Thus paths like "abc/../file.txt" will be returned unchanged.
 	 */
 	private String validatedPath(String path)
 	{
-		// Path not empty
-		var current = Optional.of(path)
-							  .filter(Predicate.not(String::isEmpty))
-							  .orElseThrow(() -> new InvalidPathException("Empty path", path));
 		// Path length less or equals to 1KB
-		current = Optional.of(current)
-						  .filter(item -> item.length() <= 1024)
-						  .orElseThrow(() -> new InvalidPathException("Path too long", path));
+		var current = Optional.of(path)
+							  .filter(item -> item.length() <= 1024)
+							  .orElseThrow(() -> new InvalidPathException("Path too long", path));
 		// Path does not contain consecutive slashes
 		current = Optional.of(current)
 						  .filter(item -> item.matches(NOT_CONSECUTIVE_SLASHES))

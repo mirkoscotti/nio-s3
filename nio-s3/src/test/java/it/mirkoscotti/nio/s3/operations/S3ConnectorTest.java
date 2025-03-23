@@ -1,6 +1,12 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Assertions;
@@ -9,14 +15,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.OngoingStubbing;
 
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
 import jakarta.json.bind.JsonbException;
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.crt.CrtRuntimeException;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3CrtAsyncClientBuilder;
 import software.amazon.awssdk.services.s3.internal.crt.S3CrtAsyncClient;
+import software.amazon.awssdk.services.s3.model.CreateBucketResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -34,16 +43,125 @@ class S3ConnectorTest
 	private static final String POLICY = "policy";
 
 	@Test
+	void closeTest(@Mock S3CrtAsyncClientBuilder builder, @Mock S3CrtAsyncClient client)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			connector.close();
+			Mockito.verify(client, Mockito.atLeastOnce()).close();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void interruptedExceptionWhileCreatingBucketTest(@Mock S3CrtAsyncClientBuilder builder,
+													 @Mock S3CrtAsyncClient client,
+													 @Mock CreateBucketResponse createBucketResponse,
+													 @Mock CompletableFuture<CreateBucketResponse> future,
+													 @Mock BucketDescriptor bucketDescriptor)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		OngoingStubbing<CompletableFuture<CreateBucketResponse>> ongoingStubbing = Mockito.when(client.createBucket(Mockito.any(Consumer.class)));
+		ongoingStubbing.thenReturn(future);
+		try
+		{
+			Mockito.doThrow(InterruptedException.class)
+				   .when(future)
+				   .get(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+		try (var clientMock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			clientMock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			var exception = Assertions.assertThrows(IllegalStateException.class,
+													() -> connector.createBucket(bucketDescriptor));
+			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
+		}
+	}
+
+	@Test
+	void timeoutExceptionWhileCreatingBucketTest(@Mock S3CrtAsyncClientBuilder builder,
+												 @Mock S3CrtAsyncClient client,
+												 @Mock CreateBucketResponse createBucketResponse,
+												 @Mock CompletableFuture<CreateBucketResponse> future,
+												 @Mock BucketDescriptor bucketDescriptor)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		OngoingStubbing<CompletableFuture<CreateBucketResponse>> ongoingStubbing = Mockito.when(client.createBucket(Mockito.any(Consumer.class)));
+		ongoingStubbing.thenReturn(future);
+		try
+		{
+			Mockito.doThrow(TimeoutException.class)
+				   .when(future)
+				   .get(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+		try (var clientMock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			clientMock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			Assertions.assertThrows(IllegalStateException.class,
+									() -> connector.createBucket(bucketDescriptor));
+		}
+	}
+
+	@Test
+	void executionExceptionWhileCreatingBucketTest(@Mock S3CrtAsyncClientBuilder builder,
+												   @Mock S3CrtAsyncClient client,
+												   @Mock CreateBucketResponse createBucketResponse,
+												   @Mock CompletableFuture<CreateBucketResponse> future,
+												   @Mock BucketDescriptor bucketDescriptor)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		OngoingStubbing<CompletableFuture<CreateBucketResponse>> ongoingStubbing = Mockito.when(client.createBucket(Mockito.any(Consumer.class)));
+		ongoingStubbing.thenReturn(future);
+		try
+		{
+			Mockito.doThrow(new ExecutionException(new CrtRuntimeException("Failure")))
+				   .when(future)
+				   .get(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+		try (var clientMock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			clientMock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			Assertions.assertThrows(CrtRuntimeException.class,
+									() -> connector.createBucket(bucketDescriptor));
+		}
+	}
+
+	@Test
 	void isBucketReadOnlyWhenDeserializationFailedTest(@Mock S3CrtAsyncClientBuilder builder,
 													   @Mock S3CrtAsyncClient client,
-													   @Mock GetBucketPolicyResponse policyResponse,
+													   @Mock GetBucketPolicyResponse getBucketPolicyResponse,
 													   @Mock Jsonb jsonb)
 	{
 		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
 		Mockito.when(builder.build()).thenReturn(client);
-		var future = CompletableFuture.<GetBucketPolicyResponse>completedFuture(policyResponse);
+		var future = CompletableFuture.<GetBucketPolicyResponse>completedFuture(getBucketPolicyResponse);
 		Mockito.when(client.getBucketPolicy(Mockito.any(Consumer.class))).thenReturn(future);
-		Mockito.when(policyResponse.policy()).thenReturn(POLICY);
+		Mockito.when(getBucketPolicyResponse.policy()).thenReturn(POLICY);
 		Mockito.when(jsonb.fromJson(Mockito.anyString(), Mockito.any()))
 			   .thenThrow(JsonbException.class);
 		try (var clientMock = Mockito.mockStatic(S3AsyncClient.class);
