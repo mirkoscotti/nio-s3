@@ -5,19 +5,26 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.BucketModifier;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
+import java.nio.file.ProviderMismatchException;
+import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent.Kind;
 import java.nio.file.WatchEvent.Modifier;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -62,9 +69,7 @@ class BucketPath
 	implements Path
 {
 
-	private static final String NOT_SUPPORTED = "Not supported yet.";
-
-	private static final String NOT_CONSECUTIVE_SLASHES = "^(?!.*\\/\\/).+$";
+	private static final String NOT_CONSECUTIVE_SLASHES = "^(?!.*\\/\\/).*$";
 
 	private static final String NOT_ENDING_WITH_DOT = "^(?:.*(?<![.])|.*/(?:\\.|\\.\\.))$";
 
@@ -116,7 +121,7 @@ class BucketPath
 	}
 
 	@Override
-	public FileSystem getFileSystem()
+	public BucketFileSystem getFileSystem()
 	{
 		return fileSystem;
 	}
@@ -271,12 +276,7 @@ class BucketPath
 	@Override
 	public Path resolve(Path other)
 	{
-		Objects.requireNonNull(other, MISSING_PATH);
-		var path = Optional.of(other)
-						   .filter(BucketPath.class::isInstance)
-						   .map(BucketPath.class::cast)
-						   .filter(item -> fileSystem.equals(item.getFileSystem()))
-						   .orElseThrow(() -> new IllegalArgumentException("Path '%s' does not belonging to the same AWS S3 bucket.".formatted(other)));
+		var path = compliantPath(other);
 		return switch (path)
 		{
 			case BucketPath bucketPath when bucketPath.objectKey == null -> this;
@@ -292,13 +292,30 @@ class BucketPath
 	@Override
 	public Path relativize(Path other)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		var path = Optional.of(compliantPath(other))
+						   .filter(item -> isAbsolute() == item.isAbsolute())
+						   .orElseThrow(() -> bothAbsoluteOrRelativeMessage(other));
+		var sourceList = List.of(elements());
+		var otherList = List.of(path.elements());
+		int size = (int) IntStream.range(0, Math.min(sourceList.size(), otherList.size()))
+								  .takeWhile(i -> sourceList.get(i).equals(otherList.get(i)))
+								  .count();
+		long sourceSize = sourceList.size();
+		var result = size == sourceSize ? new ArrayList<String>() : new ArrayList<>(sourceList);
+		result.addAll(Stream.generate(() -> "..").limit(sourceSize - size).toList());
+		var additionalElements = otherList.subList(size, otherList.size());
+		result.addAll(additionalElements);
+		var first = result.stream().collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
+		return new BucketPath(fileSystem, first);
 	}
 
 	@Override
 	public URI toUri()
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		var scheme = fileSystem.provider().getScheme();
+		var bucketName = fileSystem.getFileStores().iterator().next().name();
+		var path = toAbsolutePath();
+		return URI.create("%s://%s/%s".formatted(scheme, bucketName, path));
 	}
 
 	/**
@@ -307,26 +324,72 @@ class BucketPath
 	@Override
 	public Path toAbsolutePath()
 	{
-		return isAbsolute() ? this : new BucketPath(fileSystem).resolve(objectKey);
+		return isAbsolute()
+			? this
+			: new BucketPath(fileSystem, BucketDescriptor.PATH_SEPARATOR.concat(objectKey));
 	}
 
 	@Override
 	public Path toRealPath(LinkOption... options) throws IOException
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		var path = toAbsolutePath().normalize();
+		return Optional.of(path)
+					   .filter(item -> fileSystem.provider().exists(item, options))
+					   .orElseThrow(() -> fileNotFoundInBucket(path));
 	}
 
 	@Override
 	public WatchKey register(WatchService watcher, Kind<?>[] events, Modifier... modifiers)
 		throws IOException
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		if (!Files.isDirectory(this) || !Files.exists(this))
+		{
+			throw new NotDirectoryException("""
+				Only existing directories can be watched.
+				This path does not exist or it is a file: %s
+				""".formatted(objectKey));
+		}
+		var exception = Stream.of(events)
+							  .filter(Predicate.not(List.of(StandardWatchEventKinds.ENTRY_CREATE,
+															StandardWatchEventKinds.ENTRY_DELETE,
+															StandardWatchEventKinds.ENTRY_MODIFY)::contains))
+							  .map("Invalid event: %s"::formatted)
+							  .map(IllegalArgumentException::new)
+							  .collect(() -> new UnsupportedOperationException("Unsupported events."),
+									   Throwable::addSuppressed,
+									   Throwable::addSuppressed);
+		if (exception.getSuppressed().length > 0)
+		{
+			throw exception;
+		}
+		exception = Stream.ofNullable(modifiers)
+						  .flatMap(Stream::of)
+						  .filter(Predicate.not(List.of(BucketModifier.values())::contains))
+						  .map("Invalid modifier: %s"::formatted)
+						  .map(IllegalArgumentException::new)
+						  .collect(() -> new UnsupportedOperationException("Only %s's items are supported.".formatted(BucketModifier.class.getName())),
+								   Throwable::addSuppressed,
+								   Throwable::addSuppressed);
+		if (exception.getSuppressed().length > 0)
+		{
+			throw exception;
+		}
+		if (watcher instanceof DirectoryWatchService watchService)
+		{
+			return watchService.registerPath(this);
+		}
+		throw new ProviderMismatchException("Watcher missing or not working with S3 buckets.");
 	}
 
 	@Override
 	public int compareTo(Path other)
 	{
-		throw new UnsupportedOperationException(NOT_SUPPORTED);
+		var path = compliantPath(other);
+		var path1 = isAbsolute() ? BucketDescriptor.PATH_SEPARATOR.concat(objectKey) : objectKey;
+		var path2 = path.isAbsolute()
+			? BucketDescriptor.PATH_SEPARATOR.concat(path.objectKey)
+			: path.objectKey;
+		return path1.compareTo(path2);
 	}
 
 	/**
@@ -340,7 +403,7 @@ class BucketPath
 	public boolean equals(Object obj)
 	{
 		return obj instanceof BucketPath bucketPath
-			&& Objects.equals(fileSystem, bucketPath.fileSystem)
+			&& Objects.equals(fileSystem, bucketPath.getFileSystem())
 			&& Objects.equals(objectKey, bucketPath.objectKey)
 			&& isAbsolute() == bucketPath.isAbsolute();
 	}
@@ -358,7 +421,7 @@ class BucketPath
 	@Override
 	public String toString()
 	{
-		return objectKey;
+		return Optional.ofNullable(objectKey).orElseGet(() -> BucketDescriptor.PATH_SEPARATOR);
 	}
 
 	/*
@@ -400,6 +463,16 @@ class BucketPath
 						.collect(Collectors.joining());
 	}
 
+	private BucketPath compliantPath(Path path)
+	{
+		Objects.requireNonNull(path, MISSING_PATH);
+		return Optional.of(path)
+					   .filter(BucketPath.class::isInstance)
+					   .map(BucketPath.class::cast)
+					   .filter(item -> fileSystem.equals(item.getFileSystem()))
+					   .orElseThrow(() -> new IllegalArgumentException("Path '%s' does not belonging to the same AWS S3 bucket.".formatted(path)));
+	}
+
 	private String[] elements()
 	{
 		return Optional.ofNullable(objectKey)
@@ -416,5 +489,31 @@ class BucketPath
 												 .ifPresent(Deque::pollLast),
 								 () -> elements.addLast(element));
 		return elements;
+	}
+
+	private IllegalArgumentException bothAbsoluteOrRelativeMessage(Path path)
+	{
+		var pattern = """
+			Paths must be both absolute or both relative.
+			- This path: %s -> %s
+			- Other path: %s -> %s
+			""";
+		var thisIsAbsolute = isAbsolute()
+			? BucketDescriptor.PATH_SEPARATOR.concat(toString())
+			: this;
+		var pathIsAbsolute = path.isAbsolute()
+			? BucketDescriptor.PATH_SEPARATOR.concat(toString())
+			: this;
+		var thisFlag = isAbsolute() ? "absolute" : "relative";
+		var pathFlag = path.isAbsolute() ? "absolute" : "relative";
+		var message = pattern.formatted(thisIsAbsolute, thisFlag, pathIsAbsolute, pathFlag);
+		return new IllegalArgumentException(message);
+	}
+
+	private FileNotFoundException fileNotFoundInBucket(Path path)
+	{
+		var bucketName = fileSystem.getFileStores().iterator().next().name();
+		var message = "Object %s not found in bucket %s".formatted(path, bucketName);
+		return new FileNotFoundException(message);
 	}
 }

@@ -75,7 +75,10 @@ class UriDescriptorTest
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		var endpoint = uriDescriptor.endpoint();
 		Assertions.assertTrue(endpoint.isPresent());
-		Assertions.assertEquals(String.join(".", S3, ENDPOINT), endpoint.get());
+		var result = endpoint.map(URI::create);
+		result.ifPresent(item -> Assertions.assertEquals(String.join(".", S3, ENDPOINT),
+														 item.getHost()));
+		result.ifPresent(item -> Assertions.assertTrue(item.getPort() >= 0));
 	}
 
 	@Test
@@ -83,12 +86,15 @@ class UriDescriptorTest
 	{
 		Mockito.when(uri.getScheme()).thenReturn("s3");
 		Mockito.when(uri.getHost()).thenReturn(ENDPOINT);
+		Mockito.when(uri.getPort()).thenReturn(-1);
 		Mockito.when(uri.getPath()).thenReturn("/".concat(BUCKET_NAME));
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		var endpoint = uriDescriptor.endpoint();
 		Assertions.assertTrue(endpoint.isPresent());
-		Assertions.assertEquals(ENDPOINT, endpoint.get());
+		var result = endpoint.map(URI::create);
+		result.ifPresent(item -> Assertions.assertEquals(ENDPOINT, item.getHost()));
+		result.ifPresent(item -> Assertions.assertTrue(item.getPort() < 0));
 	}
 
 	@Test

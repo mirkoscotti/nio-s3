@@ -9,7 +9,7 @@ import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import java.net.URI;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,9 +32,12 @@ public class UriDescriptor
 
 	public UriDescriptor(URI uri)
 	{
-		var host = checkedUri(uri).getHost();
+		var checkedUri = checkedUri(uri);
+		var host = checkedUri.getHost();
 		bucketName = virtualHostBucketName(host).orElseGet(() -> pathBucketName(uri));
-		endpoint = host.equals(bucketName) ? Optional.empty() : endpoint(host);
+		endpoint = host.equals(bucketName)
+			? Optional.empty()
+			: endpoint(host, checkedUri.getPort());
 		credentials = Optional.ofNullable(uri.getUserInfo())
 							  .map(item -> item.split(":"))
 							  .filter(item -> item.length == 2)
@@ -84,7 +87,7 @@ public class UriDescriptor
 		var array = hostName.split("\\.");
 		return Optional.of(array)
 					   .filter(item -> item.length > 1)
-					   .map(item -> Arrays.binarySearch(item, "s3"))
+					   .map(item -> List.of(item).indexOf("s3"))
 					   .filter(item -> item >= 0)
 					   .map(item -> IntStream.range(0, item)
 											 .mapToObj(i -> array[i])
@@ -100,10 +103,12 @@ public class UriDescriptor
 					   .orElseGet(uri::getHost);
 	}
 
-	private Optional<String> endpoint(String host)
+	private Optional<String> endpoint(String host, int port)
 	{
-		return Optional.of(host.startsWith(bucketName)
-			? host.substring(bucketName.length() + 1)
-			: host);
+		var uri = URI.create(host);
+		var protocol = Optional.ofNullable(uri.getScheme()).orElse("https");
+		var realHost = host.startsWith(bucketName) ? host.substring(bucketName.length() + 1) : host;
+		var result = "%s://%s".formatted(protocol, realHost);
+		return Optional.of(port < 0 ? result : result.concat(":%d").formatted(port));
 	}
 }

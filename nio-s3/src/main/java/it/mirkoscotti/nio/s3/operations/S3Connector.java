@@ -13,12 +13,17 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
@@ -30,6 +35,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest.Builder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
@@ -106,6 +112,21 @@ public final class S3Connector
 								  .get(30, TimeUnit.SECONDS))
 				  .onCatch(this::redirectException)
 				  .get();
+	}
+
+	public Map<String, Instant> listObjects(String bucketName, String key)
+	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
+		var prefix = key.endsWith(separator) ? key : key.concat(separator);
+		var result = new ConcurrentHashMap<String, Instant>();
+		client.listObjectsV2Paginator(item -> item.bucket(bucketName).prefix(prefix))
+			  .subscribe(item -> reportObjects(item, result))
+			  .join();
+		return result.entrySet()
+					 .stream()
+					 // Excluding the given key
+					 .filter(Predicate.not(item -> item.getKey().equals(key)))
+					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 	}
 
 	public static S3ConnectorBuilder create()
@@ -221,6 +242,11 @@ public final class S3Connector
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};
+	}
+
+	private void reportObjects(ListObjectsV2Response response, Map<String, Instant> report)
+	{
+		response.contents().forEach(item -> report.put(item.key(), item.lastModified()));
 	}
 
 	public static final class S3ConnectorBuilder

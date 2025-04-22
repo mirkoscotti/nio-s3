@@ -5,11 +5,16 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
+import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
+import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.spi.FileSystemProvider;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.random.RandomGenerator;
@@ -46,6 +51,10 @@ class BucketPathTest
 
 	private static final String RELATIVE_PATH = String.join("/", RELATIVE, PATH);
 
+	private static final String TEST_BUCKET = "test-bucket";
+
+	private static final String S3 = "s3";
+
 	@Mock
 	private BucketFileSystem fileSystem;
 
@@ -54,6 +63,7 @@ class BucketPathTest
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> new BucketPath(null, null));
 		Assertions.assertThrows(NullPointerException.class, () -> new BucketPath(fileSystem, null));
+		Assertions.assertDoesNotThrow(() -> new BucketPath(fileSystem, ""));
 	}
 
 	@Test
@@ -384,7 +394,7 @@ class BucketPathTest
 
 	@Test
 	void resolveWithBucketBathHavingDifferentFileSystemTest(@Mock BucketPath path,
-															@Mock FileSystem fileSystem)
+															@Mock BucketFileSystem fileSystem)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
@@ -427,6 +437,231 @@ class BucketPathTest
 		var expected = String.join("/", ABSOLUTE_PATH, RELATIVE_PATH).substring(1);
 		var result = findValue("objectKey", path).orElseGet(Assertions::fail);
 		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void relativizeAbsoluteAndRelativePathsTest()
+	{
+		var absolutePath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var relativePath = new BucketPath(fileSystem, RELATIVE_PATH);
+		Assertions.assertThrows(IllegalArgumentException.class,
+								() -> absolutePath.relativize(relativePath));
+		Assertions.assertThrows(IllegalArgumentException.class,
+								() -> relativePath.relativize(absolutePath));
+	}
+
+	@Test
+	void relativizeToEmptyPathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var path = bucketPath.relativize(bucketPath);
+		var root = findValue("root", path);
+		Assertions.assertTrue(root.isEmpty());
+		var result = findValue("objectKey", path).orElseGet(Assertions::fail);
+		Assertions.assertTrue(result.toString().isEmpty());
+	}
+
+	@Test
+	void relativizeToSiblingPathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, "/a/b");
+		var siblingPath = new BucketPath(fileSystem, "/a/x");
+		var relativizedPath = bucketPath.relativize(siblingPath);
+		var root = findValue("root", relativizedPath);
+		Assertions.assertTrue(root.isEmpty());
+		var result = findValue("objectKey", relativizedPath).orElseGet(Assertions::fail);
+		Assertions.assertEquals("a/b/../x", result);
+	}
+
+	@Test
+	void relativizePartialPathTest()
+	{
+		var partialPath = new BucketPath(fileSystem, "/".concat(ABSOLUTE));
+		var completePath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var relativizedPath = partialPath.relativize(completePath);
+		var root = findValue("root", relativizedPath);
+		Assertions.assertTrue(root.isEmpty());
+		var result = findValue("objectKey", relativizedPath).orElseGet(Assertions::fail);
+		Assertions.assertEquals(PATH, result);
+	}
+
+	@Test
+	void toUriTest(@Mock FileSystemProvider fileSystemProvider, @Mock FileStore fileStore)
+	{
+		Mockito.when(fileSystemProvider.getScheme()).thenReturn(S3);
+		Mockito.when(fileStore.name()).thenReturn(TEST_BUCKET);
+		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var uri = bucketPath.toUri();
+		Assertions.assertEquals(S3, uri.getScheme());
+		Assertions.assertEquals(TEST_BUCKET, uri.getHost());
+		Assertions.assertEquals(ABSOLUTE_PATH, uri.getPath());
+	}
+
+	@Test
+	void fromAbsolutePathToAbsolutePathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var absolutePath = bucketPath.toAbsolutePath();
+		var root = findValue("root", absolutePath);
+		Assertions.assertTrue(root.isPresent());
+		var expected = ABSOLUTE_PATH.substring(1);
+		var result = findValue("objectKey", absolutePath).orElseGet(Assertions::fail);
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void fromRelativePathToAbsolutePathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		var absolutePath = bucketPath.toAbsolutePath();
+		var root = findValue("root", absolutePath);
+		Assertions.assertTrue(root.isPresent());
+		var result = findValue("objectKey", absolutePath).orElseGet(Assertions::fail);
+		Assertions.assertEquals(RELATIVE_PATH, result);
+	}
+
+	@Test
+	void toRealNotExistingPathTest(@Mock FileSystemProvider fileSystemProvider,
+								   @Mock FileStore fileStore)
+	{
+		Mockito.when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(false);
+		Mockito.when(fileStore.name()).thenReturn(TEST_BUCKET);
+		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertThrows(FileNotFoundException.class, bucketPath::toRealPath);
+	}
+
+	@Test
+	void toRealPathTest(@Mock FileSystemProvider fileSystemProvider)
+	{
+		Mockito.when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(true);
+		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var realPath = JunitHelper.tryCall(bucketPath::toRealPath);
+		var root = findValue("root", realPath);
+		Assertions.assertTrue(root.isPresent());
+		var expected = ABSOLUTE_PATH.substring(1);
+		var result = findValue("objectKey", realPath).orElseGet(Assertions::fail);
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void compareAbsolutePathToAbsolutePathTest()
+	{
+		var leftPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var rightPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertEquals(0, leftPath.compareTo(rightPath));
+	}
+
+	@Test
+	void compareRelativePathToRelativePathTest()
+	{
+		var leftPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		var rightPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		Assertions.assertEquals(0, leftPath.compareTo(rightPath));
+	}
+
+	@Test
+	void compareAbsolutePathToRelativePathTest()
+	{
+		var leftPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var rightPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		Assertions.assertTrue(leftPath.compareTo(rightPath) < 0);
+	}
+
+	@Test
+	void compareRelativePathToAbsolutePathTest()
+	{
+		var leftPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		var rightPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertTrue(leftPath.compareTo(rightPath) > 0);
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToPathOfDifferentTypeTest(@Mock Path path)
+	{
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertNotEquals(path, bucketPath.equals(path));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToPathWithDifferentFileSystemTest(@Mock FileSystem fileSystem, @Mock BucketPath path)
+	{
+		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
+		Assertions.assertFalse(bucketPath.equals(path));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToDifferentPathTest(@Mock BucketPath path)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertFalse(bucketPath.equals(path));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToRelativePathWithSameKeyTest()
+	{
+		var absolutePath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var relativePath = new BucketPath(fileSystem, ABSOLUTE.concat(PATH));
+		Assertions.assertFalse(absolutePath.equals(relativePath));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToAbsolutePathWithSameKeyTest()
+	{
+		var relativePath = new BucketPath(fileSystem, RELATIVE_PATH);
+		var absolutePath = new BucketPath(fileSystem, "/".concat(RELATIVE_PATH));
+		Assertions.assertFalse(relativePath.equals(absolutePath));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToAbsolutePathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertTrue(bucketPath.equals(bucketPath));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToRelativePathTest()
+	{
+		var bucketPath = new BucketPath(fileSystem, RELATIVE_PATH);
+		Assertions.assertTrue(bucketPath.equals(bucketPath));
+	}
+
+	@Test
+	void hashCodeTest()
+	{
+		var bucketPath1 = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		var bucketPath2 = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertEquals(bucketPath1, bucketPath2);
+		Assertions.assertEquals(bucketPath1.hashCode(), bucketPath2.hashCode());
+	}
+
+	@Test
+	void pathToString()
+	{
+		var bucketPath1 = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertEquals(ABSOLUTE_PATH.substring(1), bucketPath1.toString());
+	}
+
+	@Test
+	void rootToString()
+	{
+		var bucketPath1 = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertEquals("/", bucketPath1.getRoot().toString());
 	}
 
 	private Field findField(String fieldName)

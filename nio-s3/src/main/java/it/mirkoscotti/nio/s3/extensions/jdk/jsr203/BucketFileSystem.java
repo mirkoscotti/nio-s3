@@ -38,6 +38,8 @@ public class BucketFileSystem
 
 	private final Map<BucketProperty, String> configuration = new EnumMap<>(BucketProperty.class);
 
+	private final S3Connector connector;
+
 	private final BucketFileSystemProvider fileSystemProvider;
 
 	private final BucketFileStore fileStore;
@@ -46,10 +48,10 @@ public class BucketFileSystem
 	{
 		var bucketKey = bucketDescriptor.bucketKey();
 		var credentials = bucketDescriptor.credentials();
-		var builder = S3Connector.create()
-								 .withEndpoint(URI.create(bucketKey.endpoint()))
-								 .withCredentials(credentials.accessKey(), credentials.secretKey());
-		var connector = builder.build();
+		connector = S3Connector.create()
+							   .withEndpoint(URI.create(bucketKey.endpoint()))
+							   .withCredentials(credentials.accessKey(), credentials.secretKey())
+							   .build();
 		ensureBucketExists(bucketDescriptor, connector);
 		this.fileSystemProvider = fileSystemProvider;
 		fileStore = new BucketFileStore(connector, bucketKey.bucketName());
@@ -132,8 +134,7 @@ public class BucketFileSystem
 	@Override
 	public WatchService newWatchService() throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return new DirectoryWatchService(connector);
 	}
 
 	@Override
@@ -145,22 +146,10 @@ public class BucketFileSystem
 	@Override
 	public boolean equals(Object obj)
 	{
-		if (this == obj)
-		{
-			return true;
-		}
-		if (obj == null)
-		{
-			return false;
-		}
-		if (getClass() != obj.getClass())
-		{
-			return false;
-		}
-		BucketFileSystem other = (BucketFileSystem) obj;
-		return Objects.equals(configuration, other.configuration)
-			&& Objects.equals(fileStore, other.fileStore)
-			&& Objects.equals(fileSystemProvider, other.fileSystemProvider);
+		return obj instanceof BucketFileSystem other
+			&& Objects.equals(configuration, other.configuration)
+			&& Objects.equals(fileSystemProvider, other.fileSystemProvider)
+			&& Objects.equals(fileStore, other.fileStore);
 	}
 
 	private void ensureBucketExists(BucketDescriptor bucketDescriptor, S3Connector connector)
