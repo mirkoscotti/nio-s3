@@ -9,3 +9,4 @@
 **/*.log
 aws-spi-test/**
 carlspring-test/**
+nio-s3-test/**

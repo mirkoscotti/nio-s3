@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2025 - Add Value S.R.L - All rights reserved.
- */
-
 package it.mirkoscotti.nio.s3.configuration;
 
 import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
@@ -16,7 +12,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * @author Add Value S.R.L by mirko.scotti
+ * @author mirko.scotti
  * @version Mar 08, 2025
  */
 @ExtendWith(MockitoExtension.class)

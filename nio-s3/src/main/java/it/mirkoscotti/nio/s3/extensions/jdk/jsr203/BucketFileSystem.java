@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2025 - Add Value S.R.L - All rights reserved.
- */
-
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
@@ -29,7 +25,7 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
 /**
- * @author Add Value S.R.L by mirko.scotti
+ * @author mirko.scotti
  * @version Jan 24, 2025
  */
 public class BucketFileSystem
