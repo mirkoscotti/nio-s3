@@ -7,8 +7,15 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
+import java.nio.file.ProviderMismatchException;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent.Kind;
+import java.nio.file.WatchEvent.Modifier;
+import java.nio.file.WatchService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.List;
 import java.util.Optional;
@@ -579,6 +586,95 @@ class BucketPathTest
 	}
 
 	@Test
+	void registerFileTest(@Mock WatchService watchService)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(false);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			Assertions.assertThrows(NotDirectoryException.class,
+									() -> bucketPath.register(watchService));
+		}
+	}
+
+	@Test
+	void registerNotExistingDirectoryTest(@Mock WatchService watchService)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(false);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			Assertions.assertThrows(NotDirectoryException.class,
+									() -> bucketPath.register(watchService));
+		}
+	}
+
+	@Test
+	void registerPathForUnsupportedEventTest(@Mock WatchService watchService)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
+													() -> bucketPath.register(watchService,
+																			  StandardWatchEventKinds.OVERFLOW));
+			var suppressed = exception.getSuppressed();
+			Assertions.assertEquals(1, suppressed.length);
+			Assertions.assertInstanceOf(IllegalArgumentException.class, suppressed[0]);
+		}
+	}
+
+	@Test
+	void registerPathForUnsupportedModifierTest(@Mock WatchService watchService,
+												@Mock Modifier modifier)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			var kinds = new Kind[] {StandardWatchEventKinds.ENTRY_CREATE};
+			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
+													() -> bucketPath.register(watchService,
+																			  kinds,
+																			  modifier));
+			var suppressed = exception.getSuppressed();
+			Assertions.assertEquals(1, suppressed.length);
+			Assertions.assertInstanceOf(IllegalArgumentException.class, suppressed[0]);
+		}
+	}
+
+	@Test
+	void registerPathWithUnexpectedWatchServiceTest(@Mock WatchService watchService)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			Assertions.assertThrows(ProviderMismatchException.class,
+									() -> bucketPath.register(watchService,
+															  StandardWatchEventKinds.ENTRY_CREATE));
+		}
+	}
+
+	@Test
+	void registerPathWithUnexpectedWatchServiceTest(@Mock DirectoryWatchService watchService)
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			var bucketPath = new BucketPath(fileSystem, PATH);
+			Assertions.assertDoesNotThrow(() -> bucketPath.register(watchService,
+																	StandardWatchEventKinds.ENTRY_CREATE));
+		}
+	}
+
+	@Test
 	@SuppressWarnings("java:S5785")
 	void equalsToPathOfDifferentTypeTest(@Mock Path path)
 	{
@@ -662,11 +758,7 @@ class BucketPathTest
 
 	private Field findField(String fieldName)
 	{
-		var result = ReflectionSupport.streamFields(BucketPath.class,
-													item -> item.getName().equals(fieldName),
-													HierarchyTraversalMode.TOP_DOWN)
-									  .findAny()
-									  .orElseGet(Assertions::fail);
+		var result = JunitHelper.findFieldByName(BucketPath.class, fieldName);
 		ReflectionSupport.makeAccessible(result);
 		return result;
 	}
