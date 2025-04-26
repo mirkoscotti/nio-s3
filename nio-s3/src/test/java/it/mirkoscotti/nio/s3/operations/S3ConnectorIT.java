@@ -2,15 +2,21 @@ package it.mirkoscotti.nio.s3.operations;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
+import java.nio.file.Path;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.CleanupMode;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.platform.commons.function.Try;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,8 +38,19 @@ class S3ConnectorIT
 
 	private static final String KEY = "..";
 
+	private static final String PREFIX = "directory";
+
+	private static final String DIRECTORY = PREFIX.concat("/");
+
+	private static final String FILE = "file.txt";
+
+	private static final String OBJECT = DIRECTORY.concat(FILE);
+
 	@Container
 	private static final S3Container CONTAINER = new S3Container();
+
+	@TempDir(cleanup = CleanupMode.ALWAYS)
+	private static Path baseDirectory;
 
 	private static S3Connector connector;
 
@@ -50,6 +67,7 @@ class S3ConnectorIT
 	@AfterEach
 	void afterEach()
 	{
+
 		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
 	}
 
@@ -113,11 +131,31 @@ class S3ConnectorIT
 		Assertions.assertEquals(KEY, basicFileAttributes.fileKey());
 	}
 
+	@Test
+	void listObjectsWithSimplePrefixTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, PREFIX);
+		var map = connector.listObjects(BUCKET_NAME, PREFIX);
+		Assertions.assertTrue(map.isEmpty());
+	}
+
+	@Test
+	void listObjectsWithDirectoryPrefixTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
+		var file = baseDirectory.resolve("test.txt");
+		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
+		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
+		var map = connector.listObjects(BUCKET_NAME, DIRECTORY);
+		Assertions.assertTrue(map.containsKey(OBJECT));
+	}
+
 	private void deleteBucket(String bucketName)
 	{
-		Optional.of(KEY)
-				.filter(item -> CONTAINER.objectExists(bucketName, item))
-				.ifPresent(item -> CONTAINER.deleteObject(bucketName, item));
+		Stream.of(CONTAINER.listObjects(BUCKET_NAME))
+			  .forEach(item -> CONTAINER.deleteObject(BUCKET_NAME, item));
 		CONTAINER.deleteBucket(bucketName);
 	}
 }

@@ -1,13 +1,11 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.IoHelper;
 
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.StandardWatchEventKinds;
 
 import org.junit.jupiter.api.Assertions;
@@ -49,7 +47,8 @@ class BucketPathIT
 		CONTAINER.createBucket(BUCKET_NAME);
 		// CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
 		CONTAINER.createObject(BUCKET_NAME, SUB_DIRECTORY);
-		var file = Try.call(BucketPathIT::writeFile).getOrThrow(IllegalStateException::new);
+		var file = path.resolve("test.txt");
+		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
 		CONTAINER.createObject(BUCKET_NAME, FILE, file);
 	}
 
@@ -72,15 +71,5 @@ class BucketPathIT
 						  .toOptional()
 						  .orElseGet(Assertions::fail);
 		System.out.println();
-	}
-
-	private static Path writeFile() throws IOException
-	{
-		var result = path.resolve("test.txt");
-		try (var writer = Files.newBufferedWriter(result, StandardOpenOption.CREATE_NEW))
-		{
-			writer.write("test");
-		}
-		return result;
 	}
 }

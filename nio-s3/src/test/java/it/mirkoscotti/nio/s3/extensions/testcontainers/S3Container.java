@@ -91,6 +91,8 @@ public class S3Container
 
 	private static final String HEAD_OBJECT_COMMAND = "awslocal s3api head-object --bucket %s --key %s";
 
+	private static final String LIST_OBJECTS_COMMAND = "awslocal s3api list-objects-v2 --bucket %s --query Contents[*].Key --output text";
+
 	private static final String DELETE_OBJECT_COMMAND = "awslocal s3api delete-object --bucket %s --key %s";
 
 	private static final String OUTPUT_PROPERTY_COMMAND = " | jq -r '.%s'";
@@ -363,6 +365,30 @@ public class S3Container
 			result = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH)
 									  .withZone(ZoneOffset.UTC)
 									  .parse(output.getStdout().trim(), Instant::from);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			result = Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			result = Assertions.fail(x);
+		}
+		return result;
+	}
+
+	public String[] listObjects(String bucketName)
+	{
+		String[] result;
+		var command = LIST_OBJECTS_COMMAND.formatted(bucketName);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to list objects from bucket %s".formatted(bucketName));
+			result = output.getStdout().replace("\n", "").split("\t");
 		}
 		catch (InterruptedException x)
 		{
