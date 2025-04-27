@@ -8,19 +8,21 @@
 	<name>nio-s3</name>
 	<description>Java NIO.2 implementation for S3</description>
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>21</java.version>
-		<maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+		<maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
 		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
 		<maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
 		<maven-failsafe-plugin.version>3.5.2</maven-failsafe-plugin.version>
 		<jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>10.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.29.42</bom.version>
-		<aws-crt.version>0.33.7</aws-crt.version>
-		<junit-bom.version>5.11.4</junit-bom.version>
-		<mockito-bom.version>5.14.2</mockito-bom.version>
-		<testcontainers-bom.version>1.20.4</testcontainers-bom.version>
-		<slf4j-simple.version>2.0.16</slf4j-simple.version>
+		<bom.version>2.30.35</bom.version>
+		<aws-crt.version>0.36.1</aws-crt.version>
+		<junit-bom.version>5.12.1</junit-bom.version>
+		<mockito-bom.version>5.16.1</mockito-bom.version>
+		<testcontainers-bom.version>1.20.6</testcontainers-bom.version>
+		<slf4j-simple.version>2.0.17</slf4j-simple.version>
 		<yasson.version>3.0.4</yasson.version>
 	</properties>
 	<dependencyManagement>
@@ -119,16 +121,6 @@
 			<artifactId>yasson</artifactId>
 			<version>${yasson.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>software.amazon.nio.s3</groupId>
-			<artifactId>aws-java-nio-spi-for-s3</artifactId>
-			<version>2.2.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.carlspring.cloud.aws</groupId>
-			<artifactId>s3fs-nio</artifactId>
-			<version>2.0.0</version>
-		</dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>
@@ -165,6 +157,11 @@
 					<artifactId>maven-failsafe-plugin</artifactId>
 					<version>${maven-failsafe-plugin.version}</version>
 				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco-maven-plugin.version}</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
@@ -183,21 +180,38 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>${jacoco-maven-plugin.version}</version>
 				<executions>
 					<execution>
-						<id>unit-test</id>
-						<phase>test</phase>
+						<id>prepare-agent-unit</id>
+						<phase>initialize</phase>
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
 					</execution>
 					<execution>
-						<id>integration-test</id>
-						<phase>test</phase>
+						<id>prepare-agent-integration</id>
+						<phase>pre-integration-test</phase>
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
+					</execution>
+					<execution>
+						<id>merge</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>merge</goal>
+						</goals>
+						<configuration>
+							<destFile>${project.build.directory}/jacoco.exec</destFile>
+							<fileSets>
+								<fileSet>
+									<directory>${project.build.directory}</directory>
+									<includes>
+										<include>jacoco-*.exec</include>
+									</includes>
+								</fileSet>
+							</fileSets>
+						</configuration>
 					</execution>
 					<execution>
 						<id>report</id>

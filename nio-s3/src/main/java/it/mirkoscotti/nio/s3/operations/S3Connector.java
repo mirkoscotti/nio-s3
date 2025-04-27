@@ -1,19 +1,29 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
@@ -21,9 +31,11 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3CrtAsyncClientBuilder;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest.Builder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
@@ -32,6 +44,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * @version Oct 22, 2024
  */
 public final class S3Connector
+	implements Closeable
 {
 
 	private static final Logger LOGGER = System.getLogger(S3Connector.class.getName());
@@ -41,6 +54,33 @@ public final class S3Connector
 	private S3Connector(S3AsyncClient client)
 	{
 		this.client = client;
+	}
+
+	@Override
+	public void close() throws IOException
+	{
+		client.close();
+	}
+
+	public void createBucket(BucketDescriptor bucketDescriptor)
+	{
+		try
+		{
+			var response = client.createBucket(item -> configureBucket(bucketDescriptor, item));
+			response.get(30, TimeUnit.SECONDS);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(x);
+		}
+		catch (ExecutionException | TimeoutException x)
+		{
+			var cause = x.getCause();
+			throw cause instanceof RuntimeException runtimeException
+				? runtimeException
+				: new IllegalStateException(cause);
+		}
 	}
 
 	public boolean isBucketReadOnly(String bucketName)
@@ -74,9 +114,48 @@ public final class S3Connector
 				  .get();
 	}
 
+	public Map<String, Instant> listObjects(String bucketName, String key)
+	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
+		var prefix = key.endsWith(separator) ? key : key.concat(separator);
+		var result = new ConcurrentHashMap<String, Instant>();
+		client.listObjectsV2Paginator(item -> item.bucket(bucketName).prefix(prefix))
+			  .subscribe(item -> reportObjects(item, result))
+			  .join();
+		return result.entrySet()
+					 .stream()
+					 // Excluding the given key
+					 .filter(Predicate.not(item -> item.getKey().equals(key)))
+					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+	}
+
 	public static S3ConnectorBuilder create()
 	{
 		return new S3ConnectorBuilder();
+	}
+
+	private void configureBucket(BucketDescriptor bucketDescriptor, Builder builder)
+	{
+		builder.bucket(bucketDescriptor.bucketKey().bucketName());
+		var properties = bucketDescriptor.configuration();
+		Optional.ofNullable(properties.get(BucketProperty.ACL))
+				.map(Object::toString)
+				.ifPresent(builder::acl);
+		Optional.ofNullable(properties.get(BucketProperty.FULL_CONTROL))
+				.map(Object::toString)
+				.ifPresent(builder::grantFullControl);
+		Optional.ofNullable(properties.get(BucketProperty.READ))
+				.map(Object::toString)
+				.ifPresent(builder::grantRead);
+		Optional.ofNullable(properties.get(BucketProperty.READ_ACP))
+				.map(Object::toString)
+				.ifPresent(builder::grantReadACP);
+		Optional.ofNullable(properties.get(BucketProperty.WRITE))
+				.map(Object::toString)
+				.ifPresent(builder::grantWrite);
+		Optional.ofNullable(properties.get(BucketProperty.WRITE_ACP))
+				.map(Object::toString)
+				.ifPresent(builder::grantWriteACP);
 	}
 
 	private boolean isBucketPolicyReadOnly(S3AsyncClient client, String bucketName)
@@ -165,12 +244,17 @@ public final class S3Connector
 		};
 	}
 
-	static final class S3ConnectorBuilder
+	private void reportObjects(ListObjectsV2Response response, Map<String, Instant> report)
+	{
+		response.contents().forEach(item -> report.put(item.key(), item.lastModified()));
+	}
+
+	public static final class S3ConnectorBuilder
 	{
 
 		private final S3CrtAsyncClientBuilder builder = S3AsyncClient.crtBuilder();
 
-		S3ConnectorBuilder()
+		private S3ConnectorBuilder()
 		{
 			builder.crossRegionAccessEnabled(true);
 		}

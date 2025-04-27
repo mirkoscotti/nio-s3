@@ -2,6 +2,7 @@ package it.mirkoscotti.nio.s3.extensions.testcontainers;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Assertions;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * @author mirko.scotti
@@ -85,7 +87,11 @@ public class S3Container
 
 	private static final String PUT_OBJECT_COMMAND = "awslocal s3api put-object --bucket %s --key %s";
 
+	private static final String PUT_OBJECT_WITH_TEXT_COMMAND = "awslocal s3api put-object --bucket %s --key %s --body %s";
+
 	private static final String HEAD_OBJECT_COMMAND = "awslocal s3api head-object --bucket %s --key %s";
+
+	private static final String LIST_OBJECTS_COMMAND = "awslocal s3api list-objects-v2 --bucket %s --query Contents[*].Key --output text";
 
 	private static final String DELETE_OBJECT_COMMAND = "awslocal s3api delete-object --bucket %s --key %s";
 
@@ -299,6 +305,30 @@ public class S3Container
 		}
 	}
 
+	public void createObject(String bucketName, String key, Path file)
+	{
+		var path = "/tmp/file.txt";
+		copyFileToContainer(MountableFile.forHostPath(file), path);
+		var command = PUT_OBJECT_WITH_TEXT_COMMAND.formatted(bucketName, key, path);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to create object %s in bucket %s".formatted(key,
+																						bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
 	public boolean objectExists(String bucketName, String key)
 	{
 		boolean result;
@@ -335,6 +365,30 @@ public class S3Container
 			result = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH)
 									  .withZone(ZoneOffset.UTC)
 									  .parse(output.getStdout().trim(), Instant::from);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			result = Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			result = Assertions.fail(x);
+		}
+		return result;
+	}
+
+	public String[] listObjects(String bucketName)
+	{
+		String[] result;
+		var command = LIST_OBJECTS_COMMAND.formatted(bucketName);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to list objects from bucket %s".formatted(bucketName));
+			result = output.getStdout().replace("\n", "").split("\t");
 		}
 		catch (InterruptedException x)
 		{

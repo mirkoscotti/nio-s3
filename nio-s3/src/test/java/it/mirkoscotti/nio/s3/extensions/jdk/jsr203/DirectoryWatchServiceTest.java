@@ -1,0 +1,253 @@
+package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
+
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.platform.commons.function.Try;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction.Context;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/**
+ * @author mirko.scotti
+ * @version Apr 22, 2025
+ */
+@ExtendWith(MockitoExtension.class)
+class DirectoryWatchServiceTest
+{
+
+	@Mock
+	private S3Connector connector;
+
+	@Test
+	void nullTest()
+	{
+		Assertions.assertThrows(NullPointerException.class, () -> new DirectoryWatchService(null));
+		Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(connector));
+	}
+
+	@Test
+	void ioExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var mock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(false));
+			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+				.thenReturn(scheduler);
+			var watchService = new DirectoryWatchService(connector);
+			Assertions.assertThrows(IOException.class, watchService::close);
+		}
+	}
+
+	@Test
+	void interruptedExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var mock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.doThrow(InterruptedException.class)
+								  .when(scheduler)
+								  .awaitTermination(Mockito.anyLong(),
+													Mockito.any(TimeUnit.class)));
+			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+				.thenReturn(scheduler);
+			var watchService = new DirectoryWatchService(connector);
+			Assertions.assertThrows(IOException.class, watchService::close);
+		}
+	}
+
+	@Test
+	void closeTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var mock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+				.thenReturn(scheduler);
+			var watchService = new DirectoryWatchService(connector);
+			Assertions.assertDoesNotThrow(watchService::close);
+		}
+	}
+
+	@Test
+	void pollTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
+			 var schedulerMock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+						 .thenReturn(scheduler);
+			try (var watchService = new DirectoryWatchService(connector))
+			{
+				watchService.poll();
+				var queue = queueMock.constructed().get(0);
+				Mockito.verify(queue, Mockito.atLeastOnce()).poll();
+			}
+			catch (IOException x)
+			{
+				Assertions.fail(x);
+			}
+		}
+	}
+
+	@Test
+	void customPollTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
+			 var schedulerMock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+						 .thenReturn(scheduler);
+			try (var watchService = new DirectoryWatchService(connector))
+			{
+				watchService.poll(1, TimeUnit.SECONDS);
+				var queue = queueMock.constructed().get(0);
+				Mockito.verify(queue, Mockito.atLeastOnce())
+					   .poll(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+			}
+			catch (Exception x)
+			{
+				Assertions.fail(x);
+			}
+		}
+	}
+
+	@Test
+	void takeTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
+			 var schedulerMock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+						 .thenReturn(scheduler);
+			try (var watchService = new DirectoryWatchService(connector))
+			{
+				watchService.take();
+				var queue = queueMock.constructed().get(0);
+				Mockito.verify(queue, Mockito.atLeastOnce()).take();
+			}
+			catch (Exception x)
+			{
+				Assertions.fail(x);
+			}
+		}
+	}
+
+	@Test
+	void registerUndefinedPathTest(@Mock ScheduledExecutorService scheduler)
+	{
+		try (var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class);
+			 var schedulerMock = Mockito.mockStatic(Executors.class))
+		{
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+						 .thenReturn(scheduler);
+			try (var watchService = new DirectoryWatchService(connector))
+			{
+				Assertions.assertThrows(NullPointerException.class,
+										() -> watchService.registerPath(null));
+			}
+			catch (Exception x)
+			{
+				Assertions.fail(x);
+			}
+		}
+	}
+
+	@Test
+	void registerPathTest(@Mock ScheduledExecutorService scheduler, @Mock BucketPath directory)
+	{
+		try (var schedulerMock = Mockito.mockStatic(Executors.class);
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													this::initializeRegistry))
+		{
+			var argumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+			Try.call(() -> Mockito.when(scheduler.awaitTermination(Mockito.anyLong(),
+																   Mockito.any(TimeUnit.class)))
+								  .thenReturn(true));
+			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+						 .thenReturn(scheduler);
+			try (var watchService = new DirectoryWatchService(connector))
+			{
+				watchService.registerPath(directory);
+				if (mapMock.constructed().get(0) instanceof Map<?, ?> map)
+				{
+					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(scheduler, Mockito.atLeastOnce())
+						   .scheduleAtFixedRate(argumentCaptor.capture(),
+												Mockito.anyLong(),
+												Mockito.anyLong(),
+												Mockito.any(TimeUnit.class));
+					var runnable = argumentCaptor.getValue();
+					Assertions.assertNotNull(runnable);
+					runnable.run();
+					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(connector, Mockito.atLeastOnce())
+						   .listObjects(Mockito.anyString(), Mockito.anyString());
+				}
+				else
+				{
+					Assertions.fail("Should never occur.");
+				}
+			}
+			catch (Exception x)
+			{
+				Assertions.fail(x);
+			}
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void initializeRegistry(ConcurrentHashMap<String, Instant> registry, Context context)
+	{
+		Mockito.doAnswer(this::registrationAnswer)
+			   .when(registry)
+			   .forEach(Mockito.any(BiConsumer.class));
+	}
+
+	private Void registrationAnswer(InvocationOnMock invocation)
+	{
+		var fileStore = Mockito.mock(FileStore.class);
+		Mockito.when(fileStore.name()).thenReturn("bucket-name");
+		var fileSystem = Mockito.mock(BucketFileSystem.class);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		var directory = Mockito.mock(BucketPath.class);
+		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		var watchKey = Mockito.mock(DirectoryWatchKey.class);
+		BiConsumer<BucketPath, DirectoryWatchKey> consumer = invocation.getArgument(0);
+		consumer.accept(directory, watchKey);
+		return null;
+	}
+}
