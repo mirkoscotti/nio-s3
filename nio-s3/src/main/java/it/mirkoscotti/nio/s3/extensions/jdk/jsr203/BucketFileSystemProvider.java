@@ -19,12 +19,14 @@ import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -220,18 +222,38 @@ public class BucketFileSystemProvider
 																Class<V> type,
 																LinkOption... options)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (path instanceof BucketPath bucketPath)
+		{
+			var fileStore = bucketPath.getFileSystem().getFileStores().iterator().next();
+			var result = new ObjectBasicFileAttributeView(null, // TODO: add the filesystem
+																// connector
+														  fileStore.name(),
+														  bucketPath.toString());
+		}
+		throw unexpectedPath(path);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <A extends BasicFileAttributes> A readAttributes(Path path,
 															Class<A> type,
 															LinkOption... options)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (path instanceof BucketPath bucketPath)
+		{
+			var map = new HashMap<Class<? extends BasicFileAttributes>, Class<? extends BasicFileAttributeView>>();
+			map.put(ObjectBasicFileAttributes.class, ObjectBasicFileAttributeView.class);
+			var fileAttributeViewType = Optional.ofNullable(type)
+												.filter(map::containsKey)
+												.map(map::get)
+												.orElseThrow(() -> unexpectedFileAttributes(type));
+			var fileAttributeView = getFileAttributeView(bucketPath,
+														 fileAttributeViewType,
+														 options);
+			return (A) fileAttributeView.readAttributes();
+		}
+		throw unexpectedPath(path);
 	}
 
 	@Override
@@ -248,5 +270,21 @@ public class BucketFileSystemProvider
 	{
 		// TODO Auto-generated method stub
 
+	}
+
+	private RuntimeException unexpectedPath(Path path)
+	{
+		var pathType = path.getClass().getName();
+		var pathTemplate = "Expected path of type %s. Found: %s.";
+		var pathMessage = pathTemplate.formatted(BucketPath.class.getName(), pathType);
+		return new UnsupportedOperationException(pathMessage);
+	}
+
+	private RuntimeException unexpectedFileAttributes(Class<? extends BasicFileAttributes> type)
+	{
+		var attributesTemplate = "Expected attributes of type %s. Found: %s.";
+		var attributesMessage = attributesTemplate.formatted(ObjectBasicFileAttributes.class.getName(),
+															 type.getName());
+		return new UnsupportedOperationException(attributesMessage);
 	}
 }
