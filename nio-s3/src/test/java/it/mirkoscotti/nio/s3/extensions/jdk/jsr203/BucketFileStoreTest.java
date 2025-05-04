@@ -5,6 +5,7 @@ import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Optional;
@@ -92,6 +93,7 @@ class BucketFileStoreTest
 	void supportsFileAttributesViewByClassTest()
 	{
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertTrue(fileStore.supportsFileAttributeView(BasicFileAttributeView.class));
 		Assertions.assertTrue(fileStore.supportsFileAttributeView(ObjectBasicFileAttributeView.class));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView(FileAttributeView.class));
 	}

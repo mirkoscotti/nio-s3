@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
  * @author mirko.scotti
  * @version Mar 03, 2025
  */
-public class UriDescriptor
+class UriDescriptor
 {
 
 	private static final String PATH_SEPARATOR = "/";
@@ -26,7 +26,7 @@ public class UriDescriptor
 
 	private final Optional<CredentialsRecord> credentials;
 
-	public UriDescriptor(URI uri)
+	UriDescriptor(URI uri)
 	{
 		var checkedUri = checkedUri(uri);
 		var host = checkedUri.getHost();

@@ -17,7 +17,7 @@ public class ObjectBasicFileAttributeView
 	implements BasicFileAttributeView
 {
 
-	private static final String BASIC_FILE_ATTRIBUTE_VIEW = "basic";
+	static final String BASIC_FILE_ATTRIBUTE_VIEW = "basic";
 
 	private final S3Connector connector;
 

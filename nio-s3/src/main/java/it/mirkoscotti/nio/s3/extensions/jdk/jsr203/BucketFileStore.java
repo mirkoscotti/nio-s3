@@ -6,6 +6,7 @@ import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
@@ -74,14 +75,13 @@ public class BucketFileStore
 	@Override
 	public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type)
 	{
-		return type == ObjectBasicFileAttributeView.class;
+		return type == BasicFileAttributeView.class || type == ObjectBasicFileAttributeView.class;
 	}
 
 	@Override
 	public boolean supportsFileAttributeView(String name)
 	{
-		var supportedName = new ObjectBasicFileAttributeView(connector, bucketName, "/").name();
-		return supportedName.equals(name);
+		return ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW.equals(name);
 	}
 
 	@Override

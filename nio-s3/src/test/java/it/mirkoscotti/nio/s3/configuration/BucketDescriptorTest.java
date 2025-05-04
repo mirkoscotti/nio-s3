@@ -17,6 +17,8 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import software.amazon.awssdk.regions.Region;
+
 /**
  * @author mirko.scotti
  * @version Mar 09, 2025
@@ -71,9 +73,11 @@ class BucketDescriptorTest
 		{
 			var bucketDescriptor = new BucketDescriptor(uri);
 			var bucketKey = bucketDescriptor.bucketKey();
-			Assertions.assertEquals("https://s3.us-east-1.amazonaws.com", bucketKey.endpoint());
+			Assertions.assertEquals("https://s3.us-east-1.amazonaws.com",
+									bucketKey.endpoint().get());
 			Assertions.assertEquals(BUCKET_NAME, bucketKey.bucketName());
-			var credentials = bucketDescriptor.credentials();
+			var connectorKey = bucketDescriptor.connectorKey();
+			var credentials = connectorKey.credentials();
 			Assertions.assertEquals(ACCESS_KEY, credentials.accessKey());
 			Assertions.assertEquals(SECRET_KEY, credentials.secretKey());
 		}
@@ -88,9 +92,10 @@ class BucketDescriptorTest
 		{
 			var map = Map.of("aws.region", REGION);
 			var bucketDescriptor = new BucketDescriptor(uri, map);
-			var region = bucketDescriptor.region();
+			var connectorKey = bucketDescriptor.connectorKey();
+			var region = connectorKey.region();
 			Assertions.assertTrue(region.isPresent());
-			Assertions.assertEquals(REGION, region.get());
+			Assertions.assertEquals(Region.of(REGION), region.get());
 		}
 	}
 
@@ -103,7 +108,8 @@ class BucketDescriptorTest
 		{
 			var map = Map.of("aws.access-key", ACCESS_KEY, "aws.secret-key", SECRET_KEY);
 			var bucketDescriptor = new BucketDescriptor(uri, map);
-			var credentials = bucketDescriptor.credentials();
+			var connectorKey = bucketDescriptor.connectorKey();
+			var credentials = connectorKey.credentials();
 			Assertions.assertEquals(ACCESS_KEY, credentials.accessKey());
 			Assertions.assertEquals(SECRET_KEY, credentials.secretKey());
 			var configuration = bucketDescriptor.configuration();

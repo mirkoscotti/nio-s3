@@ -7,7 +7,6 @@ import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
@@ -28,7 +27,7 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
  * @author mirko.scotti
  * @version Jan 24, 2025
  */
-public class BucketFileSystem
+class BucketFileSystem
 	extends FileSystem
 {
 
@@ -36,21 +35,18 @@ public class BucketFileSystem
 
 	private final S3Connector connector;
 
-	private final BucketFileSystemProvider fileSystemProvider;
+	private final S3FileSystemProvider fileSystemProvider;
 
 	private final BucketFileStore fileStore;
 
-	BucketFileSystem(BucketDescriptor bucketDescriptor, BucketFileSystemProvider fileSystemProvider)
+	BucketFileSystem(S3Connector connector,
+					 BucketDescriptor bucketDescriptor,
+					 S3FileSystemProvider fileSystemProvider)
 	{
-		var bucketKey = bucketDescriptor.bucketKey();
-		var credentials = bucketDescriptor.credentials();
-		connector = S3Connector.create()
-							   .withEndpoint(URI.create(bucketKey.endpoint()))
-							   .withCredentials(credentials.accessKey(), credentials.secretKey())
-							   .build();
-		ensureBucketExists(bucketDescriptor, connector);
+		this.connector = connector;
 		this.fileSystemProvider = fileSystemProvider;
-		fileStore = new BucketFileStore(connector, bucketKey.bucketName());
+		var bucketName = ensureBucketExists(bucketDescriptor);
+		fileStore = new BucketFileStore(connector, bucketName);
 	}
 
 	@Override
@@ -148,7 +144,17 @@ public class BucketFileSystem
 			&& Objects.equals(fileStore, other.fileStore);
 	}
 
-	private void ensureBucketExists(BucketDescriptor bucketDescriptor, S3Connector connector)
+	/**
+	 * The wrapper method of the {@link #connector} property.
+	 *
+	 * @return the value of the property
+	 */
+	S3Connector connector()
+	{
+		return connector;
+	}
+
+	private String ensureBucketExists(BucketDescriptor bucketDescriptor)
 	{
 		try
 		{
@@ -170,5 +176,6 @@ public class BucketFileSystem
 			};
 			throw new IllegalArgumentException(message, x);
 		}
+		return bucketDescriptor.bucketKey().bucketName();
 	}
 }
