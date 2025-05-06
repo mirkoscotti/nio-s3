@@ -13,6 +13,8 @@ import java.nio.file.FileStore;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 import java.util.Map;
 
@@ -198,6 +200,71 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertEquals(fileStore,
 								JunitHelper.tryCall(() -> fileSystemProvider.getFileStore(path)));
+	}
+
+	@Test
+	void getInvalidFileAttributeViewTest(@Mock Path path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> fileSystemProvider.getFileAttributeView(path,
+																			  FileAttributeView.class));
+	}
+
+	@Test
+	void getUnsupportedFileAttributeViewTest(@Mock BucketPath path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertNull(fileSystemProvider.getFileAttributeView(path,
+																	  FileAttributeView.class));
+	}
+
+	@Test
+	void getFileAttributeViewTest(@Mock BucketPath path,
+								  @Mock BucketFileSystem fileSystem,
+								  @Mock BucketFileStore fileStore,
+								  @Mock S3Connector connector)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.connector()).thenReturn(connector);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		Mockito.when(fileStore.name()).thenReturn("bucket-name");
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertNotNull(fileSystemProvider.getFileAttributeView(path,
+																		 ObjectBasicFileAttributeView.class));
+	}
+
+	@Test
+	void readInvalidAttributesTest(@Mock Path path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> fileSystemProvider.readAttributes(path,
+																		BasicFileAttributes.class));
+	}
+
+	@Test
+	void readUnsupportedAttributesTest(@Mock BucketPath path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> fileSystemProvider.readAttributes(path,
+																		BasicFileAttributes.class));
+	}
+
+	@Test
+	void readFileAttributesTest(@Mock BucketPath path,
+								@Mock BucketFileSystem fileSystem,
+								@Mock BucketFileStore fileStore,
+								@Mock S3Connector connector)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.connector()).thenReturn(connector);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		Mockito.when(fileStore.name()).thenReturn("bucket-name");
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
+																			  ObjectBasicFileAttributes.class));
 	}
 
 	private void initializeBucketDescriptor(BucketDescriptor bucketDescriptor, Context context)
