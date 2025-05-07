@@ -6,6 +6,10 @@ import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.util.stream.StreamSupport;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -102,5 +106,232 @@ class BucketFileSystemTest
 								() -> new BucketFileSystem(connector,
 														   bucketDescriptor,
 														   fileSystemProvider));
+	}
+
+	@Test
+	void providerTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			Assertions.assertEquals(fileSystemProvider, fileSystem.provider());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void getFileStoresTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(BucketFileStore.class);
+			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			var list = StreamSupport.stream(fileSystem.getFileStores().spliterator(), false)
+									.toList();
+			Assertions.assertEquals(mock.constructed(), list);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void getPathTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(BucketPath.class);
+			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			var path = fileSystem.getPath("path");
+			Assertions.assertEquals(mock.constructed().get(0), path);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void newWatchServiceTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(DirectoryWatchService.class);
+			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			var watchService = fileSystem.newWatchService();
+			Assertions.assertEquals(mock.constructed().get(0), watchService);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void hashCodeWithSameInstancesTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var fileSystem1 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider);
+			 var fileSystem2 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider))
+		{
+			Assertions.assertEquals(fileSystem1.hashCode(), fileSystem2.hashCode());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void hashCodeWithDifferentInstancesTest(@Mock S3Connector connector,
+											@Mock BucketDescriptor bucketDescriptor,
+											@Mock S3FileSystemProvider fileSystemProvider)
+	{
+		Mockito.when(this.bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		try (var fileSystem1 = new BucketFileSystem(this.connector,
+													this.bucketDescriptor,
+													this.fileSystemProvider);
+			 var fileSystem2 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider))
+		{
+			Assertions.assertNotEquals(fileSystem1.hashCode(), fileSystem2.hashCode());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToNullTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			Assertions.assertFalse(fileSystem.equals(null));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToDifferentFileSystemTest(@Mock FileSystem otherFileSystem)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var thisFileSystem = new BucketFileSystem(connector,
+													   bucketDescriptor,
+													   fileSystemProvider))
+		{
+			Assertions.assertFalse(thisFileSystem.equals(otherFileSystem));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToFileSystemWithDifferentProviderTest(@Mock S3FileSystemProvider fileSystemProvider)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		try (var fileSystem1 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													this.fileSystemProvider);
+			 var fileSystem2 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider))
+		{
+			Assertions.assertFalse(fileSystem1.equals(fileSystem2));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToFileSystemWithDifferentFileStoreTest(@Mock BucketDescriptor bucketDescriptor,
+													  @Mock BucketRecord bucketKey)
+	{
+		Mockito.when(this.bucketDescriptor.bucketKey()).thenReturn(this.bucketKey);
+		Mockito.when(this.bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn("other-bucket");
+		try (var fileSystem1 = new BucketFileSystem(connector,
+													this.bucketDescriptor,
+													fileSystemProvider);
+			 var fileSystem2 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider))
+		{
+			Assertions.assertFalse(fileSystem1.equals(fileSystem2));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var fileSystem1 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider);
+			 var fileSystem2 = new BucketFileSystem(connector,
+													bucketDescriptor,
+													fileSystemProvider))
+		{
+			Assertions.assertTrue(fileSystem1.equals(fileSystem2));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void connectorTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(DirectoryWatchService.class);
+			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		{
+			Assertions.assertEquals(connector, fileSystem.connector());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 }

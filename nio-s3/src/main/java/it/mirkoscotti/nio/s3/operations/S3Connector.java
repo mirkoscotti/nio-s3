@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,6 +61,18 @@ public final class S3Connector
 	public void close() throws IOException
 	{
 		client.close();
+	}
+
+	@Override
+	public int hashCode()
+	{
+		return client.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object obj)
+	{
+		return obj instanceof S3Connector other && Objects.equals(client, other.client);
 	}
 
 	public void createBucket(BucketDescriptor bucketDescriptor)

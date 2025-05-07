@@ -1,7 +1,6 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
@@ -14,9 +13,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -30,8 +27,6 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
 class BucketFileSystem
 	extends FileSystem
 {
-
-	private final Map<BucketProperty, String> configuration = new EnumMap<>(BucketProperty.class);
 
 	private final S3Connector connector;
 
@@ -132,14 +127,13 @@ class BucketFileSystem
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(configuration, fileStore, fileSystemProvider);
+		return Objects.hash(fileStore, fileSystemProvider);
 	}
 
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof BucketFileSystem other
-			&& Objects.equals(configuration, other.configuration)
 			&& Objects.equals(fileSystemProvider, other.fileSystemProvider)
 			&& Objects.equals(fileStore, other.fileStore);
 	}

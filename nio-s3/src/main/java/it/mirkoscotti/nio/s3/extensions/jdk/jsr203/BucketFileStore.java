@@ -103,4 +103,16 @@ public class BucketFileStore
 							 .map(getFileStoreAttributeView(BucketFileStoreAttributeView.class)::get)
 							 .orElse(null);
 	}
+
+	@Override
+	public int hashCode()
+	{
+		return bucketName.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object obj)
+	{
+		return obj instanceof BucketFileStore other && Objects.equals(bucketName, other.bucketName);
+	}
 }
