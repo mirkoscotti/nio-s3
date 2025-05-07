@@ -10,6 +10,9 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./nio-s3
     steps:
       - uses: actions/checkout@v4
         with:
