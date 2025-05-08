@@ -160,14 +160,21 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void getPathCreatingNewFileSystemTest(@Mock URI uri)
+	void getPathCreatingNewFileSystemTest(@Mock URI uri,
+										  @Mock S3ConnectorBuilder connectorBuilder,
+										  @Mock S3Connector connector)
 	{
 		Mockito.when(uri.getPath()).thenReturn("path");
-		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
+		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(connectorBuilder);
+		Mockito.when(connectorBuilder.build()).thenReturn(connector);
+		try (var connectorMock = Mockito.mockStatic(S3Connector.class);
+			 var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
 			 var fileSystemMock = Mockito.mockConstruction(BucketFileSystem.class,
 														   this::initializeFileSystem))
 		{
+			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = fileSystemProvider.getPath(uri);
 			Assertions.assertEquals(path, result);
