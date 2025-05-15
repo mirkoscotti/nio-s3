@@ -107,12 +107,14 @@ public class BucketFileStore
 	@Override
 	public int hashCode()
 	{
-		return bucketName.hashCode();
+		return Objects.hash(connector, bucketName);
 	}
 
 	@Override
 	public boolean equals(Object obj)
 	{
-		return obj instanceof BucketFileStore other && Objects.equals(bucketName, other.bucketName);
+		return obj instanceof BucketFileStore other
+			&& Objects.equals(connector, other.connector)
+			&& Objects.equals(bucketName, other.bucketName);
 	}
 }

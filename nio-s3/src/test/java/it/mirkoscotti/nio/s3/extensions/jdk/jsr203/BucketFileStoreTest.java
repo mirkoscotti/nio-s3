@@ -167,6 +167,15 @@ class BucketFileStoreTest
 
 	@Test
 	@SuppressWarnings("java:S5785")
+	void equalsToFileStoreWithDifferentConnectorTest(@Mock S3Connector connector)
+	{
+		var fileStore1 = new BucketFileStore(this.connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertFalse(fileStore1.equals(fileStore2));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
 	void equalsToFileStoreWithDifferentBucketNameTest()
 	{
 		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
