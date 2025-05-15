@@ -5,6 +5,8 @@ import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
+import java.nio.file.FileStore;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Optional;
@@ -26,6 +28,8 @@ class BucketFileStoreTest
 {
 
 	private static final String BUCKET_NAME = "test-bucket";
+
+	private static final String OTHER_BUCKET = "other-bucket";
 
 	private static final String VALUE = "value";
 
@@ -92,6 +96,7 @@ class BucketFileStoreTest
 	void supportsFileAttributesViewByClassTest()
 	{
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertTrue(fileStore.supportsFileAttributeView(BasicFileAttributeView.class));
 		Assertions.assertTrue(fileStore.supportsFileAttributeView(ObjectBasicFileAttributeView.class));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView(FileAttributeView.class));
 	}
@@ -125,6 +130,66 @@ class BucketFileStoreTest
 			Assertions.assertEquals(VALUE,
 									JunitHelper.tryCall(() -> fileStore.getAttribute("attribute")));
 		}
+	}
+
+	@Test
+	void hashCodeWithSameInstancesTest()
+	{
+		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertEquals(fileStore1.hashCode(), fileStore2.hashCode());
+	}
+
+	@Test
+	void hashCodeWithDifferentInstancesTest()
+	{
+		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, OTHER_BUCKET);
+		Assertions.assertNotEquals(fileStore1.hashCode(), fileStore2.hashCode());
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToNullTest()
+	{
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertFalse(fileStore.equals(null));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToDifferentFileStoreTest(@Mock FileStore otherFileStore)
+	{
+
+		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertFalse(fileStore.equals(otherFileStore));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToFileStoreWithDifferentConnectorTest(@Mock S3Connector connector)
+	{
+		var fileStore1 = new BucketFileStore(this.connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertFalse(fileStore1.equals(fileStore2));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToFileStoreWithDifferentBucketNameTest()
+	{
+		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, OTHER_BUCKET);
+		Assertions.assertFalse(fileStore1.equals(fileStore2));
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsTest()
+	{
+		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		Assertions.assertTrue(fileStore1.equals(fileStore2));
 	}
 
 	private void initializeBucketFileStoreAttributeView(BucketFileStoreAttributeView view,

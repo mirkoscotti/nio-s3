@@ -2,8 +2,9 @@ package it.mirkoscotti.nio.s3.configuration;
 
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystemProvider;
+import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import java.net.URI;
@@ -17,6 +18,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import software.amazon.awssdk.regions.Region;
+
 /**
  * This is a descriptor of how an AWS S3 bucket is configured, if existing, or must be configured if
  * it is not existing and must be created. It is compliant with the bucket naming convention and
@@ -28,7 +31,7 @@ import java.util.stream.Stream;
  * object are an URI and, optionally, a set of properties to match the bucket configuration and
  * accessibility on AWS world or its emulator LocalStack.
  * <p>
- * URI and properties are provided by the specific {@link BucketFileSystemProvider} through the Java
+ * URI and properties are provided by the specific {@link S3FileSystemProvider} through the Java
  * NIO.2 APIs:
  *
  * <ul>
@@ -146,7 +149,7 @@ public class BucketDescriptor
 
 	private final BucketRecord bucketKey;
 
-	private final CredentialsRecord credentials;
+	private final ConnectorRecord connectorKey;
 
 	public BucketDescriptor(URI uri)
 	{
@@ -160,7 +163,11 @@ public class BucketDescriptor
 		Stream.of(BucketProperty.values())
 			  .forEach(item -> addProperty(item, map.get(item.toProperty())));
 		bucketKey = createBucketKey(uriDescriptor);
-		credentials = createCredentials(uriDescriptor);
+		var endpoint = bucketKey.endpoint();
+		var region = Optional.ofNullable(this.configuration.get(BucketProperty.REGION))
+							 .map(Region::of);
+		var credentials = createCredentials(uriDescriptor);
+		connectorKey = new ConnectorRecord(endpoint, region, credentials);
 	}
 
 	/**
@@ -184,18 +191,13 @@ public class BucketDescriptor
 	}
 
 	/**
-	 * The wrapper method of the {@link #credentials} property.
+	 * The wrapper method of the {@link #connectorKey} property.
 	 *
 	 * @return the value of the property
 	 */
-	public CredentialsRecord credentials()
+	public ConnectorRecord connectorKey()
 	{
-		return credentials;
-	}
-
-	public Optional<String> region()
-	{
-		return Optional.ofNullable(configuration.get(BucketProperty.REGION));
+		return connectorKey;
 	}
 
 	private void addProperty(BucketProperty property, Object object)
@@ -213,12 +215,13 @@ public class BucketDescriptor
 
 	private BucketRecord createBucketKey(UriDescriptor uriDescriptor)
 	{
-		var bucketName = uriDescriptor.bucketName();
-		return new BucketRecord(uriDescriptor.endpoint()
-											 .orElseGet(() -> configuration.remove(BucketProperty.ENDPOINT)),
-								Optional.of(bucketName)
-										.filter(item -> Pattern.matches(BUCKET_PATTERN, item))
-										.orElseThrow(() -> new BucketNameException(uriDescriptor.bucketName())));
+		var bucket = uriDescriptor.bucketName();
+		var bucketName = Optional.of(bucket)
+								 .filter(item -> Pattern.matches(BUCKET_PATTERN, item))
+								 .orElseThrow(() -> new BucketNameException(bucket));
+		var endpoint = uriDescriptor.endpoint()
+									.orElseGet(() -> configuration.remove(BucketProperty.ENDPOINT));
+		return new BucketRecord(Optional.ofNullable(endpoint), bucketName);
 	}
 
 	private CredentialsRecord createCredentials(UriDescriptor uriDescriptor)

@@ -2,7 +2,9 @@ package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 
 import java.io.IOException;
 import java.net.URI;
@@ -14,6 +16,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
@@ -25,12 +28,15 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 /**
- * This provider manages one file system for each S3 bucket on an AWS account or its emulator
+ * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
  * LocalStack. Each file system is created at most once during the JVM life and internally cached,
  * so that it cannot be created twice. It can be created from URI and credentials for accessing the
  * bucket. Region is mandatory but, if not specified, <code>us-east-1</code> is assumed. URIs must
@@ -71,13 +77,15 @@ import java.util.Set;
  * </ul>
  *
  * @author mirko.scotti
- * @version Jan 25, 2025
+ * @version Apr 28, 2025
  */
-public class BucketFileSystemProvider
+public class S3FileSystemProvider
 	extends FileSystemProvider
 {
 
-	private static final Map<BucketRecord, FileSystem> CACHE = new HashMap<>();
+	private static final Map<BucketRecord, BucketFileSystem> FILE_SYSTEMS_CACHE = new ConcurrentHashMap<>();
+
+	private static final Map<ConnectorRecord, S3Connector> CONNECTORS_CACHE = new ConcurrentHashMap<>();
 
 	@Override
 	public String getScheme()
@@ -118,29 +126,30 @@ public class BucketFileSystemProvider
 	{
 		var bucketDescriptor = new BucketDescriptor(uri, env);
 		var bucketKey = bucketDescriptor.bucketKey();
-		if (CACHE.containsKey(bucketKey))
+		if (FILE_SYSTEMS_CACHE.containsKey(bucketKey))
 		{
-			throw new FileSystemAlreadyExistsException("File system for bucket %s already existing.");
+			var message = "File system for bucket %s already existing.";
+			throw new FileSystemAlreadyExistsException(message.formatted(bucketKey.bucketName()));
 		}
-		CACHE.put(bucketKey, new BucketFileSystem(bucketDescriptor, this));
-		return CACHE.get(bucketKey);
+		return createFileSystem(bucketDescriptor);
 	}
 
 	@Override
 	public FileSystem getFileSystem(URI uri)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		var bucketKey = new BucketDescriptor(uri).bucketKey();
+		return Optional.of(bucketKey)
+					   .map(FILE_SYSTEMS_CACHE::get)
+					   .orElseThrow(() -> new FileSystemNotFoundException("File system for bucket %s not loaded yet.".formatted(bucketKey.bucketName())));
 	}
 
 	@Override
 	public Path getPath(URI uri)
 	{
 		var bucketDescriptor = new BucketDescriptor(uri);
-		var fileSystem = CACHE.computeIfAbsent(bucketDescriptor.bucketKey(),
-											   item -> new BucketFileSystem(bucketDescriptor,
-																			this));
-		return fileSystem.getPath(uri.getPath());
+		return Optional.ofNullable(FILE_SYSTEMS_CACHE.get(bucketDescriptor.bucketKey()))
+					   .orElseGet(() -> createFileSystem(bucketDescriptor))
+					   .getPath(uri.getPath());
 	}
 
 	@Override
@@ -199,15 +208,17 @@ public class BucketFileSystemProvider
 	@Override
 	public boolean isHidden(Path path) throws IOException
 	{
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public FileStore getFileStore(Path path) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (path instanceof BucketPath bucketPath)
+		{
+			return bucketPath.getFileSystem().getFileStores().iterator().next();
+		}
+		throw invalidPath(path);
 	}
 
 	@Override
@@ -224,13 +235,17 @@ public class BucketFileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var fileStore = bucketPath.getFileSystem().getFileStores().iterator().next();
-			var result = new ObjectBasicFileAttributeView(null, // TODO: add the filesystem
-																// connector
-														  fileStore.name(),
-														  bucketPath.toString());
+			var list = List.<FileAttributeViewFactory<?>>of(new FileAttributeViewFactory<>(ObjectBasicFileAttributeView.class,
+																						   this::createObjectBasicFileAttributeView));
+			@SuppressWarnings("unchecked")
+			var result = (V) list.stream()
+								 .filter(item -> item.fileAttributeViewType() == type)
+								 .map(item -> item.factory().apply(bucketPath))
+								 .findFirst()
+								 .orElse(null);
+			return result;
 		}
-		throw unexpectedPath(path);
+		throw invalidPath(path);
 	}
 
 	@Override
@@ -253,7 +268,7 @@ public class BucketFileSystemProvider
 														 options);
 			return (A) fileAttributeView.readAttributes();
 		}
-		throw unexpectedPath(path);
+		throw invalidPath(path);
 	}
 
 	@Override
@@ -272,7 +287,43 @@ public class BucketFileSystemProvider
 
 	}
 
-	private RuntimeException unexpectedPath(Path path)
+	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
+	{
+		var connectorKey = bucketDescriptor.connectorKey();
+		var connector = CONNECTORS_CACHE.computeIfAbsent(connectorKey, this::createConnector);
+		var result = new BucketFileSystem(connector, bucketDescriptor, this);
+		var bucketKey = bucketDescriptor.bucketKey();
+		FILE_SYSTEMS_CACHE.put(bucketKey, result);
+		return result;
+	}
+
+	private S3Connector createConnector(ConnectorRecord connectorKey)
+	{
+		var credentials = connectorKey.credentials();
+		var connectorBuilder = S3Connector.create()
+										  .withCredentials(credentials.accessKey(),
+														   credentials.secretKey());
+		connectorKey.endpoint().map(URI::create).ifPresent(connectorBuilder::withEndpoint);
+		return connectorBuilder.build();
+	}
+
+	private ObjectBasicFileAttributeView createObjectBasicFileAttributeView(BucketPath bucketPath)
+	{
+		var fileSystem = bucketPath.getFileSystem();
+		var connector = fileSystem.connector();
+		var bucketName = fileSystem.getFileStores().iterator().next().name();
+		var objectKey = bucketPath.toString();
+		return new ObjectBasicFileAttributeView(connector, bucketName, objectKey);
+	}
+
+	private RuntimeException invalidPath(Path path)
+	{
+		return Optional.ofNullable(path)
+					   .map(this::unsupportedPath)
+					   .orElseGet(() -> new NullPointerException("Missing path"));
+	}
+
+	private RuntimeException unsupportedPath(Path path)
 	{
 		var pathType = path.getClass().getName();
 		var pathTemplate = "Expected path of type %s. Found: %s.";
@@ -286,5 +337,11 @@ public class BucketFileSystemProvider
 		var attributesMessage = attributesTemplate.formatted(ObjectBasicFileAttributes.class.getName(),
 															 type.getName());
 		return new UnsupportedOperationException(attributesMessage);
+	}
+
+	private static record FileAttributeViewFactory<F extends FileAttributeView>(Class<F> fileAttributeViewType,
+																				Function<BucketPath, F> factory)
+	{
+
 	}
 }

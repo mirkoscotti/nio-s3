@@ -1,13 +1,11 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
@@ -15,9 +13,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -28,29 +24,24 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
  * @author mirko.scotti
  * @version Jan 24, 2025
  */
-public class BucketFileSystem
+class BucketFileSystem
 	extends FileSystem
 {
 
-	private final Map<BucketProperty, String> configuration = new EnumMap<>(BucketProperty.class);
-
 	private final S3Connector connector;
 
-	private final BucketFileSystemProvider fileSystemProvider;
+	private final S3FileSystemProvider fileSystemProvider;
 
 	private final BucketFileStore fileStore;
 
-	BucketFileSystem(BucketDescriptor bucketDescriptor, BucketFileSystemProvider fileSystemProvider)
+	BucketFileSystem(S3Connector connector,
+					 BucketDescriptor bucketDescriptor,
+					 S3FileSystemProvider fileSystemProvider)
 	{
-		var bucketKey = bucketDescriptor.bucketKey();
-		var credentials = bucketDescriptor.credentials();
-		connector = S3Connector.create()
-							   .withEndpoint(URI.create(bucketKey.endpoint()))
-							   .withCredentials(credentials.accessKey(), credentials.secretKey())
-							   .build();
-		ensureBucketExists(bucketDescriptor, connector);
+		this.connector = connector;
 		this.fileSystemProvider = fileSystemProvider;
-		fileStore = new BucketFileStore(connector, bucketKey.bucketName());
+		var bucketName = ensureBucketExists(bucketDescriptor);
+		fileStore = new BucketFileStore(connector, bucketName);
 	}
 
 	@Override
@@ -136,19 +127,28 @@ public class BucketFileSystem
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(configuration, fileStore, fileSystemProvider);
+		return Objects.hash(fileStore, fileSystemProvider);
 	}
 
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof BucketFileSystem other
-			&& Objects.equals(configuration, other.configuration)
 			&& Objects.equals(fileSystemProvider, other.fileSystemProvider)
 			&& Objects.equals(fileStore, other.fileStore);
 	}
 
-	private void ensureBucketExists(BucketDescriptor bucketDescriptor, S3Connector connector)
+	/**
+	 * The wrapper method of the {@link #connector} property.
+	 *
+	 * @return the value of the property
+	 */
+	S3Connector connector()
+	{
+		return connector;
+	}
+
+	private String ensureBucketExists(BucketDescriptor bucketDescriptor)
 	{
 		try
 		{
@@ -170,5 +170,6 @@ public class BucketFileSystem
 			};
 			throw new IllegalArgumentException(message, x);
 		}
+		return bucketDescriptor.bucketKey().bucketName();
 	}
 }

@@ -61,7 +61,7 @@ import java.util.stream.Stream;
  * @author mirko.scotti
  * @version Jul 14, 2024
  */
-class BucketPath
+public class BucketPath
 	implements Path
 {
 
@@ -97,7 +97,7 @@ class BucketPath
 	 * @param first
 	 * @param more
 	 */
-	public BucketPath(BucketFileSystem fileSystem, String first, String... more)
+	BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
 		root = Objects.requireNonNull(first, MISSING_PATH)
@@ -109,7 +109,7 @@ class BucketPath
 		objectKey = validatedPath(path);
 	}
 
-	private BucketPath(BucketFileSystem fileSystem)
+	BucketPath(BucketFileSystem fileSystem)
 	{
 		this.fileSystem = fileSystem;
 		root = this;
