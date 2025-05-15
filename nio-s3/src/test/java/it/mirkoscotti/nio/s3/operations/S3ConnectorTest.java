@@ -61,6 +61,99 @@ class S3ConnectorTest
 	}
 
 	@Test
+	void hashCodeWithSameInstancesTest(@Mock S3CrtAsyncClientBuilder builder,
+									   @Mock S3CrtAsyncClient client)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector1 = S3Connector.create().build();
+			var connector2 = S3Connector.create().build();
+			Assertions.assertEquals(connector1.hashCode(), connector2.hashCode());
+		}
+	}
+
+	@Test
+	void hashCodeWithDifferentInstancesTest(@Mock S3CrtAsyncClientBuilder builder,
+											@Mock S3CrtAsyncClient client1,
+											@Mock S3CrtAsyncClient client2)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector1 = S3Connector.create().build();
+			var connector2 = S3Connector.create().build();
+			Assertions.assertNotEquals(connector1.hashCode(), connector2.hashCode());
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToNullTest(@Mock S3CrtAsyncClientBuilder builder, @Mock S3CrtAsyncClient client)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			Assertions.assertFalse(connector.equals(null));
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToDifferentObjectTest(@Mock S3CrtAsyncClientBuilder builder,
+									 @Mock S3CrtAsyncClient client,
+									 @Mock Object object)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector = S3Connector.create().build();
+			Assertions.assertFalse(connector.equals(object));
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsToConnectorWithDifferentClientTest(@Mock S3CrtAsyncClientBuilder builder,
+												  @Mock S3CrtAsyncClient client1,
+												  @Mock S3CrtAsyncClient client2)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector1 = S3Connector.create().build();
+			var connector2 = S3Connector.create().build();
+			Assertions.assertFalse(connector1.equals(connector2));
+		}
+	}
+
+	@Test
+	@SuppressWarnings("java:S5785")
+	void equalsTest(@Mock S3CrtAsyncClientBuilder builder, @Mock S3CrtAsyncClient client)
+	{
+		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
+		Mockito.when(builder.build()).thenReturn(client);
+		try (var mock = Mockito.mockStatic(S3AsyncClient.class))
+		{
+			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
+			var connector1 = S3Connector.create().build();
+			var connector2 = S3Connector.create().build();
+			Assertions.assertTrue(connector1.equals(connector2));
+		}
+	}
+
+	@Test
 	void interruptedExceptionWhileCreatingBucketTest(@Mock S3CrtAsyncClientBuilder builder,
 													 @Mock S3CrtAsyncClient client,
 													 @Mock CreateBucketResponse createBucketResponse,
