@@ -12,11 +12,13 @@ import java.net.URI;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -178,6 +180,29 @@ class S3FileSystemProviderTest
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = fileSystemProvider.getPath(uri);
 			Assertions.assertEquals(path, result);
+		}
+	}
+
+	@Test
+	void newByteChannelWithUnsupportedPathTest(@Mock Path path)
+	{
+		var set = Set.<OpenOption>of();
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> fileSystemProvider.newByteChannel(path, set));
+	}
+
+	@Test
+	void newByteChannelTest(@Mock BucketFileSystem fileSystem)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		try (var mock = Mockito.mockConstruction(BucketSeekableByteChannel.class))
+		{
+			var fileSystemProvider = new S3FileSystemProvider();
+			var result = Assertions.assertDoesNotThrow(() -> fileSystemProvider.newByteChannel(path,
+																							   Set.of()));
+			var expected = mock.constructed().get(0);
+			Assertions.assertEquals(expected, result);
 		}
 	}
 

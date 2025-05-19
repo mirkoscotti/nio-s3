@@ -158,8 +158,12 @@ public class S3FileSystemProvider
 											  FileAttribute<?>... attrs)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (path instanceof BucketPath bucketPath)
+		{
+			var connector = bucketPath.getFileSystem().connector();
+			return new BucketSeekableByteChannel(connector, bucketPath, options);
+		}
+		throw invalidPath(path);
 	}
 
 	@Override
