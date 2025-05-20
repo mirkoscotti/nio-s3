@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.BytesWrapper;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3CrtAsyncClientBuilder;
@@ -140,6 +142,19 @@ public final class S3Connector
 					 // Excluding the given key
 					 .filter(Predicate.not(item -> item.getKey().equals(key)))
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+	}
+
+	public byte[] readObject(String bucketName, String key, long from, long to)
+	{
+		return Try.to(() -> client.getObject(item -> item.bucket(bucketName)
+														 .key(key)
+														 .range("bytes=%d-%d".formatted(from, to)),
+											 AsyncResponseTransformer.toBytes())
+								  .thenApply(BytesWrapper::asByteArray)
+								  .exceptionally(this::redirectException)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(this::redirectException)
+				  .get();
 	}
 
 	public static S3ConnectorBuilder create()

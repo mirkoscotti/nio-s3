@@ -5,10 +5,15 @@ import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.NonReadableChannelException;
+import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.InvalidPathException;
 import java.nio.file.OpenOption;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -23,28 +28,36 @@ class BucketSeekableByteChannel
 
 	private final BucketPath path;
 
+	private final Optional<ReadableByteChannel> readableByteChannel;
+
+	private final Optional<WritableByteChannel> writableByteChannel;
+
 	/**
 	 * @param connector
 	 * @param path
 	 */
 	BucketSeekableByteChannel(S3Connector connector,
 							  BucketPath path,
-							  Set<? extends OpenOption> options)
+							  Set<? extends OpenOption> openOptions)
 		throws IOException
 	{
 		this.connector = Objects.requireNonNull(connector, () -> "Missing connector.");
 		if (path instanceof BucketPath bucketPath)
 		{
-			ObjectFlag.readWriteCheck(options);
-			if (ObjectFlag.IS_READABLE.matches(options))
-			{
-				// TODO: implement the checks for reading, if necessary, otherwise remove if block
-			}
+			var options = ObjectFlag.readWriteCheck(openOptions);
+			readableByteChannel = ObjectFlag.IS_READABLE.matches(options)
+				? Optional.of(new BucketReadableByteChannel(connector, path))
+				: Optional.empty();
 			if (ObjectFlag.IS_WRITABLE.matches(options))
 			{
 				ObjectFlag.appendTruncateCheck(options);
 				ObjectFlag.truncateCheck(path, options);
 				ObjectFlag.createCheck(path, options);
+				writableByteChannel = Optional.of(new BucketWritableByteChannel(connector, path));
+			}
+			else
+			{
+				writableByteChannel = Optional.empty();
 			}
 			this.path = bucketPath;
 		}
@@ -70,14 +83,14 @@ class BucketSeekableByteChannel
 	@Override
 	public int read(ByteBuffer dst) throws IOException
 	{
-		// TODO Auto-generated method stub
+		var channel = readableByteChannel.orElseThrow(NonReadableChannelException::new);
 		return 0;
 	}
 
 	@Override
 	public int write(ByteBuffer src) throws IOException
 	{
-		// TODO Auto-generated method stub
+		var channel = writableByteChannel.orElseThrow(NonWritableChannelException::new);
 		return 0;
 	}
 
