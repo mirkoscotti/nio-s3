@@ -4,7 +4,9 @@ import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Optional;
 
 /**
  * @author mirko.scotti
@@ -49,27 +51,25 @@ class BucketReadableByteChannel
 	@Override
 	public int read(ByteBuffer dst) throws IOException
 	{
-		int result;
-		if (position >= size)
-		{
-			result = -1;
-		}
-		else
-		{
-			var bytesToRead = Math.min(dst.remaining(), (int) (size - position));
-			if (bytesToRead <= 0)
-			{
-				result = 0;
-			}
-			else
-			{
-				var to = position + bytesToRead - 1;
-				var data = connector.readObject(bucket, key, position, to);
-				dst.put(data);
-				result = data.length;
-				position += result;
-			}
-		}
+		return Optional.of(this)
+					   .filter(item -> item.isOpen)
+					   .map(item -> item.position < item.size ? readRemaining(dst) : -1)
+					   .orElseThrow(ClosedChannelException::new);
+	}
+
+	private int readRemaining(ByteBuffer buffer)
+	{
+		var remaining = Math.min(buffer.remaining(), (int) (size - position));
+		return remaining > 0 ? readRemaining(buffer, remaining) : 0;
+	}
+
+	private int readRemaining(ByteBuffer buffer, int remaining)
+	{
+		var to = position + remaining - 1;
+		var data = connector.readObject(bucket, key, position, to);
+		buffer.put(data);
+		var result = data.length;
+		position += result;
 		return result;
 	}
 }

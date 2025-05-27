@@ -4,6 +4,7 @@ import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
@@ -19,7 +20,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import jakarta.json.bind.JsonbBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.BytesWrapper;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -39,7 +40,6 @@ import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
@@ -108,9 +108,9 @@ public final class S3Connector
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
 								  .thenApply(this::permissions)
-								  .exceptionally(this::redirectException)
+								  .exceptionally(ExceptionsHelper::redirectException)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(this::redirectException)
+				  .onCatch(ExceptionsHelper::redirectException)
 				  .get();
 	}
 
@@ -123,9 +123,9 @@ public final class S3Connector
 															 .lastModified(item.lastModified())
 															 .build())
 								  .thenApply(ObjectBasicFileAttributes::new)
-								  .exceptionally(this::redirectException)
+								  .exceptionally(ExceptionsHelper::redirectException)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(this::redirectException)
+				  .onCatch(ExceptionsHelper::redirectException)
 				  .get();
 	}
 
@@ -151,10 +151,29 @@ public final class S3Connector
 														 .range("bytes=%d-%d".formatted(from, to)),
 											 AsyncResponseTransformer.toBytes())
 								  .thenApply(BytesWrapper::asByteArray)
-								  .exceptionally(this::redirectException)
+								  .exceptionally(ExceptionsHelper::redirectException)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(this::redirectException)
+				  .onCatch(ExceptionsHelper::redirectException)
 				  .get();
+	}
+
+	public void writeObject(String bucketName, String key, byte[] content)
+	{
+		Try.to(() -> client.putObject(item -> item.bucket(bucketName).key(key),
+									  AsyncRequestBody.fromBytes(content))
+						   .exceptionally(ExceptionsHelper::redirectException)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(ExceptionsHelper::redirectException)
+		   .run();
+	}
+
+	public MultipartWriter startMultipartUpload(String bucketName, String key)
+	{
+		return MultipartWriter.create()
+							  .withClient(client)
+							  .withBucket(bucketName)
+							  .withKey(key)
+							  .start();
 	}
 
 	public static S3ConnectorBuilder create()
@@ -223,7 +242,7 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		var exception = toS3Exception(throwable);
+		var exception = ExceptionsHelper.toS3Exception(throwable);
 		var errorCode = exception.awsErrorDetails().errorCode();
 		return switch (errorCode)
 		{
@@ -240,12 +259,6 @@ public final class S3Connector
 					   .collect(Collectors.joining(";"));
 	}
 
-	private <T> T redirectException(Throwable throwable)
-	{
-		var exception = toS3Exception(throwable);
-		throw new IllegalStateException(exception);
-	}
-
 	private PolicyRecord deserializePolicy(String policy)
 	{
 		PolicyRecord result;
@@ -259,17 +272,6 @@ public final class S3Connector
 			throw new IllegalStateException("Failed to read the bucket policy.", x);
 		}
 		return result;
-	}
-
-	private S3Exception toS3Exception(Throwable throwable)
-	{
-		return switch (throwable)
-		{
-			case S3Exception exception -> exception;
-			case CompletionException exception -> toS3Exception(exception.getCause());
-			case RuntimeException exception -> throw exception;
-			default -> throw new IllegalStateException(throwable);
-		};
 	}
 
 	private void reportObjects(ListObjectsV2Response response, Map<String, Instant> report)

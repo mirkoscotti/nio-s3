@@ -84,6 +84,7 @@ class BucketSeekableByteChannel
 	public int read(ByteBuffer dst) throws IOException
 	{
 		var channel = readableByteChannel.orElseThrow(NonReadableChannelException::new);
+		channel.read(dst);
 		return 0;
 	}
 
