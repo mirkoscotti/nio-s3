@@ -80,4 +80,24 @@ class TryTest
 			Assertions.fail(x);
 		}
 	}
+
+	@Test
+	<T> void callableRedirectingExceptionTest(@Mock Callable<T> tryCallable,
+											  @Mock Callable<Void> finallyCallable)
+	{
+		try
+		{
+			Mockito.when(tryCallable.call()).thenThrow(Exception.class);
+			var testTry = Try.to(tryCallable)
+							 .onCatchThrow(RuntimeException::new)
+							 .onFinally(finallyCallable);
+			Assertions.assertThrows(RuntimeException.class, testTry::run);
+			Mockito.verify(tryCallable, Mockito.atLeastOnce()).call();
+			Mockito.verify(finallyCallable, Mockito.atLeastOnce()).call();
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+	}
 }

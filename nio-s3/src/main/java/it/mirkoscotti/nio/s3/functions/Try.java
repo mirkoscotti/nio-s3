@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -37,6 +38,12 @@ public class Try<T>
 	public Try<T> onCatch(Consumer<? super Exception> catchBlock)
 	{
 		this.catchBlock = Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
+		return this;
+	}
+
+	public Try<T> onCatchThrow(Function<? super Exception, ? extends RuntimeException> catchBlock)
+	{
+		this.catchBlock = item -> sneakyThrow(catchBlock.apply(item));
 		return this;
 	}
 
@@ -76,6 +83,11 @@ public class Try<T>
 	private void toRuntimeException(Exception exception)
 	{
 		throw new IllegalStateException(exception);
+	}
+
+	private void sneakyThrow(RuntimeException exception)
+	{
+		throw exception;
 	}
 
 	private Exception toException(Exception exception)

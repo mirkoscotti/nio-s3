@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
@@ -67,9 +68,7 @@ public final class MultipartWriter
 
 	public void cancel()
 	{
-		Try.to(() -> client.abortMultipartUpload(item -> item.bucket(bucket)
-															 .key(key)
-															 .uploadId(uploadId)))
+		Try.to(() -> client.abortMultipartUpload(this::createAbortMultipartRequest))
 		   .onCatch(ExceptionsHelper::redirectException)
 		   .get();
 	}
@@ -112,6 +111,11 @@ public final class MultipartWriter
 			   .key(key)
 			   .uploadId(uploadId)
 			   .multipartUpload(item2 -> item2.parts(parts));
+	}
+
+	private void createAbortMultipartRequest(AbortMultipartUploadRequest.Builder builder)
+	{
+		builder.bucket(bucket).key(key).uploadId(uploadId);
 	}
 
 	public static final class MultipartWriterBuilder
