@@ -67,7 +67,6 @@ class S3ConnectorIT
 	@AfterEach
 	void afterEach()
 	{
-
 		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
 	}
 

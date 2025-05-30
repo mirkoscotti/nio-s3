@@ -43,6 +43,7 @@ public class Try<T>
 
 	public Try<T> onCatchThrow(Function<? super Exception, ? extends RuntimeException> catchBlock)
 	{
+		Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
 		this.catchBlock = item -> sneakyThrow(catchBlock.apply(item));
 		return this;
 	}

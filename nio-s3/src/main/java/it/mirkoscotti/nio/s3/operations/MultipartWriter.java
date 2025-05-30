@@ -4,6 +4,8 @@ import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 import java.io.Closeable;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -11,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -18,6 +21,8 @@ import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.InvalidRequestException;
+import software.amazon.awssdk.services.s3.model.NoSuchUploadException;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 /**
@@ -27,6 +32,8 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 public final class MultipartWriter
 	implements Closeable
 {
+
+	private static final Logger LOGGER = System.getLogger(MultipartWriter.class.getName());
 
 	private final List<CompletedPart> parts = new ArrayList<>();
 
@@ -45,18 +52,16 @@ public final class MultipartWriter
 	 */
 	private MultipartWriter(S3AsyncClient client, String bucket, String key)
 	{
-		this.client = client;
-		this.bucket = bucket;
-		this.key = key;
+		this.client = Objects.requireNonNull(client, () -> "Missing client");
+		this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket");
+		this.key = Objects.requireNonNull(key, () -> "Missing key");
 		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::redirectException).get();
 	}
 
 	@Override
 	public void close()
 	{
-		Try.to(() -> client.completeMultipartUpload(this::createCompleteMultipartRequest))
-		   .onCatch(ExceptionsHelper::redirectException)
-		   .get();
+		Try.to(this::completeUpload).onCatch(this::cancelUpload).run();
 	}
 
 	public void write(byte[] buffer)
@@ -64,13 +69,6 @@ public final class MultipartWriter
 		parts.add(Try.to(() -> createCompletedPart(buffer))
 					 .onCatch(ExceptionsHelper::redirectException)
 					 .get());
-	}
-
-	public void cancel()
-	{
-		Try.to(() -> client.abortMultipartUpload(this::createAbortMultipartRequest))
-		   .onCatch(ExceptionsHelper::redirectException)
-		   .get();
 	}
 
 	public static MultipartWriterBuilder create()
@@ -105,6 +103,35 @@ public final class MultipartWriter
 					 .get(30, TimeUnit.SECONDS);
 	}
 
+	private Void completeUpload() throws TimeoutException, ExecutionException, InterruptedException
+	{
+		client.completeMultipartUpload(this::createCompleteMultipartRequest)
+			  .get(30, TimeUnit.SECONDS);
+		return null;
+	}
+
+	private void cancelUpload(Exception exception)
+	{
+		Supplier<String> warning = () -> """
+			A multi-part upload has failed but it was not possible to abort it.
+			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
+			See the command put-bucket-lifecycle-configuration for further details.
+			""";
+		Try.to(this::cancelUpload).onCatch(item -> LOGGER.log(Level.WARNING, warning, item)).run();
+		var s3Exception = ExceptionsHelper.toS3Exception(exception);
+		if (!(s3Exception instanceof NoSuchUploadException)
+			&& !(s3Exception instanceof InvalidRequestException))
+		{
+			throw s3Exception;
+		}
+	}
+
+	private Void cancelUpload() throws TimeoutException, ExecutionException, InterruptedException
+	{
+		client.abortMultipartUpload(this::createAbortMultipartRequest).get(30, TimeUnit.SECONDS);
+		return null;
+	}
+
 	private void createCompleteMultipartRequest(CompleteMultipartUploadRequest.Builder builder)
 	{
 		builder.bucket(bucket)
@@ -134,19 +161,19 @@ public final class MultipartWriter
 
 		public MultipartWriterBuilder withClient(S3AsyncClient client)
 		{
-			this.client = Objects.requireNonNull(client, () -> "Missing client");
+			this.client = client;
 			return this;
 		}
 
 		public MultipartWriterBuilder withBucket(String bucket)
 		{
-			this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket");
+			this.bucket = bucket;
 			return this;
 		}
 
 		public MultipartWriterBuilder withKey(String key)
 		{
-			this.key = Objects.requireNonNull(key, () -> "Missing key");
+			this.key = key;
 			return this;
 		}
 

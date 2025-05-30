@@ -24,6 +24,7 @@ class TryTest
 		Assertions.assertThrows(NullPointerException.class, () -> Try.to(null));
 		var basicTry = Try.to(callable);
 		Assertions.assertThrows(NullPointerException.class, () -> basicTry.onCatch(null));
+		Assertions.assertThrows(NullPointerException.class, () -> basicTry.onCatchThrow(null));
 		Assertions.assertThrows(NullPointerException.class, () -> basicTry.onFinally(null));
 	}
 
@@ -82,18 +83,14 @@ class TryTest
 	}
 
 	@Test
-	<T> void callableRedirectingExceptionTest(@Mock Callable<T> tryCallable,
-											  @Mock Callable<Void> finallyCallable)
+	<T> void callableRedirectingExceptionTest(@Mock Callable<T> tryCallable)
 	{
 		try
 		{
 			Mockito.when(tryCallable.call()).thenThrow(Exception.class);
-			var testTry = Try.to(tryCallable)
-							 .onCatchThrow(RuntimeException::new)
-							 .onFinally(finallyCallable);
+			var testTry = Try.to(tryCallable).onCatchThrow(RuntimeException::new);
 			Assertions.assertThrows(RuntimeException.class, testTry::run);
 			Mockito.verify(tryCallable, Mockito.atLeastOnce()).call();
-			Mockito.verify(finallyCallable, Mockito.atLeastOnce()).call();
 		}
 		catch (Exception x)
 		{

@@ -2,7 +2,9 @@ package it.mirkoscotti.nio.s3.extensions.testcontainers;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -30,7 +32,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.4.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -90,6 +92,8 @@ public class S3Container
 	private static final String PUT_OBJECT_WITH_TEXT_COMMAND = "awslocal s3api put-object --bucket %s --key %s --body %s";
 
 	private static final String HEAD_OBJECT_COMMAND = "awslocal s3api head-object --bucket %s --key %s";
+
+	private static final String GET_OBJECT_COMMAND = "awslocal s3api get-object --bucket %s --key %s %s";
 
 	private static final String LIST_OBJECTS_COMMAND = "awslocal s3api list-objects-v2 --bucket %s --query Contents[*].Key --output text";
 
@@ -307,7 +311,7 @@ public class S3Container
 
 	public void createObject(String bucketName, String key, Path file)
 	{
-		var path = "/tmp/file.txt";
+		var path = "/tmp/input.txt";
 		copyFileToContainer(MountableFile.forHostPath(file), path);
 		var command = PUT_OBJECT_WITH_TEXT_COMMAND.formatted(bucketName, key, path);
 		try
@@ -317,6 +321,33 @@ public class S3Container
 									output.getExitCode(),
 									"Failed to create object %s in bucket %s".formatted(key,
 																						bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void readObject(String bucketName, String key, Path file)
+	{
+		var path = "/tmp/output.txt";
+		var command = GET_OBJECT_COMMAND.formatted(bucketName, key, path);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									"Failed to read object %s in bucket %s".formatted(key,
+																					  bucketName));
+			copyFileFromContainer(path,
+								  item -> Files.copy(item,
+													 file,
+													 StandardCopyOption.REPLACE_EXISTING));
 		}
 		catch (InterruptedException x)
 		{

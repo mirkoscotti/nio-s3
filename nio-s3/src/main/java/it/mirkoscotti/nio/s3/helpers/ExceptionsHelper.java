@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.helpers;
 
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -28,6 +29,7 @@ public final class ExceptionsHelper
 		{
 			case S3Exception exception -> exception;
 			case CompletionException exception -> toS3Exception(exception.getCause());
+			case ExecutionException exception -> toS3Exception(exception.getCause());
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};
