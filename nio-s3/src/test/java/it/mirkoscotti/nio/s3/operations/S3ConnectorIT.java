@@ -2,12 +2,12 @@ package it.mirkoscotti.nio.s3.operations;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -67,7 +67,9 @@ class S3ConnectorIT
 	@AfterEach
 	void afterEach()
 	{
-		Optional.of(BUCKET_NAME).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
+		Optional.of(BUCKET_NAME)
+				.filter(CONTAINER::bucketExists)
+				.ifPresent(item -> ContainersHelper.deleteBucket(CONTAINER, item));
 	}
 
 	@Test
@@ -149,12 +151,5 @@ class S3ConnectorIT
 		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
 		var map = connector.listObjects(BUCKET_NAME, DIRECTORY);
 		Assertions.assertTrue(map.containsKey(OBJECT));
-	}
-
-	private void deleteBucket(String bucketName)
-	{
-		Stream.of(CONTAINER.listObjects(BUCKET_NAME))
-			  .forEach(item -> CONTAINER.deleteObject(BUCKET_NAME, item));
-		CONTAINER.deleteBucket(bucketName);
 	}
 }

@@ -1,10 +1,13 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
@@ -61,38 +64,38 @@ class BucketSeekableByteChannel
 			}
 			this.path = bucketPath;
 		}
-		var bucketPath = Objects.requireNonNull(path, () -> "Missing path.").toString();
-		throw new InvalidPathException(bucketPath,
-									   "Expected a path in an AWS bucket, found: %s".formatted(bucketPath));
+		else
+		{
+			var bucketPath = Objects.requireNonNull(path, () -> "Missing path.").toString();
+			throw new InvalidPathException(bucketPath,
+										   "Expected a path in an AWS bucket, found: %s".formatted(bucketPath));
+		}
 	}
 
 	@Override
 	public boolean isOpen()
 	{
-		// TODO Auto-generated method stub
-		return false;
+		return readableByteChannel.filter(Channel::isOpen).isPresent()
+			|| writableByteChannel.filter(Channel::isOpen).isPresent();
 	}
 
 	@Override
 	public void close() throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		readableByteChannel.ifPresent(item -> Try.to(() -> internalClose(item)).run());
+		writableByteChannel.ifPresent(item -> Try.to(() -> internalClose(item)).run());
 	}
 
 	@Override
 	public int read(ByteBuffer dst) throws IOException
 	{
-		var channel = readableByteChannel.orElseThrow(NonReadableChannelException::new);
-		channel.read(dst);
-		return 0;
+		return readableByteChannel.orElseThrow(NonReadableChannelException::new).read(dst);
 	}
 
 	@Override
 	public int write(ByteBuffer src) throws IOException
 	{
-		var channel = writableByteChannel.orElseThrow(NonWritableChannelException::new);
-		return 0;
+		return writableByteChannel.orElseThrow(NonWritableChannelException::new).write(src);
 	}
 
 	@Override
@@ -120,6 +123,12 @@ class BucketSeekableByteChannel
 	public SeekableByteChannel truncate(long size) throws IOException
 	{
 		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private Void internalClose(Closeable closeable) throws IOException
+	{
+		closeable.close();
 		return null;
 	}
 }

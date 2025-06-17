@@ -276,12 +276,13 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void readUnsupportedAttributesTest(@Mock BucketPath path)
+	void readUnsupportedAttributesTest(@Mock BucketPath path,
+									   @Mock BasicFileAttributes basicFileAttributes)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
+		var type = basicFileAttributes.getClass();
 		Assertions.assertThrows(UnsupportedOperationException.class,
-								() -> fileSystemProvider.readAttributes(path,
-																		BasicFileAttributes.class));
+								() -> fileSystemProvider.readAttributes(path, type));
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.operations;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 import java.nio.charset.StandardCharsets;
@@ -60,7 +61,9 @@ class MultipartWriterIT
 	@AfterEach
 	void afterEach()
 	{
-		Optional.of(TEST_BUCKET).filter(CONTAINER::bucketExists).ifPresent(this::deleteBucket);
+		Optional.of(TEST_BUCKET)
+				.filter(CONTAINER::bucketExists)
+				.ifPresent(item -> ContainersHelper.deleteObjects(CONTAINER, item));
 	}
 
 	@Test
@@ -118,11 +121,5 @@ class MultipartWriterIT
 		Assertions.assertEquals(test.length() + part.length(),
 								JunitHelper.tryCall(() -> Files.size(output)));
 		JunitHelper.tryCall(() -> Files.deleteIfExists(output));
-	}
-
-	private void deleteBucket(String bucketName)
-	{
-		Stream.of(CONTAINER.listObjects(TEST_BUCKET))
-			  .forEach(item -> CONTAINER.deleteObject(TEST_BUCKET, item));
 	}
 }

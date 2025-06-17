@@ -18,12 +18,14 @@ import java.util.function.Supplier;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.InvalidRequestException;
 import software.amazon.awssdk.services.s3.model.NoSuchUploadException;
-import software.amazon.awssdk.services.s3.model.UploadPartResponse;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
 /**
  * @author mirko.scotti
@@ -81,7 +83,7 @@ public final class MultipartWriter
 			ExecutionException,
 			InterruptedException
 	{
-		return client.createMultipartUpload(item -> item.bucket(bucket).key(key))
+		return client.createMultipartUpload(this::createMultipartRequest)
 					 .thenApply(CreateMultipartUploadResponse::uploadId)
 					 .get(30, TimeUnit.SECONDS);
 	}
@@ -92,13 +94,11 @@ public final class MultipartWriter
 			InterruptedException
 	{
 		var part = partNumber.incrementAndGet();
-		return client.uploadPart(item -> item.bucket(bucket)
-											 .key(key)
-											 .uploadId(uploadId)
-											 .partNumber(part),
+		return client.uploadPart(item -> createUploadRequest(item, part),
 								 AsyncRequestBody.fromBytes(buffer))
-					 .thenApply(UploadPartResponse::eTag)
-					 .thenApply(CompletedPart.builder()::eTag)
+					 .thenApply(item -> CompletedPart.builder()
+													 .eTag(item.eTag())
+													 .checksumSHA256(item.checksumSHA256()))
 					 .thenApply(item -> item.partNumber(part).build())
 					 .get(30, TimeUnit.SECONDS);
 	}
@@ -132,12 +132,27 @@ public final class MultipartWriter
 		return null;
 	}
 
+	private void createMultipartRequest(CreateMultipartUploadRequest.Builder builder)
+	{
+		builder.bucket(bucket).key(key).checksumAlgorithm(ChecksumAlgorithm.SHA256);
+	}
+
+	private void createUploadRequest(UploadPartRequest.Builder builder, int part)
+	{
+		builder.bucket(bucket)
+			   .key(key)
+			   .uploadId(uploadId)
+			   .partNumber(part)
+			   .checksumAlgorithm(ChecksumAlgorithm.SHA256);
+	}
+
 	private void createCompleteMultipartRequest(CompleteMultipartUploadRequest.Builder builder)
 	{
 		builder.bucket(bucket)
 			   .key(key)
 			   .uploadId(uploadId)
-			   .multipartUpload(item2 -> item2.parts(parts));
+			   .multipartUpload(item -> item.parts(parts))
+			   .checksumSHA256(bucket);
 	}
 
 	private void createAbortMultipartRequest(AbortMultipartUploadRequest.Builder builder)

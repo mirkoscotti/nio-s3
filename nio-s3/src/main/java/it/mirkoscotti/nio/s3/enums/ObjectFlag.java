@@ -5,6 +5,7 @@ import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
@@ -93,7 +94,8 @@ public enum ObjectFlag
 	public static <T extends OpenOption> Set<T> createCheck(BucketPath path, Set<T> options)
 		throws IOException
 	{
-		Predicate<Set<? extends OpenOption>> pathExists = item -> Files.exists(path);
+		Predicate<Set<? extends OpenOption>> pathExists = item -> Files.exists(path,
+																			   LinkOption.NOFOLLOW_LINKS);
 		return Optional.of(options)
 					   .filter(Predicate.not(IS_CREATABLE::matches)
 										.or(Predicate.not(pathExists).and(IS_CREATABLE::matches)))

@@ -41,10 +41,10 @@ public class Try<T>
 		return this;
 	}
 
-	public Try<T> onCatchThrow(Function<? super Exception, ? extends RuntimeException> catchBlock)
+	public <X extends Exception> Try<T> onCatchThrow(Function<? super Exception, X> catchBlock)
 	{
 		Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
-		this.catchBlock = item -> sneakyThrow(catchBlock.apply(item));
+		this.catchBlock = catchBlock::apply;
 		return this;
 	}
 
@@ -84,11 +84,6 @@ public class Try<T>
 	private void toRuntimeException(Exception exception)
 	{
 		throw new IllegalStateException(exception);
-	}
-
-	private void sneakyThrow(RuntimeException exception)
-	{
-		throw exception;
 	}
 
 	private Exception toException(Exception exception)

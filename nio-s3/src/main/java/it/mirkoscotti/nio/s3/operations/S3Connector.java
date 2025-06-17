@@ -123,9 +123,9 @@ public final class S3Connector
 															 .lastModified(item.lastModified())
 															 .build())
 								  .thenApply(ObjectBasicFileAttributes::new)
-								  .exceptionally(ExceptionsHelper::redirectException)
+								  .exceptionally(ExceptionsHelper::throwS3Exception)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::redirectException)
+				  .onCatch(ExceptionsHelper::throwS3Exception)
 				  .get();
 	}
 
@@ -298,6 +298,12 @@ public final class S3Connector
 		public S3ConnectorBuilder withRegion(String region)
 		{
 			Optional.ofNullable(region).map(Region::of).ifPresent(builder::region);
+			return this;
+		}
+
+		public S3ConnectorBuilder withRegion(Region region)
+		{
+			Optional.ofNullable(region).ifPresent(builder::region);
 			return this;
 		}
 

@@ -62,11 +62,6 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-			<dependency>
-				<groupId>software.amazon.awssdk.crt</groupId>
-				<artifactId>aws-crt</artifactId>
-				<version>${aws-crt.version}</version>
-			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
@@ -115,6 +110,11 @@
 			<artifactId>slf4j-simple</artifactId>
 			<version>${slf4j-simple.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk.crt</groupId>
+			<artifactId>aws-crt</artifactId>
+			<version>${aws-crt.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse</groupId>

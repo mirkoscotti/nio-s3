@@ -19,7 +19,7 @@ class BucketWritableByteChannel
 	implements WritableByteChannel
 {
 
-	private static final int MULTIPART_THRESHOLD = 5 * 1024 * 1024;
+	private static final int MULTIPART_THRESHOLD = 10 * 1024 * 1024;
 
 	private final ByteBuffer buffer = ByteBuffer.allocate(MULTIPART_THRESHOLD + 1);
 
@@ -32,8 +32,6 @@ class BucketWritableByteChannel
 	private boolean isOpen = true;
 
 	private Optional<MultipartWriter> multipartWriter = Optional.empty();
-
-	private Optional<String> uploadId = Optional.empty();
 
 	BucketWritableByteChannel(S3Connector connector, BucketPath path)
 	{
@@ -51,6 +49,7 @@ class BucketWritableByteChannel
 	@Override
 	public void close() throws IOException
 	{
+		flushBuffer();
 		isOpen = false;
 	}
 
@@ -77,7 +76,7 @@ class BucketWritableByteChannel
 		Optional.of(Math.min(input.remaining(), buffer.remaining()))
 				.filter(item -> item > 0)
 				.ifPresent(item -> writeRemaining(input, item));
-		if (buffer.hasRemaining())
+		if (!buffer.hasRemaining())
 		{
 			flushBuffer();
 		}

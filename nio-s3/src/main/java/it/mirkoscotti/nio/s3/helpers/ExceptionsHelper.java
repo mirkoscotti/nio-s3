@@ -23,6 +23,11 @@ public final class ExceptionsHelper
 		throw new IllegalStateException(exception);
 	}
 
+	public static <T> T throwS3Exception(Throwable throwable)
+	{
+		throw toS3Exception(throwable);
+	}
+
 	public static S3Exception toS3Exception(Throwable throwable)
 	{
 		return switch (throwable)

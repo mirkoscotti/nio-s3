@@ -35,6 +35,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import software.amazon.awssdk.regions.Region;
+
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
  * LocalStack. Each file system is created at most once during the JVM life and internally cached,
@@ -262,6 +264,7 @@ public class S3FileSystemProvider
 		if (path instanceof BucketPath bucketPath)
 		{
 			var map = new HashMap<Class<? extends BasicFileAttributes>, Class<? extends BasicFileAttributeView>>();
+			map.put(BasicFileAttributes.class, ObjectBasicFileAttributeView.class);
 			map.put(ObjectBasicFileAttributes.class, ObjectBasicFileAttributeView.class);
 			var fileAttributeViewType = Optional.ofNullable(type)
 												.filter(map::containsKey)
@@ -308,6 +311,7 @@ public class S3FileSystemProvider
 										  .withCredentials(credentials.accessKey(),
 														   credentials.secretKey());
 		connectorKey.endpoint().map(URI::create).ifPresent(connectorBuilder::withEndpoint);
+		connectorKey.region().map(Region::toString).ifPresent(connectorBuilder::withRegion);
 		return connectorBuilder.build();
 	}
 

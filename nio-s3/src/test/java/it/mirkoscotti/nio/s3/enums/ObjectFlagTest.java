@@ -4,6 +4,7 @@ import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -138,7 +139,8 @@ class ObjectFlagTest
 		var set = Set.of(StandardOpenOption.CREATE_NEW);
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.exists(Mockito.any(Path.class), Mockito.any(LinkOption.class)))
+				.thenReturn(true);
 			Assertions.assertThrows(FileAlreadyExistsException.class,
 									() -> ObjectFlag.createCheck(path, set));
 		}

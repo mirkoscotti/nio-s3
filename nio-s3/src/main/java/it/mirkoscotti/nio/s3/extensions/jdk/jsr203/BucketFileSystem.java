@@ -81,8 +81,7 @@ class BucketFileSystem
 	@Override
 	public Iterable<Path> getRootDirectories()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return List.of(new BucketPath(this));
 	}
 
 	@Override

@@ -277,11 +277,16 @@ public class BucketPath
 		{
 			case BucketPath bucketPath when bucketPath.objectKey == null -> this;
 			case BucketPath bucketPath when bucketPath.isAbsolute() -> bucketPath;
-			default -> objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR)
-				? new BucketPath(fileSystem, objectKey.concat(path.objectKey))
-				: new BucketPath(fileSystem,
-								 Stream.of(objectKey, path.objectKey)
-									   .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR)));
+			default ->
+			{
+				var basePath = Optional.ofNullable(objectKey)
+									   .orElse(BucketDescriptor.PATH_SEPARATOR);
+				yield basePath.endsWith(BucketDescriptor.PATH_SEPARATOR)
+					? new BucketPath(fileSystem, basePath.concat(path.objectKey))
+					: new BucketPath(fileSystem,
+									 Stream.of(basePath, path.objectKey)
+										   .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR)));
+			}
 		};
 	}
 
