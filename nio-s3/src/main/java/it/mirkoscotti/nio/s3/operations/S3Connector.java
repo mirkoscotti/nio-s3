@@ -35,6 +35,7 @@ import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3CrtAsyncClientBuilder;
+import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest.Builder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
@@ -159,7 +160,9 @@ public final class S3Connector
 
 	public void writeObject(String bucketName, String key, byte[] content)
 	{
-		Try.to(() -> client.putObject(item -> item.bucket(bucketName).key(key),
+		Try.to(() -> client.putObject(item -> item.bucket(bucketName)
+												  .key(key)
+												  .checksumAlgorithm(ChecksumAlgorithm.SHA256),
 									  AsyncRequestBody.fromBytes(content))
 						   .exceptionally(ExceptionsHelper::redirectException)
 						   .get(30, TimeUnit.SECONDS))

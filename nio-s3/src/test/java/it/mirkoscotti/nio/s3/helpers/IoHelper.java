@@ -32,9 +32,8 @@ public final class IoHelper
 		return file;
 	}
 
-	public static Path createNotEmptyFile(Path file, long size) throws IOException
+	public static void createNotEmptyFile(Path file, long size) throws IOException
 	{
-		var result = file;
 		try (var writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW))
 		{
 			var counter = new AtomicLong();
@@ -42,9 +41,8 @@ public final class IoHelper
 		}
 		catch (IOException x)
 		{
-			result = Assertions.fail(x);
+			Assertions.fail(x);
 		}
-		return result;
 	}
 
 	private static long updateCounter(AtomicLong counter, BufferedWriter writer, int rowIndex)

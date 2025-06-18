@@ -8,6 +8,7 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,8 @@ class BucketSeekableByteChannelIT
 
 	private static final String TEST_FILE = "file.txt";
 
+	private static final URI TEST_URI = URI.create("s3://".concat(TEST_BUCKET));
+
 	private static final String CHECKSUM_ALGORITHM = "SHA-256";
 
 	private static final int PART_SIZE = 10 * 1024 * 1024;
@@ -43,7 +46,7 @@ class BucketSeekableByteChannelIT
 	@TempDir(cleanup = CleanupMode.ALWAYS)
 	private static Path baseDirectory;
 
-	private static Path file;
+	private static FileSystem fileSystem;
 
 	@Container
 	@SuppressWarnings("resource")
@@ -52,16 +55,41 @@ class BucketSeekableByteChannelIT
 	@BeforeAll
 	static void beforeAll()
 	{
-		file = baseDirectory.resolve(TEST_FILE);
-		JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(file, 25 * 1024 * 1024));
+		var properties = ContainersHelper.standardProperties(CONTAINER);
+		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 	}
 
 	@Test
-	void writeTest()
+	void singlepartWriteTest()
 	{
-		var fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(URI.create("s3://%s".formatted(TEST_BUCKET)),
-																			 ContainersHelper.standardProperties(CONTAINER)));
-		var path = fileSystem.getRootDirectories().iterator().next().resolve(TEST_FILE);
+		var fileName = "singlepart-".concat(TEST_FILE);
+		var file = JunitHelper.tryCall(() -> createTestFile(fileName, PART_SIZE / 2));
+		var expected = JunitHelper.tryCall(() -> localSinglepartChecksum(file));
+		var result = JunitHelper.tryCall(() -> write(file));
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void multipartWriteTest()
+	{
+		var fileName = "multipart-".concat(TEST_FILE);
+		var file = JunitHelper.tryCall(() -> createTestFile(fileName, PART_SIZE * 5 / 2));
+		var expected = JunitHelper.tryCall(() -> localMultipartChecksum(file));
+		var result = JunitHelper.tryCall(() -> write(file));
+		Assertions.assertEquals(expected, result);
+	}
+
+	private Path createTestFile(String fileName, long size) throws IOException
+	{
+		var result = baseDirectory.resolve(fileName);
+		IoHelper.createNotEmptyFile(result, size);
+		return result;
+	}
+
+	private String write(Path file) throws IOException
+	{
+		var fileName = file.getFileName().toString();
+		var path = fileSystem.getRootDirectories().iterator().next().resolve(fileName);
 		try (var channel = Files.newByteChannel(path,
 												StandardOpenOption.CREATE_NEW,
 												StandardOpenOption.WRITE))
@@ -69,21 +97,30 @@ class BucketSeekableByteChannelIT
 			var buffer = ByteBuffer.wrap(Files.readAllBytes(file));
 			channel.write(buffer);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
-		var expected = JunitHelper.tryCall(this::localMultipartChecksum);
-		var result = CONTAINER.checksum(TEST_BUCKET, TEST_FILE);
-		Assertions.assertEquals(expected, result);
+		return CONTAINER.checksum(TEST_BUCKET, fileName);
 	}
 
-	private String localMultipartChecksum() throws GeneralSecurityException
+	private String localSinglepartChecksum(Path file) throws GeneralSecurityException
+	{
+		String result;
+		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
+		try (var stream = Files.newInputStream(file))
+		{
+			var digest = fileDigest.digest(stream.readAllBytes());
+			result = Base64.getEncoder().encodeToString(digest);
+		}
+		catch (IOException x)
+		{
+			result = Assertions.fail(x);
+		}
+		return result;
+	}
+
+	private String localMultipartChecksum(Path file) throws GeneralSecurityException
 	{
 		String result;
 		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
 		var partDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
-		var encoder = Base64.getEncoder();
 		try (var stream = Files.newInputStream(file))
 		{
 			var bytesLeft = Files.size(file);
@@ -100,7 +137,7 @@ class BucketSeekableByteChannelIT
 				}
 			}
 			var digest = fileDigest.digest();
-			result = encoder.encodeToString(digest);
+			result = Base64.getEncoder().encodeToString(digest);
 		}
 		catch (IOException x)
 		{
