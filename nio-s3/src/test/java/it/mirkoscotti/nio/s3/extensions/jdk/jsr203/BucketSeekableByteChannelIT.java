@@ -64,7 +64,7 @@ class BucketSeekableByteChannelIT
 	{
 		var fileName = "singlepart-".concat(TEST_FILE);
 		var file = JunitHelper.tryCall(() -> createTestFile(fileName, PART_SIZE / 2));
-		var expected = JunitHelper.tryCall(() -> localSinglepartChecksum(file));
+		var expected = JunitHelper.tryCall(() -> singlepartChecksum(file));
 		var result = JunitHelper.tryCall(() -> write(file));
 		Assertions.assertEquals(expected, result);
 	}
@@ -74,7 +74,7 @@ class BucketSeekableByteChannelIT
 	{
 		var fileName = "multipart-".concat(TEST_FILE);
 		var file = JunitHelper.tryCall(() -> createTestFile(fileName, PART_SIZE * 5 / 2));
-		var expected = JunitHelper.tryCall(() -> localMultipartChecksum(file));
+		var expected = JunitHelper.tryCall(() -> multipartChecksum(file));
 		var result = JunitHelper.tryCall(() -> write(file));
 		Assertions.assertEquals(expected, result);
 	}
@@ -100,7 +100,7 @@ class BucketSeekableByteChannelIT
 		return CONTAINER.checksum(TEST_BUCKET, fileName);
 	}
 
-	private String localSinglepartChecksum(Path file) throws GeneralSecurityException
+	private String singlepartChecksum(Path file) throws GeneralSecurityException
 	{
 		String result;
 		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
@@ -116,7 +116,7 @@ class BucketSeekableByteChannelIT
 		return result;
 	}
 
-	private String localMultipartChecksum(Path file) throws GeneralSecurityException
+	private String multipartChecksum(Path file) throws GeneralSecurityException
 	{
 		String result;
 		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
