@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.testcontainers;
 
 import it.mirkoscotti.nio.s3.records.ObjectAttributes;
+import it.mirkoscotti.nio.s3.records.ObjectParts;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +37,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.5.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:latest".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -106,6 +107,8 @@ public class S3Container
 	private static final String DELETE_OBJECT_COMMAND = "awslocal s3api delete-object --bucket %s --key %s";
 
 	private static final String OUTPUT_PROPERTY_COMMAND = " | jq -r '.%s'";
+
+	private static final String CHECKSUM_OPTION = " --checksum-algorithm SHA256";
 
 	private final List<String> commands = new ArrayList<>();
 
@@ -330,6 +333,49 @@ public class S3Container
 		}
 	}
 
+	public void createObjectWithChecksum(String bucketName, String key)
+	{
+		var command = PUT_OBJECT_COMMAND.concat(CHECKSUM_OPTION).formatted(bucketName, key);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			var message = "Failed to create object %s with checksum in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void createObjectWithChecksum(String bucketName, String key, Path file)
+	{
+		var path = "/tmp/input.txt";
+		copyFileToContainer(MountableFile.forHostPath(file), path);
+		var command = PUT_OBJECT_WITH_TEXT_COMMAND.concat(CHECKSUM_OPTION)
+												  .formatted(bucketName, key, path);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			var message = "Failed to create object %s with checksum in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
 	public void readObject(String bucketName, String key, Path file)
 	{
 		var path = "/tmp/output.txt";
@@ -402,9 +448,9 @@ public class S3Container
 		return result;
 	}
 
-	public String checksum(String bucketName, String key)
+	public List<String> checksum(String bucketName, String key)
 	{
-		String result;
+		var result = new ArrayList<String>();
 		Object[] array = {bucketName, key, "Checksum", "ObjectParts"};
 		var command = GET_OBJECT_ATTRIBUTES_COMMAND.formatted(array);
 		try (var jsonb = JsonbBuilder.create())
@@ -413,16 +459,21 @@ public class S3Container
 			var message = "Failed to retrieve the checksum of object %s in bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 			var attributes = jsonb.fromJson(output.getStdout(), ObjectAttributes.class);
-			result = attributes.checksum().checksumSha256();
+			Optional.ofNullable(attributes.objectParts())
+					.map(ObjectParts::parts)
+					.stream()
+					.flatMap(List::stream)
+					.forEach(item -> result.add(item.checksumSha256()));
+			result.add(attributes.checksum().checksumSha256());
 		}
 		catch (InterruptedException x)
 		{
 			Thread.currentThread().interrupt();
-			result = Assertions.fail(x);
+			Assertions.fail(x);
 		}
 		catch (Exception x)
 		{
-			result = Assertions.fail(x);
+			Assertions.fail(x);
 		}
 		return result;
 	}

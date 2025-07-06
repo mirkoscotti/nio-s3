@@ -17,11 +17,11 @@
 		<maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
 		<jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>11.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.31.41</bom.version>
-		<aws-crt.version>0.38.2</aws-crt.version>
-		<junit-bom.version>5.12.2</junit-bom.version>
-		<mockito-bom.version>5.17.0</mockito-bom.version>
-		<testcontainers-bom.version>1.21.0</testcontainers-bom.version>
+		<bom.version>2.31.76</bom.version>
+		<aws-crt.version>0.38.5</aws-crt.version>
+		<junit-bom.version>5.13.2</junit-bom.version>
+		<mockito-bom.version>5.18.0</mockito-bom.version>
+		<testcontainers-bom.version>1.21.3</testcontainers-bom.version>
 		<slf4j-simple.version>2.0.17</slf4j-simple.version>
 		<yasson.version>3.0.4</yasson.version>
 	</properties>
@@ -68,22 +68,18 @@
 		<dependency>
 			<groupId>jakarta.json.bind</groupId>
 			<artifactId>jakarta.json.bind-api</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>iam</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk.crt</groupId>
 			<artifactId>aws-crt</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

@@ -4,8 +4,7 @@ import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
@@ -80,25 +79,22 @@ public enum ObjectFlag
 					   .orElseThrow(() -> new IllegalArgumentException("An S3 object cannot be accessed for both append and truncate operations."));
 	}
 
-	public static <T extends OpenOption> Set<T> truncateCheck(BucketPath path, Set<T> options)
-	{
-		Predicate<Set<? extends OpenOption>> pathExists = item -> Files.exists(path);
-		return Optional.of(options)
-					   .filter(Predicate.not(IS_TRUNCATABLE::matches)
-										.or(IS_TRUNCATABLE.predicate.and(pathExists.and(Predicate.not(IS_CREATABLE::matches)))
-																	.or(Predicate.not(pathExists)
-																				 .and(IS_CREATABLE.predicate.or(IS_CREATABLE_IF_NOT_EXISTS::matches)))))
-					   .orElseThrow(() -> new IllegalArgumentException("An existing truncatable S3 object cannot be creatable: %s".formatted(path)));
-	}
-
-	public static <T extends OpenOption> Set<T> createCheck(BucketPath path, Set<T> options)
+	public static <T extends OpenOption> Set<T> creationWhenFileNotFoundCheck(Set<T> options,
+																			  BucketPath path)
 		throws IOException
 	{
-		Predicate<Set<? extends OpenOption>> pathExists = item -> Files.exists(path,
-																			   LinkOption.NOFOLLOW_LINKS);
 		return Optional.of(options)
-					   .filter(Predicate.not(IS_CREATABLE::matches)
-										.or(Predicate.not(pathExists).and(IS_CREATABLE::matches)))
-					   .orElseThrow(() -> new FileAlreadyExistsException("Cannot create an already existing S3 object: %s.".formatted(path)));
+					   .filter(item -> IS_CREATABLE.matches(item)
+						   || IS_CREATABLE_IF_NOT_EXISTS.matches(item))
+					   .orElseThrow(() -> new NoSuchFileException(path.toString()));
+	}
+
+	public static <T extends OpenOption> Set<T> creationWhenFileExistingCheck(Set<T> options,
+																			  BucketPath path)
+		throws IOException
+	{
+		return Optional.of(options)
+					   .filter(IS_CREATABLE::matches)
+					   .orElseThrow(() -> new FileAlreadyExistsException(path.toString()));
 	}
 }

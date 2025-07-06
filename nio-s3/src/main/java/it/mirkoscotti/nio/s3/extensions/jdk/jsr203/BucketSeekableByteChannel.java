@@ -13,7 +13,10 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,22 +50,10 @@ class BucketSeekableByteChannel
 		this.connector = Objects.requireNonNull(connector, () -> "Missing connector.");
 		if (path instanceof BucketPath bucketPath)
 		{
-			var options = ObjectFlag.readWriteCheck(openOptions);
-			readableByteChannel = ObjectFlag.IS_READABLE.matches(options)
-				? Optional.of(new BucketReadableByteChannel(connector, path))
-				: Optional.empty();
-			if (ObjectFlag.IS_WRITABLE.matches(options))
-			{
-				ObjectFlag.appendTruncateCheck(options);
-				ObjectFlag.truncateCheck(path, options);
-				ObjectFlag.createCheck(path, options);
-				writableByteChannel = Optional.of(new BucketWritableByteChannel(connector, path));
-			}
-			else
-			{
-				writableByteChannel = Optional.empty();
-			}
 			this.path = bucketPath;
+			ObjectFlag.readWriteCheck(openOptions);
+			readableByteChannel = createReadableByteChannel(openOptions);
+			writableByteChannel = createWritableByteChannel(openOptions);
 		}
 		else
 		{
@@ -124,6 +115,43 @@ class BucketSeekableByteChannel
 	{
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	private Optional<ReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)
+	{
+		return ObjectFlag.IS_READABLE.matches(options)
+			? Optional.of(new BucketReadableByteChannel(connector, path))
+			: Optional.empty();
+	}
+
+	private Optional<WritableByteChannel> createWritableByteChannel(Set<? extends OpenOption> options)
+		throws IOException
+	{
+		return ObjectFlag.IS_WRITABLE.matches(options)
+			? Optional.of(createSafeWritableByteChannel(options))
+			: Optional.empty();
+	}
+
+	private BucketWritableByteChannel createSafeWritableByteChannel(Set<? extends OpenOption> options)
+		throws IOException
+	{
+		BucketWritableByteChannel result;
+		ObjectFlag.appendTruncateCheck(options);
+		try
+		{
+			var fileAttributes = Files.readAttributes(path,
+													  ObjectBasicFileAttributes.class,
+													  LinkOption.NOFOLLOW_LINKS);
+			ObjectFlag.creationWhenFileExistingCheck(options, path);
+			var bucketName = path.getFileSystem().bucketName();
+			result = new BucketWritableByteChannel(connector, bucketName, fileAttributes);
+		}
+		catch (NoSuchFileException x)
+		{
+			ObjectFlag.creationWhenFileNotFoundCheck(options, path);
+			result = new BucketWritableByteChannel(connector, path);
+		}
+		return result;
 	}
 
 	private Void internalClose(Closeable closeable) throws IOException

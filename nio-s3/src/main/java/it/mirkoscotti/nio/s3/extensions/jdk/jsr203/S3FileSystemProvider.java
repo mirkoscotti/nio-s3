@@ -2,6 +2,7 @@ package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.enums.ObjectAccess;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 import it.mirkoscotti.nio.s3.records.ConnectorRecord;
@@ -19,6 +20,7 @@ import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
@@ -230,8 +233,25 @@ public class S3FileSystemProvider
 	@Override
 	public void checkAccess(Path path, AccessMode... modes) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		if (path instanceof BucketPath bucketPath)
+		{
+			var connector = bucketPath.getFileSystem().connector();
+			var fileStore = bucketPath.getFileSystem().getFileStores().iterator().next();
+			var bucketName = fileStore.name();
+			var objectKey = bucketPath.toString();
+			try
+			{
+				connector.objectMetadata(bucketName, objectKey);
+			}
+			catch (NoSuchKeyException x)
+			{
+				var message = "File not found and not creatable: ".concat(x.getMessage());
+				throw new NoSuchFileException(path.toString(), null, message);
+			}
+			ObjectAccess.check(connector, bucketName, objectKey, modes);
+			return;
+		}
+		throw invalidPath(path);
 	}
 
 	@Override

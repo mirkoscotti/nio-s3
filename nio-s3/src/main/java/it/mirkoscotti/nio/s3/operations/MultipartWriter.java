@@ -2,6 +2,7 @@ package it.mirkoscotti.nio.s3.operations;
 
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
 
 import java.io.Closeable;
 import java.lang.System.Logger;
@@ -52,11 +53,12 @@ public final class MultipartWriter
 	/**
 	 * @param client
 	 */
-	private MultipartWriter(S3AsyncClient client, String bucket, String key)
+	public MultipartWriter(OperationRecord operationRecord)
 	{
-		this.client = Objects.requireNonNull(client, () -> "Missing client");
-		this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket");
-		this.key = Objects.requireNonNull(key, () -> "Missing key");
+		Objects.requireNonNull(operationRecord, () -> "Missing operation specifications.");
+		client = Objects.requireNonNull(operationRecord.client(), () -> "Missing client.");
+		bucket = Objects.requireNonNull(operationRecord.bucket(), () -> "Missing bucket.");
+		key = Objects.requireNonNull(operationRecord.key(), () -> "Missing key.");
 		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::redirectException).get();
 	}
 
@@ -71,11 +73,6 @@ public final class MultipartWriter
 		parts.add(Try.to(() -> createCompletedPart(buffer))
 					 .onCatch(ExceptionsHelper::redirectException)
 					 .get());
-	}
-
-	public static MultipartWriterBuilder create()
-	{
-		return new MultipartWriterBuilder();
 	}
 
 	private String createUploadId()
@@ -158,43 +155,5 @@ public final class MultipartWriter
 	private void createAbortMultipartRequest(AbortMultipartUploadRequest.Builder builder)
 	{
 		builder.bucket(bucket).key(key).uploadId(uploadId);
-	}
-
-	public static final class MultipartWriterBuilder
-	{
-
-		private S3AsyncClient client;
-
-		private String bucket;
-
-		private String key;
-
-		private MultipartWriterBuilder()
-		{
-			super();
-		}
-
-		public MultipartWriterBuilder withClient(S3AsyncClient client)
-		{
-			this.client = client;
-			return this;
-		}
-
-		public MultipartWriterBuilder withBucket(String bucket)
-		{
-			this.bucket = bucket;
-			return this;
-		}
-
-		public MultipartWriterBuilder withKey(String key)
-		{
-			this.key = key;
-			return this;
-		}
-
-		public MultipartWriter start()
-		{
-			return new MultipartWriter(client, bucket, key);
-		}
 	}
 }

@@ -137,6 +137,11 @@ class BucketFileSystem
 			&& Objects.equals(fileStore, other.fileStore);
 	}
 
+	String bucketName()
+	{
+		return fileStore.name();
+	}
+
 	/**
 	 * The wrapper method of the {@link #connector} property.
 	 *

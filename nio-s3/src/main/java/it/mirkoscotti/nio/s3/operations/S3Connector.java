@@ -6,6 +6,7 @@ import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
 import java.io.Closeable;
@@ -172,11 +173,14 @@ public final class S3Connector
 
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
-		return MultipartWriter.create()
-							  .withClient(client)
-							  .withBucket(bucketName)
-							  .withKey(key)
-							  .start();
+		var operationRecord = new OperationRecord(client, bucketName, key);
+		return new MultipartWriter(operationRecord);
+	}
+
+	public PolicyChecker startPolicyCheck(String bucketName, String key)
+	{
+		var operationRecord = new OperationRecord(client, bucketName, key);
+		return new PolicyChecker(operationRecord);
 	}
 
 	public static S3ConnectorBuilder create()

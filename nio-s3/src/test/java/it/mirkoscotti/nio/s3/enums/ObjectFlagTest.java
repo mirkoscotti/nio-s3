@@ -1,12 +1,6 @@
 package it.mirkoscotti.nio.s3.enums;
 
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -15,7 +9,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
@@ -113,42 +106,5 @@ class ObjectFlagTest
 		Assertions.assertDoesNotThrow(() -> ObjectFlag.appendTruncateCheck(Set.of()));
 		Assertions.assertDoesNotThrow(() -> ObjectFlag.appendTruncateCheck(Set.of(StandardOpenOption.APPEND)));
 		Assertions.assertDoesNotThrow(() -> ObjectFlag.appendTruncateCheck(Set.of(StandardOpenOption.TRUNCATE_EXISTING)));
-	}
-
-	@Test
-	void notCreatableTruncateCheckTest(@Mock BucketPath path)
-	{
-		var set = Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.TRUNCATE_EXISTING);
-		try (var mock = Mockito.mockStatic(Files.class))
-		{
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
-			Assertions.assertThrows(IllegalArgumentException.class,
-									() -> ObjectFlag.truncateCheck(path, set));
-		}
-	}
-
-	@Test
-	void truncateCheckTest(@Mock BucketPath path)
-	{
-		Assertions.assertDoesNotThrow(() -> ObjectFlag.truncateCheck(path, Set.of()));
-	}
-
-	@Test
-	void createExistingFileCheckTest(@Mock BucketPath path)
-	{
-		var set = Set.of(StandardOpenOption.CREATE_NEW);
-		try (var mock = Mockito.mockStatic(Files.class))
-		{
-			mock.when(() -> Files.exists(Mockito.any(Path.class), Mockito.any(LinkOption.class)))
-				.thenReturn(true);
-			Assertions.assertThrows(FileAlreadyExistsException.class,
-									() -> ObjectFlag.createCheck(path, set));
-		}
-	}
-
-	@Test
-	void notCreatableTruncatableCheckTest(@Mock BucketPath path)
-	{
-		Assertions.assertDoesNotThrow(() -> ObjectFlag.createCheck(path, Set.of()));
 	}
 }

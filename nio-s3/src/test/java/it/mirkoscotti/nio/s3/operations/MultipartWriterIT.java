@@ -3,6 +3,7 @@ package it.mirkoscotti.nio.s3.operations;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -69,11 +70,8 @@ class MultipartWriterIT
 	@Test
 	void multipartUploadWithoutPartsTest()
 	{
-		try (var writer = MultipartWriter.create()
-										 .withClient(client)
-										 .withBucket(TEST_BUCKET)
-										 .withKey(TEST_KEY)
-										 .start())
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
 		{
 			var uploadId = JunitHelper.findFieldValueByName(writer, "uploadId", String.class);
 			Assertions.assertNotNull(uploadId);
@@ -84,11 +82,8 @@ class MultipartWriterIT
 	void multipartSingleUploadTest()
 	{
 		var test = "test";
-		try (var writer = MultipartWriter.create()
-										 .withClient(client)
-										 .withBucket(TEST_BUCKET)
-										 .withKey(TEST_KEY)
-										 .start())
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
 		{
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
 		}
@@ -106,11 +101,8 @@ class MultipartWriterIT
 		var part = Stream.generate(() -> test)
 						 .limit(5 * 1024 * 1024 / test.length())
 						 .collect(Collectors.joining());
-		try (var writer = MultipartWriter.create()
-										 .withClient(client)
-										 .withBucket(TEST_BUCKET)
-										 .withKey(TEST_KEY)
-										 .start())
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
 		{
 			writer.write(part.getBytes(StandardCharsets.UTF_8));
 			writer.write(test.getBytes(StandardCharsets.UTF_8));

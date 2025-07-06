@@ -32,7 +32,7 @@ public final class IoHelper
 		return file;
 	}
 
-	public static void createNotEmptyFile(Path file, long size) throws IOException
+	public static Void createNotEmptyFile(Path file, long size) throws IOException
 	{
 		try (var writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW))
 		{
@@ -43,6 +43,7 @@ public final class IoHelper
 		{
 			Assertions.fail(x);
 		}
+		return null;
 	}
 
 	private static long updateCounter(AtomicLong counter, BufferedWriter writer, int rowIndex)

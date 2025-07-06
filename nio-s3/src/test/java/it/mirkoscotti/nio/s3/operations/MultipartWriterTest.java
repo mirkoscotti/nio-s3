@@ -1,9 +1,12 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import it.mirkoscotti.nio.s3.records.OperationRecord;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -18,27 +21,33 @@ class MultipartWriterTest
 
 	private static final String BUCKET = "bucket";
 
-	@Mock
-	private S3AsyncClient client;
-
 	@Test
-	void writerWithoutClientTest()
+	void nullTest()
 	{
-		var writer = MultipartWriter.create();
-		Assertions.assertThrows(NullPointerException.class, writer::start);
+		Assertions.assertThrows(NullPointerException.class, () -> new MultipartWriter(null));
 	}
 
 	@Test
-	void writerWithoutBucketTest(@Mock S3AsyncClient client)
+	void writerWithoutClientTest(@Mock OperationRecord operationRecord)
 	{
-		var writer = MultipartWriter.create().withClient(client);
-		Assertions.assertThrows(NullPointerException.class, writer::start);
+		Assertions.assertThrows(NullPointerException.class,
+								() -> new MultipartWriter(operationRecord));
 	}
 
 	@Test
-	void writerWithoutKeyTest()
+	void writerWithoutBucketTest(@Mock OperationRecord operationRecord, @Mock S3AsyncClient client)
 	{
-		var writer = MultipartWriter.create().withClient(client).withBucket(BUCKET);
-		Assertions.assertThrows(NullPointerException.class, writer::start);
+		Mockito.when(operationRecord.client()).thenReturn(client);
+		Assertions.assertThrows(NullPointerException.class,
+								() -> new MultipartWriter(operationRecord));
+	}
+
+	@Test
+	void writerWithoutKeyTest(@Mock OperationRecord operationRecord, @Mock S3AsyncClient client)
+	{
+		Mockito.when(operationRecord.client()).thenReturn(client);
+		Mockito.when(operationRecord.bucket()).thenReturn(BUCKET);
+		Assertions.assertThrows(NullPointerException.class,
+								() -> new MultipartWriter(operationRecord));
 	}
 }
