@@ -1,16 +1,12 @@
 package it.mirkoscotti.nio.s3.functions;
 
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.helpers.FunctionsHelper;
-import it.mirkoscotti.nio.s3.helpers.ReflectionHelper;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 /**
  * @author mirko.scotti
@@ -43,24 +39,6 @@ public class Try<T>
 	public Try<T> onCatch(Consumer<? super Exception> catchBlock)
 	{
 		this.catchBlock = Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
-		return this;
-	}
-
-	public Try<T> onCatchIgnore(Class<?>... exceptions)
-	{
-		catchBlock = item -> Stream.ofNullable(exceptions)
-								   .flatMap(Stream::of)
-								   .filter(ReflectionHelper.isAssignableFrom(item.getClass()))
-								   .findAny()
-								   .ifPresentOrElse(FunctionsHelper::doNothing,
-													() -> ExceptionsHelper.sneakyThrow(item));
-		return this;
-	}
-
-	public Try<T> onCatchThrow(Function<? super Exception, ? extends RuntimeException> catchBlock)
-	{
-		Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
-		this.catchBlock = item -> ExceptionsHelper.sneakyThrow(catchBlock.apply(item));
 		return this;
 	}
 

@@ -1,14 +1,5 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
-import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
-import it.mirkoscotti.nio.s3.records.PolicyRecord;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.System.Logger;
@@ -29,6 +20,16 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
+import it.mirkoscotti.nio.s3.records.PolicyRecord;
+
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.BytesWrapper;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -177,12 +178,6 @@ public final class S3Connector
 		return new MultipartWriter(operationRecord);
 	}
 
-	public PolicyChecker startPolicyCheck(String bucketName, String key)
-	{
-		var operationRecord = new OperationRecord(client, bucketName, key);
-		return new PolicyChecker(operationRecord);
-	}
-
 	public static S3ConnectorBuilder create()
 	{
 		return new S3ConnectorBuilder();
@@ -305,12 +300,6 @@ public final class S3Connector
 		public S3ConnectorBuilder withRegion(String region)
 		{
 			Optional.ofNullable(region).map(Region::of).ifPresent(builder::region);
-			return this;
-		}
-
-		public S3ConnectorBuilder withRegion(Region region)
-		{
-			Optional.ofNullable(region).ifPresent(builder::region);
 			return this;
 		}
 
