@@ -73,8 +73,8 @@ class BucketSeekableByteChannel
 	@Override
 	public void close() throws IOException
 	{
-		readableByteChannel.ifPresent(item -> Try.to(() -> internalClose(item)).run());
-		writableByteChannel.ifPresent(item -> Try.to(() -> internalClose(item)).run());
+		readableByteChannel.ifPresent(item -> Try.to(() -> close(item)).run());
+		writableByteChannel.ifPresent(item -> Try.to(() -> close(item)).run());
 	}
 
 	@Override
@@ -154,7 +154,7 @@ class BucketSeekableByteChannel
 		return result;
 	}
 
-	private Void internalClose(Closeable closeable) throws IOException
+	private Void close(Closeable closeable) throws IOException
 	{
 		closeable.close();
 		return null;

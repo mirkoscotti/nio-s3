@@ -1,14 +1,14 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Objects;
+
+import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -49,14 +49,14 @@ public class ObjectBasicFileAttributeView
 		{
 			return connector.objectMetadata(bucketName, objectKey);
 		}
+		catch (NoSuchKeyException x)
+		{
+			var reason = x.awsErrorDetails().errorMessage();
+			var message = "Bucket: %s, Key: %s (%s)".formatted(bucketName, objectKey, reason);
+			throw new NoSuchFileException(message);
+		}
 		catch (S3Exception x)
 		{
-			if (x instanceof NoSuchKeyException exception)
-			{
-				var reason = exception.awsErrorDetails().errorMessage();
-				var message = "Bucket: %s, Key: %s (%s)".formatted(bucketName, objectKey, reason);
-				throw new FileNotFoundException(message);
-			}
 			throw x;
 		}
 	}

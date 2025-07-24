@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
-
 import java.io.Closeable;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
@@ -15,6 +11,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -26,6 +27,8 @@ import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.InvalidRequestException;
 import software.amazon.awssdk.services.s3.model.NoSuchUploadException;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
 /**
@@ -41,6 +44,8 @@ public final class MultipartWriter
 	private final List<CompletedPart> parts = new ArrayList<>();
 
 	private final AtomicInteger partNumber = new AtomicInteger();
+
+	private final List<Long> bytesWritten = new ArrayList<>();
 
 	private final S3AsyncClient client;
 
@@ -75,6 +80,18 @@ public final class MultipartWriter
 					 .get());
 	}
 
+	public void copy(long from, long to)
+	{
+		parts.add(Try.to(() -> createCompletedPart(from, to))
+					 .onCatch(ExceptionsHelper::redirectException)
+					 .get());
+	}
+
+	public long bytesWritten()
+	{
+		return bytesWritten.stream().collect(Collectors.summingLong(Long::longValue));
+	}
+
 	private String createUploadId()
 		throws TimeoutException,
 			ExecutionException,
@@ -91,13 +108,36 @@ public final class MultipartWriter
 			InterruptedException
 	{
 		var part = partNumber.incrementAndGet();
-		return client.uploadPart(item -> createUploadRequest(item, part),
-								 AsyncRequestBody.fromBytes(buffer))
-					 .thenApply(item -> CompletedPart.builder()
-													 .eTag(item.eTag())
-													 .checksumSHA256(item.checksumSHA256()))
-					 .thenApply(item -> item.partNumber(part).build())
+		var result = client.uploadPart(item -> createUploadRequest(item, part),
+									   AsyncRequestBody.fromBytes(buffer))
+						   .thenApply(item -> CompletedPart.builder()
+														   .eTag(item.eTag())
+														   .partNumber(part)
+														   .checksumSHA256(item.checksumSHA256())
+														   .build())
+						   .get(30, TimeUnit.SECONDS);
+		bytesWritten.add((long) buffer.length);
+		return result;
+	}
+
+	private CompletedPart createCompletedPart(long from, long to)
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
+	{
+		return client.uploadPartCopy(item -> createUploadCopyRequest(item, from, to))
+					 .thenApply(this::createCompletedPart)
 					 .get(30, TimeUnit.SECONDS);
+	}
+
+	private CompletedPart createCompletedPart(UploadPartCopyResponse response)
+	{
+		var copyPartResult = response.copyPartResult();
+		return CompletedPart.builder()
+							.partNumber(partNumber.get())
+							.eTag(copyPartResult.eTag())
+							.checksumSHA256(copyPartResult.checksumSHA256())
+							.build();
 	}
 
 	private Void completeUpload() throws TimeoutException, ExecutionException, InterruptedException
@@ -141,6 +181,18 @@ public final class MultipartWriter
 			   .uploadId(uploadId)
 			   .partNumber(part)
 			   .checksumAlgorithm(ChecksumAlgorithm.SHA256);
+	}
+
+	private void createUploadCopyRequest(UploadPartCopyRequest.Builder builder, long from, long to)
+	{
+		var range = "bytes=%d-%d".formatted(from, to);
+		builder.sourceBucket(bucket)
+			   .sourceKey(key)
+			   .destinationBucket(bucket)
+			   .destinationKey(key)
+			   .copySourceRange(range)
+			   .uploadId(uploadId)
+			   .partNumber(partNumber.incrementAndGet());
 	}
 
 	private void createCompleteMultipartRequest(CompleteMultipartUploadRequest.Builder builder)

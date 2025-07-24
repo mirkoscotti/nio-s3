@@ -1,8 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.testcontainers;
 
-import it.mirkoscotti.nio.s3.records.ObjectAttributes;
-import it.mirkoscotti.nio.s3.records.ObjectParts;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,12 +9,16 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.SequencedMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import jakarta.json.bind.JsonbBuilder;
 
 import org.junit.jupiter.api.Assertions;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -25,7 +26,8 @@ import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
-import jakarta.json.bind.JsonbBuilder;
+import it.mirkoscotti.nio.s3.records.ObjectAttributes;
+import it.mirkoscotti.nio.s3.records.ObjectParts;
 
 /**
  * @author mirko.scotti
@@ -37,7 +39,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:latest".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.6.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -100,7 +102,7 @@ public class S3Container
 
 	private static final String GET_OBJECT_COMMAND = "awslocal s3api get-object --bucket %s --key %s %s";
 
-	private static final String GET_OBJECT_ATTRIBUTES_COMMAND = "awslocal s3api get-object-attributes --bucket %s --key %s --max-parts 1000 --object-attributes %s %s";
+	private static final String GET_OBJECT_ATTRIBUTES_COMMAND = "awslocal s3api get-object-attributes --bucket %s --key %s --object-attributes Checksum ObjectSize ObjectParts";
 
 	private static final String LIST_OBJECTS_COMMAND = "awslocal s3api list-objects-v2 --bucket %s --query Contents[*].Key --output text";
 
@@ -448,11 +450,10 @@ public class S3Container
 		return result;
 	}
 
-	public List<String> checksum(String bucketName, String key)
+	public SequencedMap<String, Long> checksum(String bucketName, String key)
 	{
-		var result = new ArrayList<String>();
-		Object[] array = {bucketName, key, "Checksum", "ObjectParts"};
-		var command = GET_OBJECT_ATTRIBUTES_COMMAND.formatted(array);
+		var result = new LinkedHashMap<String, Long>();
+		var command = GET_OBJECT_ATTRIBUTES_COMMAND.formatted(bucketName, key);
 		try (var jsonb = JsonbBuilder.create())
 		{
 			var output = execInContainer("sh", "-c", command);
@@ -463,8 +464,8 @@ public class S3Container
 					.map(ObjectParts::parts)
 					.stream()
 					.flatMap(List::stream)
-					.forEach(item -> result.add(item.checksumSha256()));
-			result.add(attributes.checksum().checksumSha256());
+					.forEach(item -> result.put(item.checksumSha256(), item.size()));
+			result.put(attributes.checksum().checksumSha256(), attributes.objectSize());
 		}
 		catch (InterruptedException x)
 		{

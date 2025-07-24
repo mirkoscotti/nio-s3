@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.enums;
 
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
@@ -11,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 
 /**
  * @author mirko.scotti
@@ -94,7 +94,7 @@ public enum ObjectFlag
 		throws IOException
 	{
 		return Optional.of(options)
-					   .filter(IS_CREATABLE::matches)
+					   .filter(Predicate.not(IS_CREATABLE::matches))
 					   .orElseThrow(() -> new FileAlreadyExistsException(path.toString()));
 	}
 }

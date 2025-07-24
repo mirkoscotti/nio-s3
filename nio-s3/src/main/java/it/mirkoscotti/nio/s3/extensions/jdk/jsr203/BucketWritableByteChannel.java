@@ -1,16 +1,15 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.operations.MultipartWriter;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.operations.MultipartWriter;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
@@ -24,8 +23,6 @@ class BucketWritableByteChannel
 
 	private final ByteBuffer buffer = ByteBuffer.allocate(MULTIPART_THRESHOLD + 1);
 
-	private final Optional<BasicFileAttributes> metadata;
-
 	private Optional<MultipartWriter> multipartWriter = Optional.empty();
 
 	private boolean isOpen = true;
@@ -35,6 +32,8 @@ class BucketWritableByteChannel
 	private final String bucket;
 
 	private final String key;
+
+	private final long oldFileSize;
 
 	/*
 	 * OpenOption behaviors:
@@ -52,21 +51,28 @@ class BucketWritableByteChannel
 	 */
 	BucketWritableByteChannel(S3Connector connector, BucketPath path)
 	{
-		this.connector = connector;
-		metadata = Optional.empty();
-		bucket = path.getFileSystem().bucketName();
-		key = path.toString();
+		this(connector, path.getFileSystem().bucketName(), path.toString(), 0);
 	}
 
 	BucketWritableByteChannel(S3Connector connector,
 							  String bucket,
 							  ObjectBasicFileAttributes attributes)
 	{
+		this(connector,
+			 bucket,
+			 attributes.fileKey(),
+			 Optional.of(attributes).map(item -> item.size()).orElse(0l));
+	}
+
+	private BucketWritableByteChannel(S3Connector connector,
+									  String bucket,
+									  String key,
+									  long oldFileSize)
+	{
 		this.connector = connector;
-		metadata = Optional.of(attributes);
 		this.bucket = bucket;
-		key = attributes.fileKey();
-		metadata.map(BasicFileAttributes::size);
+		this.key = key;
+		this.oldFileSize = oldFileSize;
 	}
 
 	@Override
@@ -78,16 +84,12 @@ class BucketWritableByteChannel
 	@Override
 	public void close() throws IOException
 	{
-		/*
-		 * TODO: implement these use cases:
-		 *
-		 * - FILE NOT EXISTING ON S3 => Do nothing and invoke directly flushBuffer
-		 *
-		 * - FILE EXISTING ON S3 AND MULTIPARTWRITER EMPTY => 1. GetObject from offset = number of
-		 * bytes in buffer and length = remaining bytes to fill the buffer and invoke write 2. If I
-		 * haven't finished to read the existing file
-		 */
-		flushBuffer();
+
+		var newFileSize = multipartWriter.map(item -> item.bytesWritten() + buffer.position())
+										 .orElseGet(() -> Long.valueOf(buffer.position()));
+		Optional.ofNullable(newFileSize)
+				.filter(item -> item < oldFileSize)
+				.ifPresentOrElse(this::partialOverwrite, this::flushBuffer);
 		isOpen = false;
 	}
 
@@ -127,6 +129,35 @@ class BucketWritableByteChannel
 		buffer.put(chunk);
 	}
 
+	private void partialOverwrite(long newFileSize)
+	{
+		if (oldFileSize > MULTIPART_THRESHOLD)
+		{
+			multipartOverwrite(newFileSize);
+		}
+		else
+		{
+			singlepartOverwrite(newFileSize);
+		}
+	}
+
+	private void singlepartOverwrite(long newFileSize)
+	{
+		var array = connector.readObject(bucket, key, newFileSize, oldFileSize - 1);
+		buffer.put(array);
+		flushBuffer();
+	}
+
+	private void multipartOverwrite(long newFileSize)
+	{
+		var remaining = buffer.remaining();
+		var startLastPart = newFileSize + remaining;
+		var array = connector.readObject(bucket, key, newFileSize, startLastPart - 1);
+		buffer.put(array);
+		flushBuffer();
+		multipartWriter.ifPresent(item -> copyAndClose(item, startLastPart - 1, oldFileSize - 1));
+	}
+
 	private void flushBuffer()
 	{
 		buffer.flip();
@@ -151,6 +182,15 @@ class BucketWritableByteChannel
 		try (var writer = multipartWriter)
 		{
 			writer.write(buffer);
+		}
+		this.multipartWriter = Optional.empty();
+	}
+
+	private void copyAndClose(MultipartWriter multipartWriter, long from, long to)
+	{
+		try (var writer = multipartWriter)
+		{
+			writer.copy(from, to);
 		}
 		this.multipartWriter = Optional.empty();
 	}

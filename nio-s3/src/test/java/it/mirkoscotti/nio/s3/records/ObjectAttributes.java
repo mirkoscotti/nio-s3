@@ -12,6 +12,7 @@ import jakarta.json.bind.annotation.JsonbProperty;
  * @version Jun 15, 2025
  */
 public record ObjectAttributes(@JsonbProperty("LastModified") String lastModified,
+							   @JsonbProperty("ObjectSize") long objectSize,
 							   @JsonbProperty("Checksum") Checksum checksum,
 							   @JsonbProperty("ObjectParts") ObjectParts objectParts)
 {
