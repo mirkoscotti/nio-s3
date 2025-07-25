@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.enums.ObjectFlag;
-import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,6 +17,10 @@ import java.nio.file.OpenOption;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+
+import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
@@ -136,7 +136,7 @@ class BucketSeekableByteChannel
 		throws IOException
 	{
 		BucketWritableByteChannel result;
-		ObjectFlag.appendTruncateCheck(options);
+		var objectFlag = ObjectFlag.appendTruncateCheck(options);
 		try
 		{
 			var fileAttributes = Files.readAttributes(path,
@@ -144,7 +144,10 @@ class BucketSeekableByteChannel
 													  LinkOption.NOFOLLOW_LINKS);
 			ObjectFlag.creationWhenFileExistingCheck(options, path);
 			var bucketName = path.getFileSystem().bucketName();
-			result = new BucketWritableByteChannel(connector, bucketName, fileAttributes);
+			result = new BucketWritableByteChannel(connector,
+												   bucketName,
+												   fileAttributes,
+												   objectFlag);
 		}
 		catch (NoSuchFileException x)
 		{

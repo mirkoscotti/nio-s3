@@ -5,6 +5,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -71,12 +72,14 @@ public enum ObjectFlag
 					   .orElseThrow(() -> new IllegalArgumentException("An S3 object cannot be accessed for both read and write operations."));
 	}
 
-	public static <T extends OpenOption> Set<T> appendTruncateCheck(Set<T> options)
+	public static Optional<ObjectFlag> appendTruncateCheck(Set<? extends OpenOption> options)
 	{
-		return Optional.of(options)
-					   .filter(Predicate.not(item -> IS_APPENDABLE.matches(item)
-						   && IS_TRUNCATABLE.matches(item)))
-					   .orElseThrow(() -> new IllegalArgumentException("An S3 object cannot be accessed for both append and truncate operations."));
+		var list = Optional.of(Stream.of(IS_TRUNCATABLE, IS_APPENDABLE)
+									 .filter(item -> item.matches(options))
+									 .toList())
+						   .filter(item -> item.size() < 2)
+						   .orElseThrow(() -> new IllegalArgumentException("An S3 object cannot be accessed for both append and truncate operations."));
+		return Optional.of(list).filter(Predicate.not(List::isEmpty)).map(item -> item.get(0));
 	}
 
 	public static <T extends OpenOption> Set<T> creationWhenFileNotFoundCheck(Set<T> options,

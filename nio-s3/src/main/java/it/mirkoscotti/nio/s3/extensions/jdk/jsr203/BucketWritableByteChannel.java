@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import it.mirkoscotti.nio.s3.enums.ObjectFlag;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
@@ -35,6 +36,8 @@ class BucketWritableByteChannel
 
 	private final long oldFileSize;
 
+	private final boolean isAppendable;
+
 	/*
 	 * OpenOption behaviors:
 	 *
@@ -51,28 +54,32 @@ class BucketWritableByteChannel
 	 */
 	BucketWritableByteChannel(S3Connector connector, BucketPath path)
 	{
-		this(connector, path.getFileSystem().bucketName(), path.toString(), 0);
+		this(connector, path.getFileSystem().bucketName(), path.toString(), 0, false);
 	}
 
 	BucketWritableByteChannel(S3Connector connector,
 							  String bucket,
-							  ObjectBasicFileAttributes attributes)
+							  ObjectBasicFileAttributes attributes,
+							  Optional<ObjectFlag> objectFlag)
 	{
 		this(connector,
 			 bucket,
 			 attributes.fileKey(),
-			 Optional.of(attributes).map(item -> item.size()).orElse(0l));
+			 objectFlag.filter(ObjectFlag.IS_TRUNCATABLE::equals).isEmpty() ? attributes.size() : 0,
+			 objectFlag.filter(ObjectFlag.IS_APPENDABLE::equals).isPresent());
 	}
 
 	private BucketWritableByteChannel(S3Connector connector,
 									  String bucket,
 									  String key,
-									  long oldFileSize)
+									  long oldFileSize,
+									  boolean isAppendable)
 	{
 		this.connector = connector;
 		this.bucket = bucket;
 		this.key = key;
 		this.oldFileSize = oldFileSize;
+		this.isAppendable = isAppendable;
 	}
 
 	@Override
