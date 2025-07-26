@@ -36,8 +36,6 @@ class BucketWritableByteChannel
 
 	private final long oldFileSize;
 
-	private final boolean isAppendable;
-
 	/*
 	 * OpenOption behaviors:
 	 *
@@ -79,7 +77,13 @@ class BucketWritableByteChannel
 		this.bucket = bucket;
 		this.key = key;
 		this.oldFileSize = oldFileSize;
-		this.isAppendable = isAppendable;
+		if (isAppendable)
+		{
+			Optional.of(oldFileSize)
+					.filter(item -> item > MULTIPART_THRESHOLD)
+					.ifPresentOrElse(item -> startMultipartUploadAndCopy(oldFileSize),
+									 () -> buffer.put(connector.readObject(bucket, key)));
+		}
 	}
 
 	@Override
@@ -172,8 +176,7 @@ class BucketWritableByteChannel
 		buffer.get(array);
 		if (buffer.hasRemaining())
 		{
-			multipartWriter = multipartWriter.or(() -> Optional.of(connector.startMultipartUpload(bucket,
-																								  key)));
+			startMultipartUpload();
 			multipartWriter.ifPresent(item -> item.write(array));
 		}
 		else
@@ -182,6 +185,18 @@ class BucketWritableByteChannel
 											() -> connector.writeObject(bucket, key, array));
 		}
 		buffer.compact();
+	}
+
+	private void startMultipartUpload()
+	{
+		multipartWriter = multipartWriter.or(() -> Optional.of(connector.startMultipartUpload(bucket,
+																							  key)));
+	}
+
+	private void startMultipartUploadAndCopy(long size)
+	{
+		startMultipartUpload();
+		multipartWriter.ifPresent(item -> item.copy(size));
 	}
 
 	private void writeAndClose(MultipartWriter multipartWriter, byte[] buffer)

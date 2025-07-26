@@ -80,6 +80,13 @@ public final class MultipartWriter
 					 .get());
 	}
 
+	public void copy(long size)
+	{
+		parts.add(Try.to(() -> createCompletedPart(size))
+					 .onCatch(ExceptionsHelper::redirectException)
+					 .get());
+	}
+
 	public void copy(long from, long to)
 	{
 		parts.add(Try.to(() -> createCompletedPart(from, to))
@@ -116,7 +123,19 @@ public final class MultipartWriter
 														   .checksumSHA256(item.checksumSHA256())
 														   .build())
 						   .get(30, TimeUnit.SECONDS);
-		bytesWritten.add((long) buffer.length);
+		bytesWritten.add(Long.valueOf(buffer.length));
+		return result;
+	}
+
+	private CompletedPart createCompletedPart(long size)
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
+	{
+		var result = client.uploadPartCopy(this::createUploadCopyRequest)
+						   .thenApply(this::createCompletedPart)
+						   .get(30, TimeUnit.SECONDS);
+		bytesWritten.add(size);
 		return result;
 	}
 
@@ -181,6 +200,16 @@ public final class MultipartWriter
 			   .uploadId(uploadId)
 			   .partNumber(part)
 			   .checksumAlgorithm(ChecksumAlgorithm.SHA256);
+	}
+
+	private void createUploadCopyRequest(UploadPartCopyRequest.Builder builder)
+	{
+		builder.sourceBucket(bucket)
+			   .sourceKey(key)
+			   .destinationBucket(bucket)
+			   .destinationKey(key)
+			   .uploadId(uploadId)
+			   .partNumber(partNumber.incrementAndGet());
 	}
 
 	private void createUploadCopyRequest(UploadPartCopyRequest.Builder builder, long from, long to)

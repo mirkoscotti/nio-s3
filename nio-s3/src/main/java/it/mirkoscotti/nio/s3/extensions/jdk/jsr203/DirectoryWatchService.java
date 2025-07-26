@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
@@ -16,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
@@ -58,7 +58,7 @@ public class DirectoryWatchService
 			events.clear();
 			if (!scheduler.awaitTermination(1, TimeUnit.SECONDS))
 			{
-				throw new IOException("Timeout nella chiusura dello scheduler");
+				throw new IOException("Timeout during the service shutdown.");
 			}
 		}
 		catch (InterruptedException x)

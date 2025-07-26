@@ -17,7 +17,7 @@
 		<maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
 		<jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>11.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.32.4</bom.version>
+		<bom.version>2.32.8</bom.version>
 		<aws-crt.version>0.38.7</aws-crt.version>
 		<junit-bom.version>5.13.4</junit-bom.version>
 		<mockito-bom.version>5.18.0</mockito-bom.version>

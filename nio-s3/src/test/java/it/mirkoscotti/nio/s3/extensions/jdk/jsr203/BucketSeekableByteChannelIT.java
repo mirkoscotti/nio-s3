@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -14,6 +15,7 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -302,6 +304,108 @@ class BucketSeekableByteChannelIT
 		Assertions.assertEquals(expected, result);
 	}
 
+	@Test
+	void singlepartAppendingToSinglepartFileTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, tinyFile);
+		JunitHelper.tryRun(() -> write(smallFile, StandardOpenOption.APPEND));
+		byte[] content;
+		try (var tinyStream = Files.newInputStream(tinyFile);
+			 var smallStream = Files.newInputStream(smallFile);
+			 var targetStream = new ByteArrayOutputStream())
+		{
+			targetStream.write(tinyStream.readAllBytes());
+			targetStream.write(smallStream.readAllBytes());
+			content = targetStream.toByteArray();
+		}
+		catch (IOException x)
+		{
+			content = Assertions.fail(x);
+		}
+		var array = Arrays.copyOf(content, content.length);
+		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
+		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void singlepartAppendingToMultipartFileTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		JunitHelper.tryRun(() -> write(tinyFile, StandardOpenOption.APPEND));
+		byte[] content;
+		try (var tinyStream = Files.newInputStream(tinyFile);
+			 var largeStream = Files.newInputStream(largeFile);
+			 var targetStream = new ByteArrayOutputStream())
+		{
+			targetStream.write(largeStream.readAllBytes());
+			targetStream.write(tinyStream.readAllBytes());
+			content = targetStream.toByteArray();
+		}
+		catch (IOException x)
+		{
+			content = Assertions.fail(x);
+		}
+		var array = Arrays.copyOf(content, content.length);
+		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
+		var newSize = JunitHelper.tryCall(() -> (int) Files.size(tinyFile));
+		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
+		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void multipartAppendingToSinglepartFileTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, tinyFile);
+		JunitHelper.tryRun(() -> write(largeFile, StandardOpenOption.APPEND));
+		byte[] content;
+		try (var tinyStream = Files.newInputStream(tinyFile);
+			 var largeStream = Files.newInputStream(largeFile);
+			 var targetStream = new ByteArrayOutputStream())
+		{
+			targetStream.write(tinyStream.readAllBytes());
+			targetStream.write(largeStream.readAllBytes());
+			content = targetStream.toByteArray();
+		}
+		catch (IOException x)
+		{
+			content = Assertions.fail(x);
+		}
+		var array = Arrays.copyOf(content, content.length);
+		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(tinyFile));
+		var newSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
+		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
+		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void multipartAppendingToMultipartFileTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		JunitHelper.tryRun(() -> write(hugeFile, StandardOpenOption.APPEND));
+		byte[] content;
+		try (var largeStream = Files.newInputStream(largeFile);
+			 var hugeStream = Files.newInputStream(hugeFile);
+			 var targetStream = new ByteArrayOutputStream())
+		{
+			targetStream.write(largeStream.readAllBytes());
+			targetStream.write(hugeStream.readAllBytes());
+			content = targetStream.toByteArray();
+		}
+		catch (IOException x)
+		{
+			content = Assertions.fail(x);
+		}
+		var array = Arrays.copyOf(content, content.length);
+		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
+		var newSize = JunitHelper.tryCall(() -> (int) Files.size(hugeFile));
+		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
+		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		Assertions.assertEquals(expected, result);
+	}
+
 	private Void write(Path file, StandardOpenOption... openOptions) throws IOException
 	{
 		var options = Stream.concat(Stream.of(StandardOpenOption.WRITE), Stream.of(openOptions))
@@ -316,17 +420,39 @@ class BucketSeekableByteChannelIT
 
 	private String singlepartChecksum(byte[] array) throws GeneralSecurityException
 	{
-		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
-		var digest = fileDigest.digest(array);
+		var messageDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
+		var digest = messageDigest.digest(array);
 		return Base64.getEncoder().encodeToString(digest);
 	}
 
 	private Map<String, Long> multipartChecksum(byte[] array, int size)
 		throws GeneralSecurityException
 	{
+		var map = partChecksums(array, size);
+		return multipartChecksum(array, map);
+	}
+
+	private Map<String, Long> multipartChecksum(byte[] array, int oldSize, int newSize)
+		throws GeneralSecurityException
+	{
+		var map = partChecksums(array, oldSize, newSize);
+		return multipartChecksum(array, map);
+	}
+
+	private Map<String, Long> multipartChecksum(byte[] array, Map<String, Long> partChecksums)
+		throws GeneralSecurityException
+	{
+		var messageDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
+		var result = new LinkedHashMap<>(partChecksums);
+		result.keySet().stream().map(Base64.getDecoder()::decode).forEach(messageDigest::update);
+		var digest = messageDigest.digest();
+		result.put(Base64.getEncoder().encodeToString(digest), (long) array.length);
+		return Collections.unmodifiableMap(result);
+	}
+
+	private Map<String, Long> partChecksums(byte[] array, int size) throws GeneralSecurityException
+	{
 		var result = new LinkedHashMap<String, Long>();
-		var fileDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
-		var partDigest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
 		try (var stream = new ByteArrayInputStream(array))
 		{
 			var bytesRead = 0;
@@ -334,29 +460,52 @@ class BucketSeekableByteChannelIT
 			{
 				var buffer = stream.readNBytes(PART_SIZE);
 				bytesRead += buffer.length;
-				partDigest.update(buffer);
-				var digest = partDigest.digest();
-				result.put(Base64.getEncoder().encodeToString(digest), Long.valueOf(buffer.length));
-				fileDigest.update(digest);
-				partDigest.reset();
+				result.put(singlepartChecksum(buffer), Long.valueOf(buffer.length));
 			}
 			var remaining = array.length - bytesRead;
 			if (remaining > 0)
 			{
 				var buffer = stream.readNBytes(remaining);
-				partDigest.update(buffer);
-				var digest = partDigest.digest();
-				result.put(Base64.getEncoder().encodeToString(digest), (long) remaining);
-				fileDigest.update(digest);
+				result.put(singlepartChecksum(buffer), Long.valueOf(remaining));
 			}
-			var digest = fileDigest.digest();
-			result.put(Base64.getEncoder().encodeToString(digest), (long) array.length);
 		}
 		catch (IOException x)
 		{
 			result = Assertions.fail(x);
 		}
-		return result;
+		return Collections.unmodifiableMap(result);
+	}
+
+	private Map<String, Long> partChecksums(byte[] array, int oldSize, int newSize)
+		throws GeneralSecurityException
+	{
+		var result = new LinkedHashMap<String, Long>();
+		var size = oldSize > PART_SIZE ? newSize : oldSize + newSize;
+		try (var stream = new ByteArrayInputStream(array))
+		{
+			var bufferLength = 0;
+			if (oldSize > PART_SIZE)
+			{
+				var buffer = stream.readNBytes(oldSize);
+				result.put(singlepartChecksum(buffer), Long.valueOf(buffer.length));
+				bufferLength += buffer.length;
+			}
+			var buffer = stream.readNBytes(array.length - bufferLength);
+			if (newSize > PART_SIZE)
+			{
+				var map = partChecksums(buffer, size);
+				result.putAll(map);
+			}
+			else
+			{
+				result.put(singlepartChecksum(buffer), Long.valueOf(size));
+			}
+		}
+		catch (IOException x)
+		{
+			result = Assertions.fail(x);
+		}
+		return Collections.unmodifiableMap(result);
 	}
 
 	private static Path createFile(String fileName, long size) throws IOException

@@ -147,6 +147,17 @@ public final class S3Connector
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 	}
 
+	public byte[] readObject(String bucketName, String key)
+	{
+		return Try.to(() -> client.getObject(item -> item.bucket(bucketName).key(key),
+											 AsyncResponseTransformer.toBytes())
+								  .thenApply(BytesWrapper::asByteArray)
+								  .exceptionally(ExceptionsHelper::redirectException)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(ExceptionsHelper::redirectException)
+				  .get();
+	}
+
 	public byte[] readObject(String bucketName, String key, long from, long to)
 	{
 		return Try.to(() -> client.getObject(item -> item.bucket(bucketName)
