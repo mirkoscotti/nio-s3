@@ -149,47 +149,47 @@ class BucketFileStoreTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToNullTest()
 	{
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
-		Assertions.assertFalse(fileStore.equals(null));
+		var result = fileStore.equals(null);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToDifferentFileStoreTest(@Mock FileStore otherFileStore)
 	{
 
 		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
-		Assertions.assertFalse(fileStore.equals(otherFileStore));
+		var result = fileStore.equals(otherFileStore);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToFileStoreWithDifferentConnectorTest(@Mock S3Connector connector)
 	{
 		var fileStore1 = new BucketFileStore(this.connector, BUCKET_NAME);
 		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
-		Assertions.assertFalse(fileStore1.equals(fileStore2));
+		var result = fileStore1.equals(fileStore2);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToFileStoreWithDifferentBucketNameTest()
 	{
 		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
 		var fileStore2 = new BucketFileStore(connector, OTHER_BUCKET);
-		Assertions.assertFalse(fileStore1.equals(fileStore2));
+		var result = fileStore1.equals(fileStore2);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsTest()
 	{
 		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
 		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
-		Assertions.assertTrue(fileStore1.equals(fileStore2));
+		var result = fileStore1.equals(fileStore2);
+		Assertions.assertTrue(result);
 	}
 
 	private void initializeBucketFileStoreAttributeView(BucketFileStoreAttributeView view,

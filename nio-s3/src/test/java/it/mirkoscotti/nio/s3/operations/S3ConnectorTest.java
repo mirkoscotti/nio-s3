@@ -1,13 +1,15 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+
+import jakarta.json.bind.Jsonb;
+import jakarta.json.bind.JsonbBuilder;
+import jakarta.json.bind.JsonbException;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -17,9 +19,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.OngoingStubbing;
 
-import jakarta.json.bind.Jsonb;
-import jakarta.json.bind.JsonbBuilder;
-import jakarta.json.bind.JsonbException;
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.crt.CrtRuntimeException;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -92,7 +93,6 @@ class S3ConnectorTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToNullTest(@Mock S3CrtAsyncClientBuilder builder, @Mock S3CrtAsyncClient client)
 	{
 		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
@@ -101,12 +101,12 @@ class S3ConnectorTest
 		{
 			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
 			var connector = S3Connector.create().build();
-			Assertions.assertFalse(connector.equals(null));
+			var result = connector.equals(null);
+			Assertions.assertFalse(result);
 		}
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToDifferentObjectTest(@Mock S3CrtAsyncClientBuilder builder,
 									 @Mock S3CrtAsyncClient client,
 									 @Mock Object object)
@@ -117,12 +117,12 @@ class S3ConnectorTest
 		{
 			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
 			var connector = S3Connector.create().build();
-			Assertions.assertFalse(connector.equals(object));
+			var result = connector.equals(object);
+			Assertions.assertFalse(result);
 		}
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToConnectorWithDifferentClientTest(@Mock S3CrtAsyncClientBuilder builder,
 												  @Mock S3CrtAsyncClient client1,
 												  @Mock S3CrtAsyncClient client2)
@@ -134,12 +134,12 @@ class S3ConnectorTest
 			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
 			var connector1 = S3Connector.create().build();
 			var connector2 = S3Connector.create().build();
-			Assertions.assertFalse(connector1.equals(connector2));
+			var result = connector1.equals(connector2);
+			Assertions.assertFalse(result);
 		}
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsTest(@Mock S3CrtAsyncClientBuilder builder, @Mock S3CrtAsyncClient client)
 	{
 		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
@@ -149,7 +149,8 @@ class S3ConnectorTest
 			mock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
 			var connector1 = S3Connector.create().build();
 			var connector2 = S3Connector.create().build();
-			Assertions.assertTrue(connector1.equals(connector2));
+			var result = connector1.equals(connector2);
+			Assertions.assertTrue(result);
 		}
 	}
 
