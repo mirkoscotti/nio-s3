@@ -92,29 +92,36 @@ class BucketSeekableByteChannel
 	@Override
 	public long position() throws IOException
 	{
-		// TODO Auto-generated method stub
-		return 0;
+		// TODO
+		// Return UnsupportedOperationException when the channel is closed or it is writable.
+		// Return the internal readable channel's position if it is readable.
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public SeekableByteChannel position(long newPosition) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		// TODO
+		// Return UnsupportedOperationException when the channel is closed or it is writable.
+		// Delegate setting to the internal readable? To be analyzed...
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public long size() throws IOException
 	{
-		// TODO Auto-generated method stub
-		return 0;
+		// TODO
+		// Return UnsupportedOperationException when the channel is closed or it is writable.
+		// Return the size of the S3 object when the channel is open and readable.
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public SeekableByteChannel truncate(long size) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		// TODO
+		// Evaluate a partial support limited to singlepart objects.
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	private Optional<ReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)
