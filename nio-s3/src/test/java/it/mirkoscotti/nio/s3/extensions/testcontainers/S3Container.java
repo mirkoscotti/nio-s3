@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
 import jakarta.json.bind.JsonbBuilder;
 
 import org.junit.jupiter.api.Assertions;
-import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -39,7 +39,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.6.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.10.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -117,7 +117,7 @@ public class S3Container
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
-		withServices(Service.S3);
+		withServices("s3");
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 

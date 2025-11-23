@@ -1,10 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.nio.file.FileStore;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
@@ -18,6 +13,11 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
