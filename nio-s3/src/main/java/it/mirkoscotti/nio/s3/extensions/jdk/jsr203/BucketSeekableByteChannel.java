@@ -6,9 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
@@ -34,9 +32,9 @@ class BucketSeekableByteChannel
 
 	private final BucketPath path;
 
-	private final Optional<ReadableByteChannel> readableByteChannel;
+	private final Optional<BucketReadableByteChannel> readableByteChannel;
 
-	private final Optional<WritableByteChannel> writableByteChannel;
+	private final Optional<BucketWritableByteChannel> writableByteChannel;
 
 	/**
 	 * @param connector
@@ -92,46 +90,53 @@ class BucketSeekableByteChannel
 	@Override
 	public long position() throws IOException
 	{
-		// TODO
-		// Return UnsupportedOperationException when the channel is closed or it is writable.
-		// Return the internal readable channel's position if it is readable.
-		throw new UnsupportedOperationException("Not supported yet.");
+		if (readableByteChannel.isPresent())
+		{
+			return readableByteChannel.get().position();
+		}
+		throw new UnsupportedOperationException("Position is available only when channel is open for read.");
 	}
 
 	@Override
 	public SeekableByteChannel position(long newPosition) throws IOException
 	{
-		// TODO
-		// Return UnsupportedOperationException when the channel is closed or it is writable.
-		// Delegate setting to the internal readable? To be analyzed...
-		throw new UnsupportedOperationException("Not supported yet.");
+		if (writableByteChannel.isPresent())
+		{
+			throw new UnsupportedOperationException("Channel must be open for read to set position.");
+		}
+		readableByteChannel.get().position(newPosition);
+		return this;
 	}
 
 	@Override
 	public long size() throws IOException
 	{
-		// TODO
-		// Return UnsupportedOperationException when the channel is closed or it is writable.
-		// Return the size of the S3 object when the channel is open and readable.
-		throw new UnsupportedOperationException("Not supported yet.");
+		if (readableByteChannel.isPresent())
+		{
+			return readableByteChannel.get().size();
+		}
+		throw new UnsupportedOperationException("Size is available only when channel is open for read.");
 	}
 
 	@Override
 	public SeekableByteChannel truncate(long size) throws IOException
 	{
-		// TODO
-		// Evaluate a partial support limited to singlepart objects.
-		throw new UnsupportedOperationException("Not supported yet.");
+		if (readableByteChannel.isPresent())
+		{
+			throw new NonWritableChannelException();
+		}
+		writableByteChannel.get().truncate(size);
+		return this;
 	}
 
-	private Optional<ReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)
+	private Optional<BucketReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)
 	{
 		return ObjectFlag.IS_READABLE.matches(options)
 			? Optional.of(new BucketReadableByteChannel(connector, path))
 			: Optional.empty();
 	}
 
-	private Optional<WritableByteChannel> createWritableByteChannel(Set<? extends OpenOption> options)
+	private Optional<BucketWritableByteChannel> createWritableByteChannel(Set<? extends OpenOption> options)
 		throws IOException
 	{
 		return ObjectFlag.IS_WRITABLE.matches(options)

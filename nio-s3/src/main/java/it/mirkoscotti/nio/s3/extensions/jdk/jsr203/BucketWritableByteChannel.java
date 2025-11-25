@@ -113,6 +113,21 @@ class BucketWritableByteChannel
 					   .orElseThrow(ClosedChannelException::new);
 	}
 
+	void truncate(long size) throws ClosedChannelException
+	{
+		if (!isOpen)
+		{
+			throw new ClosedChannelException();
+		}
+		if (size < 0)
+		{
+			throw new IllegalArgumentException("Size must not be negative.");
+		}
+		// TODO: manage truncation for single-part files
+		var message = "Truncation not supported yet. Requested to truncate at % bytes.".formatted(size);
+		throw new UnsupportedOperationException(message);
+	}
+
 	private int writeBuffer(ByteBuffer input)
 	{
 		var position = input.position();

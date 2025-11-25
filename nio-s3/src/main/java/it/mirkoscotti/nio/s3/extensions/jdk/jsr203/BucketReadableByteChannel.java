@@ -1,12 +1,12 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Optional;
+
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
@@ -55,6 +55,36 @@ class BucketReadableByteChannel
 					   .filter(item -> item.isOpen)
 					   .map(item -> item.position < item.size ? readRemaining(dst) : -1)
 					   .orElseThrow(ClosedChannelException::new);
+	}
+
+	long position() throws ClosedChannelException
+	{
+		return Optional.of(this)
+					   .filter(item -> item.isOpen)
+					   .map(item -> item.position)
+					   .orElseThrow(ClosedChannelException::new);
+	}
+
+	long size() throws ClosedChannelException
+	{
+		return Optional.of(this)
+					   .filter(item -> item.isOpen)
+					   .map(item -> item.connector.objectMetadata(item.bucket, item.key))
+					   .map(item -> item.size())
+					   .orElseThrow(ClosedChannelException::new);
+	}
+
+	void position(long position) throws ClosedChannelException
+	{
+		if (!isOpen)
+		{
+			throw new ClosedChannelException();
+		}
+		if (position < 0)
+		{
+			throw new IllegalArgumentException("Position must not be negative.");
+		}
+		this.position = position;
 	}
 
 	private int readRemaining(ByteBuffer buffer)
