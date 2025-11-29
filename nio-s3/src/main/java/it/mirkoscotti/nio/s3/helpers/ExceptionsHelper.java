@@ -23,7 +23,7 @@ public final class ExceptionsHelper
 		return null;
 	}
 
-	public static <X extends RuntimeException> Void sneakyThrow(X exception)
+	public static <T, X extends RuntimeException> T sneakyThrow(X exception)
 	{
 		throw exception;
 	}

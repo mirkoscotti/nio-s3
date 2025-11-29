@@ -15,6 +15,7 @@ import java.nio.file.OpenOption;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
 import it.mirkoscotti.nio.s3.functions.Try;
@@ -71,8 +72,18 @@ class BucketSeekableByteChannel
 	@Override
 	public void close() throws IOException
 	{
-		readableByteChannel.ifPresent(item -> Try.to(() -> close(item)).run());
-		writableByteChannel.ifPresent(item -> Try.to(() -> close(item)).run());
+		var readable = readableByteChannel.map(this::tryClose);
+		var writable = writableByteChannel.map(this::tryClose);
+		var exception = readable.orElseGet(() -> writable.orElse(null));
+		if (exception != null)
+		{
+			switch (exception)
+			{
+				case IOException x -> throw x;
+				case RuntimeException x -> throw x;
+				default -> throw new IllegalStateException(exception);
+			}
+		}
 	}
 
 	@Override
@@ -90,42 +101,29 @@ class BucketSeekableByteChannel
 	@Override
 	public long position() throws IOException
 	{
-		if (readableByteChannel.isPresent())
-		{
-			return readableByteChannel.get().position();
-		}
-		throw new UnsupportedOperationException("Position is available only when channel is open for read.");
+		return readableByteChannel.orElseThrow(() -> new UnsupportedOperationException("Position is available only when channel is open for read."))
+								  .position();
 	}
 
 	@Override
 	public SeekableByteChannel position(long newPosition) throws IOException
 	{
-		if (writableByteChannel.isPresent())
-		{
-			throw new UnsupportedOperationException("Channel must be open for read to set position.");
-		}
-		readableByteChannel.get().position(newPosition);
+		readableByteChannel.orElseThrow(() -> new UnsupportedOperationException("Position can be set only when channel is open for read."))
+						   .position(newPosition);
 		return this;
 	}
 
 	@Override
 	public long size() throws IOException
 	{
-		if (readableByteChannel.isPresent())
-		{
-			return readableByteChannel.get().size();
-		}
-		throw new UnsupportedOperationException("Size is available only when channel is open for read.");
+		return readableByteChannel.orElseThrow(() -> new UnsupportedOperationException("Size is available only when channel is open for read."))
+								  .size();
 	}
 
 	@Override
 	public SeekableByteChannel truncate(long size) throws IOException
 	{
-		if (readableByteChannel.isPresent())
-		{
-			throw new NonWritableChannelException();
-		}
-		writableByteChannel.get().truncate(size);
+		writableByteChannel.orElseThrow(NonWritableChannelException::new).truncate(size);
 		return this;
 	}
 
@@ -167,6 +165,13 @@ class BucketSeekableByteChannel
 			result = new BucketWritableByteChannel(connector, path);
 		}
 		return result;
+	}
+
+	private Exception tryClose(Closeable closeable)
+	{
+		var result = new AtomicReference<Exception>();
+		Try.to(() -> close(closeable)).onCatch(result::set).run();
+		return result.get();
 	}
 
 	private Void close(Closeable closeable) throws IOException

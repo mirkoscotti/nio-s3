@@ -58,7 +58,7 @@ class BucketSeekableByteChannelIT
 
 	private static final String HUGE_FILE = "huge.txt";
 
-	private static final String TARGET_FILE = "target.txt";
+	private static final String REMOTE_FILE = "remote.txt";
 
 	private static final URI TEST_URI = URI.create("s3://".concat(TEST_BUCKET));
 
@@ -85,7 +85,7 @@ class BucketSeekableByteChannelIT
 
 	private static Path hugeFile;
 
-	private static Path targetFile;
+	private static Path remoteFile;
 
 	@BeforeAll
 	static void beforeAll()
@@ -97,7 +97,7 @@ class BucketSeekableByteChannelIT
 		hugeFile = JunitHelper.tryCall(() -> createFile(HUGE_FILE, PART_SIZE * 10 / 2));
 		var properties = ContainersHelper.standardProperties(CONTAINER);
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
-		targetFile = fileSystem.getRootDirectories().iterator().next().resolve(TARGET_FILE);
+		remoteFile = fileSystem.getRootDirectories().iterator().next().resolve(REMOTE_FILE);
 	}
 
 	@AfterEach
@@ -115,7 +115,7 @@ class BucketSeekableByteChannelIT
 	@Test
 	void singlepartOverwritingLargerSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, smallFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, smallFile);
 		JunitHelper.tryRun(() -> write(tinyFile));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile);
@@ -130,14 +130,14 @@ class BucketSeekableByteChannelIT
 		}
 		var array = Arrays.copyOf(content, content.length);
 		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE).lastEntry().getKey();
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartOverwritingLargerMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, largeFile);
 		JunitHelper.tryRun(() -> write(tinyFile));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile);
@@ -153,14 +153,14 @@ class BucketSeekableByteChannelIT
 		var array = Arrays.copyOf(content, content.length);
 		var size = JunitHelper.tryCall(() -> (int) Files.size(tinyFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, size));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartOverwritingSmallerSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, smallFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, smallFile);
 		JunitHelper.tryRun(() -> write(mediumFile));
 		byte[] content;
 		try (var mediumStream = Files.newInputStream(mediumFile))
@@ -173,14 +173,14 @@ class BucketSeekableByteChannelIT
 		}
 		var array = Arrays.copyOf(content, content.length);
 		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE).lastEntry().getKey();
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartOverwritingLargerMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, hugeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, hugeFile);
 		JunitHelper.tryRun(() -> write(largeFile));
 		byte[] content;
 		var length = new AtomicInteger();
@@ -197,14 +197,14 @@ class BucketSeekableByteChannelIT
 		var array = Arrays.copyOf(content, content.length);
 		var size = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, size));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartOverwritingSmallerSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, tinyFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		JunitHelper.tryRun(() -> write(hugeFile));
 		byte[] content;
 		try (var hugeStream = Files.newInputStream(hugeFile))
@@ -218,14 +218,14 @@ class BucketSeekableByteChannelIT
 		var array = Arrays.copyOf(content, content.length);
 		var size = JunitHelper.tryCall(() -> (int) Files.size(hugeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, size));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartOverwritingSmallerMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, largeFile);
 		JunitHelper.tryRun(() -> write(hugeFile));
 		byte[] content;
 		try (var hugeStream = Files.newInputStream(hugeFile))
@@ -239,14 +239,14 @@ class BucketSeekableByteChannelIT
 		var array = Arrays.copyOf(content, content.length);
 		var size = JunitHelper.tryCall(() -> (int) Files.size(hugeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, size));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartTruncatingLargerSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, smallFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, smallFile);
 		JunitHelper.tryRun(() -> write(tinyFile, StandardOpenOption.TRUNCATE_EXISTING));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile))
@@ -259,14 +259,14 @@ class BucketSeekableByteChannelIT
 		}
 		var array = Arrays.copyOf(content, content.length);
 		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE).lastEntry().getKey();
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartTruncatingLargerMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, largeFile);
 		JunitHelper.tryRun(() -> write(tinyFile, StandardOpenOption.TRUNCATE_EXISTING));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile))
@@ -279,14 +279,14 @@ class BucketSeekableByteChannelIT
 		}
 		var array = Arrays.copyOf(content, content.length);
 		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE).lastEntry().getKey();
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartTruncatingLargerMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, hugeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, hugeFile);
 		JunitHelper.tryRun(() -> write(largeFile, StandardOpenOption.TRUNCATE_EXISTING));
 		byte[] content;
 		try (var largeStream = Files.newInputStream(largeFile))
@@ -300,14 +300,14 @@ class BucketSeekableByteChannelIT
 		var array = Arrays.copyOf(content, content.length);
 		var size = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, size));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartAppendingToSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, tinyFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		JunitHelper.tryRun(() -> write(smallFile, StandardOpenOption.APPEND));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile);
@@ -324,14 +324,14 @@ class BucketSeekableByteChannelIT
 		}
 		var array = Arrays.copyOf(content, content.length);
 		var expected = JunitHelper.tryCall(() -> singlepartChecksum(array));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE).lastEntry().getKey();
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE).lastEntry().getKey();
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void singlepartAppendingToMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, largeFile);
 		JunitHelper.tryRun(() -> write(tinyFile, StandardOpenOption.APPEND));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile);
@@ -350,14 +350,14 @@ class BucketSeekableByteChannelIT
 		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
 		var newSize = JunitHelper.tryCall(() -> (int) Files.size(tinyFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartAppendingToSinglepartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, tinyFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		JunitHelper.tryRun(() -> write(largeFile, StandardOpenOption.APPEND));
 		byte[] content;
 		try (var tinyStream = Files.newInputStream(tinyFile);
@@ -376,14 +376,14 @@ class BucketSeekableByteChannelIT
 		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(tinyFile));
 		var newSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
 	}
 
 	@Test
 	void multipartAppendingToMultipartFileTest()
 	{
-		CONTAINER.createObject(TEST_BUCKET, TARGET_FILE, largeFile);
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, largeFile);
 		JunitHelper.tryRun(() -> write(hugeFile, StandardOpenOption.APPEND));
 		byte[] content;
 		try (var largeStream = Files.newInputStream(largeFile);
@@ -402,15 +402,102 @@ class BucketSeekableByteChannelIT
 		var oldSize = JunitHelper.tryCall(() -> (int) Files.size(largeFile));
 		var newSize = JunitHelper.tryCall(() -> (int) Files.size(hugeFile));
 		var expected = JunitHelper.tryCall(() -> multipartChecksum(array, oldSize, newSize));
-		var result = CONTAINER.checksum(TEST_BUCKET, TARGET_FILE);
+		var result = CONTAINER.checksum(TEST_BUCKET, REMOTE_FILE);
 		Assertions.assertEquals(expected, result);
+	}
+
+	@Test
+	void readFileFromTheBeginningTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		try (var channel = Files.newByteChannel(remoteFile))
+		{
+			var expectedSize = (int) Files.size(tinyFile);
+			var buffer = ByteBuffer.allocate(expectedSize);
+			var resultSize = channel.read(buffer);
+			Assertions.assertEquals(expectedSize, resultSize);
+			var expectedContent = Files.readAllBytes(tinyFile);
+			var resultContent = buffer.array();
+			Assertions.assertArrayEquals(expectedContent, resultContent);
+			buffer = ByteBuffer.allocate(10);
+			resultSize = channel.read(buffer);
+			Assertions.assertEquals(-1, resultSize);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void readFileFragmentTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		try (var channel = Files.newByteChannel(remoteFile);
+			 var stream = Files.newInputStream(tinyFile))
+		{
+			var expectedSize = (int) Files.size(tinyFile) / 2;
+			var buffer = ByteBuffer.allocate(expectedSize);
+			var resultSize = channel.read(buffer);
+			Assertions.assertEquals(expectedSize, resultSize);
+			var position = channel.position();
+			var expectedContent = stream.readNBytes(expectedSize);
+			Assertions.assertEquals(expectedSize, position);
+			var resultContent = buffer.array();
+			Assertions.assertArrayEquals(expectedContent, resultContent);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void readFileFromTheMiddleTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		try (var channel = Files.newByteChannel(remoteFile);
+			 var stream = Files.newInputStream(tinyFile))
+		{
+			var size = Files.size(tinyFile);
+			var position = size / 2;
+			channel.position(position);
+			var expectedSize = (int) (size - position);
+			var buffer = ByteBuffer.allocate(expectedSize);
+			var resultSize = channel.read(buffer);
+			Assertions.assertEquals(expectedSize, resultSize);
+			stream.skip(position);
+			var expectedContent = stream.readNBytes(expectedSize);
+			var resultContent = buffer.array();
+			Assertions.assertArrayEquals(expectedContent, resultContent);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void sizeTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		try (var channel = Files.newByteChannel(remoteFile))
+		{
+			var expectedSize = Files.size(tinyFile);
+			var resultSize = channel.size();
+			Assertions.assertEquals(expectedSize, resultSize);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 
 	private Void write(Path file, StandardOpenOption... openOptions) throws IOException
 	{
 		var options = Stream.concat(Stream.of(StandardOpenOption.WRITE), Stream.of(openOptions))
 							.toArray(StandardOpenOption[]::new);
-		try (var channel = Files.newByteChannel(targetFile, options))
+		try (var channel = Files.newByteChannel(remoteFile, options))
 		{
 			var buffer = ByteBuffer.wrap(Files.readAllBytes(file));
 			channel.write(buffer);

@@ -74,7 +74,7 @@ class BucketReadableByteChannel
 					   .orElseThrow(ClosedChannelException::new);
 	}
 
-	void position(long position) throws ClosedChannelException
+	Void position(long position) throws ClosedChannelException
 	{
 		if (!isOpen)
 		{
@@ -85,6 +85,7 @@ class BucketReadableByteChannel
 			throw new IllegalArgumentException("Position must not be negative.");
 		}
 		this.position = position;
+		return null;
 	}
 
 	private int readRemaining(ByteBuffer buffer)
