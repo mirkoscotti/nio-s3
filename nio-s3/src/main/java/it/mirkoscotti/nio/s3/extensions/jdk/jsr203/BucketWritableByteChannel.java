@@ -124,7 +124,7 @@ class BucketWritableByteChannel
 			throw new IllegalArgumentException("Size must not be negative.");
 		}
 		// TODO: manage truncation for single-part files
-		var message = "Truncation not supported yet. Requested to truncate at % bytes.".formatted(size);
+		var message = "Truncation not supported yet. Requested to truncate at %d bytes.".formatted(size);
 		throw new UnsupportedOperationException(message);
 	}
 

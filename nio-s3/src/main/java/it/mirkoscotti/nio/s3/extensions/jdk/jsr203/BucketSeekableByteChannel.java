@@ -8,7 +8,6 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
@@ -47,19 +46,11 @@ class BucketSeekableByteChannel
 		throws IOException
 	{
 		this.connector = Objects.requireNonNull(connector, () -> "Missing connector.");
-		if (path instanceof BucketPath bucketPath)
-		{
-			this.path = bucketPath;
-			ObjectFlag.readWriteCheck(openOptions);
-			readableByteChannel = createReadableByteChannel(openOptions);
-			writableByteChannel = createWritableByteChannel(openOptions);
-		}
-		else
-		{
-			var bucketPath = Objects.requireNonNull(path, () -> "Missing path.").toString();
-			throw new InvalidPathException(bucketPath,
-										   "Expected a path in an AWS bucket, found: %s".formatted(bucketPath));
-		}
+		Objects.requireNonNull(path, () -> "Missing path.");
+		this.path = path;
+		ObjectFlag.readWriteCheck(openOptions);
+		readableByteChannel = createReadableByteChannel(openOptions);
+		writableByteChannel = createWritableByteChannel(openOptions);
 	}
 
 	@Override

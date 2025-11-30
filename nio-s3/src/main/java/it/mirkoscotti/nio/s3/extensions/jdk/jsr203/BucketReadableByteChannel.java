@@ -22,11 +22,11 @@ class BucketReadableByteChannel
 
 	private final String key;
 
+	private final long size;
+
 	private boolean isOpen = true;
 
 	private long position = 0;
-
-	private long size;
 
 	BucketReadableByteChannel(S3Connector connector, BucketPath path)
 	{
@@ -69,8 +69,7 @@ class BucketReadableByteChannel
 	{
 		return Optional.of(this)
 					   .filter(item -> item.isOpen)
-					   .map(item -> item.connector.objectMetadata(item.bucket, item.key))
-					   .map(item -> item.size())
+					   .map(item -> item.size)
 					   .orElseThrow(ClosedChannelException::new);
 	}
 

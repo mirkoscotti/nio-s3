@@ -66,7 +66,7 @@ class BucketReadableByteChannelTest
 	}
 
 	@Test
-	void positionWhenChannelIsClosedTest()
+	void positionWhileChannelIsClosedTest()
 	{
 		var readableByteChannel = new BucketReadableByteChannel(connector, path);
 		try (var channel = readableByteChannel)
@@ -78,6 +78,8 @@ class BucketReadableByteChannelTest
 			Assertions.fail(x);
 		}
 		Assertions.assertThrows(ClosedChannelException.class, readableByteChannel::position);
+		Assertions.assertThrows(ClosedChannelException.class,
+								() -> readableByteChannel.position(10));
 	}
 
 	@Test

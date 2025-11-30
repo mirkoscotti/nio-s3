@@ -48,6 +48,8 @@ class BucketSeekableByteChannelIT
 
 	private static final String TEST_BUCKET = "test-bucket";
 
+	private static final String EMPTY_FILE = "empty.txt";
+
 	private static final String TINY_FILE = "tiny.txt";
 
 	private static final String SMALL_FILE = "small.txt";
@@ -75,6 +77,8 @@ class BucketSeekableByteChannelIT
 
 	private static FileSystem fileSystem;
 
+	private static Path emptyFile;
+
 	private static Path tinyFile;
 
 	private static Path smallFile;
@@ -90,6 +94,7 @@ class BucketSeekableByteChannelIT
 	@BeforeAll
 	static void beforeAll()
 	{
+		emptyFile = JunitHelper.tryCall(() -> createFile(EMPTY_FILE, 0));
 		tinyFile = JunitHelper.tryCall(() -> createFile(TINY_FILE, 1));
 		smallFile = JunitHelper.tryCall(() -> createFile(SMALL_FILE, 1024));
 		mediumFile = JunitHelper.tryCall(() -> createFile(MEDIUM_FILE, 1024 * 1024));
@@ -104,6 +109,39 @@ class BucketSeekableByteChannelIT
 	void afterEach()
 	{
 		ContainersHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+	}
+
+	@Test
+	void isOpenForWriteTest()
+	{
+		var seekableByteChannel = JunitHelper.tryCall(() -> Files.newByteChannel(remoteFile,
+																				 StandardOpenOption.WRITE,
+																				 StandardOpenOption.CREATE_NEW));
+		try (var channel = seekableByteChannel)
+		{
+			Assertions.assertTrue(channel.isOpen());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+		Assertions.assertFalse(seekableByteChannel.isOpen());
+	}
+
+	@Test
+	void isOpenForReadTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		var seekableByteChannel = JunitHelper.tryCall(() -> Files.newByteChannel(remoteFile));
+		try (var channel = seekableByteChannel)
+		{
+			Assertions.assertTrue(channel.isOpen());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+		Assertions.assertFalse(seekableByteChannel.isOpen());
 	}
 
 	@Test
@@ -478,6 +516,22 @@ class BucketSeekableByteChannelIT
 	}
 
 	@Test
+	void readFileAfterEndTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, emptyFile);
+		try (var channel = Files.newByteChannel(remoteFile))
+		{
+			var buffer = ByteBuffer.allocate(0);
+			var result = channel.read(buffer);
+			Assertions.assertEquals(0, result);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
 	void sizeTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
@@ -486,6 +540,21 @@ class BucketSeekableByteChannelIT
 			var expectedSize = Files.size(tinyFile);
 			var resultSize = channel.size();
 			Assertions.assertEquals(expectedSize, resultSize);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void truncateTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
+		try (var channel = Files.newByteChannel(remoteFile, StandardOpenOption.WRITE))
+		{
+			Assertions.assertThrows(UnsupportedOperationException.class,
+									() -> channel.truncate(10));
 		}
 		catch (IOException x)
 		{
