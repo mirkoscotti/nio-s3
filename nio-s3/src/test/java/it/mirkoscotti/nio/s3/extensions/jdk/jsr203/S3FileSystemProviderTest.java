@@ -1,19 +1,13 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
-
 import java.net.URI;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.ProviderMismatchException;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
@@ -28,6 +22,16 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.ConnectorRecord;
+import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
  * @author mirko.scotti
@@ -188,7 +192,7 @@ class S3FileSystemProviderTest
 	{
 		var set = Set.<OpenOption>of();
 		var fileSystemProvider = new S3FileSystemProvider();
-		Assertions.assertThrows(UnsupportedOperationException.class,
+		Assertions.assertThrows(ProviderMismatchException.class,
 								() -> fileSystemProvider.newByteChannel(path, set));
 	}
 
@@ -207,6 +211,21 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
+	void isUnsupportedPathHiddenTest(@Mock Path path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(ProviderMismatchException.class,
+								() -> fileSystemProvider.isHidden(path));
+	}
+
+	@Test
+	void isHiddenTest()
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertFalse(JunitHelper.tryCall(() -> fileSystemProvider.isHidden(path)));
+	}
+
+	@Test
 	void getFileStoreFromNullPathTest()
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
@@ -218,14 +237,12 @@ class S3FileSystemProviderTest
 	void getFileStoreFromUnsupportedPathTest(@Mock Path path)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
-		Assertions.assertThrows(UnsupportedOperationException.class,
+		Assertions.assertThrows(ProviderMismatchException.class,
 								() -> fileSystemProvider.getFileStore(path));
 	}
 
 	@Test
-	void getFileStoreTest(@Mock BucketPath path,
-						  @Mock BucketFileSystem fileSystem,
-						  @Mock FileStore fileStore)
+	void getFileStoreTest(@Mock BucketFileSystem fileSystem, @Mock FileStore fileStore)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
@@ -235,16 +252,47 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
+	void checkAccessToInvalidPathTest(@Mock Path path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(ProviderMismatchException.class,
+								() -> fileSystemProvider.checkAccess(path));
+	}
+
+	@Test
+	void checkAccessToNotExistingFileTest(@Mock BucketFileSystem fileSystem,
+										  @Mock BucketFileStore fileStore,
+										  @Mock S3Connector connector)
+	{
+		initializePath(fileSystem, fileStore, connector);
+		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenThrow(NoSuchKeyException.class);
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(NoSuchFileException.class,
+								() -> fileSystemProvider.checkAccess(path));
+	}
+
+	@Test
+	void checkAccessToExistingFileTest(@Mock BucketFileSystem fileSystem,
+									   @Mock BucketFileStore fileStore,
+									   @Mock S3Connector connector)
+	{
+		initializePath(fileSystem, fileStore, connector);
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertDoesNotThrow(() -> fileSystemProvider.checkAccess(path));
+	}
+
+	@Test
 	void getInvalidFileAttributeViewTest(@Mock Path path)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
-		Assertions.assertThrows(UnsupportedOperationException.class,
+		Assertions.assertThrows(ProviderMismatchException.class,
 								() -> fileSystemProvider.getFileAttributeView(path,
 																			  FileAttributeView.class));
 	}
 
 	@Test
-	void getUnsupportedFileAttributeViewTest(@Mock BucketPath path)
+	void getUnsupportedFileAttributeViewTest()
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertNull(fileSystemProvider.getFileAttributeView(path,
@@ -252,15 +300,11 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void getFileAttributeViewTest(@Mock BucketPath path,
-								  @Mock BucketFileSystem fileSystem,
+	void getFileAttributeViewTest(@Mock BucketFileSystem fileSystem,
 								  @Mock BucketFileStore fileStore,
 								  @Mock S3Connector connector)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.connector()).thenReturn(connector);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
-		Mockito.when(fileStore.name()).thenReturn("bucket-name");
+		initializePath(fileSystem, fileStore, connector);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertNotNull(fileSystemProvider.getFileAttributeView(path,
 																		 ObjectBasicFileAttributeView.class));
@@ -270,14 +314,13 @@ class S3FileSystemProviderTest
 	void readInvalidAttributesTest(@Mock Path path)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
-		Assertions.assertThrows(UnsupportedOperationException.class,
+		Assertions.assertThrows(ProviderMismatchException.class,
 								() -> fileSystemProvider.readAttributes(path,
 																		BasicFileAttributes.class));
 	}
 
 	@Test
-	void readUnsupportedAttributesTest(@Mock BucketPath path,
-									   @Mock BasicFileAttributes basicFileAttributes)
+	void readUnsupportedAttributesTest(@Mock BasicFileAttributes basicFileAttributes)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();
 		var type = basicFileAttributes.getClass();
@@ -286,15 +329,11 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void readFileAttributesTest(@Mock BucketPath path,
-								@Mock BucketFileSystem fileSystem,
+	void readFileAttributesTest(@Mock BucketFileSystem fileSystem,
 								@Mock BucketFileStore fileStore,
 								@Mock S3Connector connector)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.connector()).thenReturn(connector);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
-		Mockito.when(fileStore.name()).thenReturn("bucket-name");
+		initializePath(fileSystem, fileStore, connector);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
 																			  ObjectBasicFileAttributes.class));
@@ -310,5 +349,15 @@ class S3FileSystemProviderTest
 	private void initializeFileSystem(BucketFileSystem fileSystem, Context context)
 	{
 		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenReturn(path);
+	}
+
+	private void initializePath(BucketFileSystem fileSystem,
+								BucketFileStore fileStore,
+								S3Connector connector)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.connector()).thenReturn(connector);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		Mockito.when(fileStore.name()).thenReturn("bucket-name");
 	}
 }

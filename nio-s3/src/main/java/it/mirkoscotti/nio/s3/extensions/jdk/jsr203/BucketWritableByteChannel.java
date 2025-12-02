@@ -124,7 +124,7 @@ class BucketWritableByteChannel
 			throw new IllegalArgumentException("Size must not be negative.");
 		}
 		// TODO - under evaluation:
-		// 1. in-ram truncation for singlepart uplads
+		// 1. in-ram truncation for singlepart uploads
 		// 2. temporary files truncation for multi-part uploads
 		// 3. custom OpenOption enum to enable truncation when needed
 		var message = "Truncation not supported yet. Requested to truncate at %d bytes.".formatted(size);

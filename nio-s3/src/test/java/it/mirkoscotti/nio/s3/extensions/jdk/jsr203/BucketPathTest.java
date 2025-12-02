@@ -603,7 +603,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(false);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(true);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertThrows(NotDirectoryException.class,
 									() -> bucketPath.register(watchService));
@@ -616,7 +616,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
 													() -> bucketPath.register(watchService,
@@ -634,7 +634,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var kinds = new Kind[] {StandardWatchEventKinds.ENTRY_CREATE};
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
@@ -653,7 +653,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertThrows(ProviderMismatchException.class,
 									() -> bucketPath.register(watchService,
@@ -667,7 +667,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertDoesNotThrow(() -> bucketPath.register(watchService,
 																	StandardWatchEventKinds.ENTRY_CREATE));

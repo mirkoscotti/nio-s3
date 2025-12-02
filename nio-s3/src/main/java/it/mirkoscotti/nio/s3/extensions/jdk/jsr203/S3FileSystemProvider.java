@@ -1,12 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.enums.ObjectAccess;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -24,6 +17,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.ProviderMismatchException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
@@ -36,6 +30,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.enums.ObjectAccess;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -217,7 +218,10 @@ public class S3FileSystemProvider
 	@Override
 	public boolean isHidden(Path path) throws IOException
 	{
-		return false;
+		return Optional.ofNullable(path)
+					   .filter(BucketPath.class::isInstance)
+					   .map(item -> false)
+					   .orElseThrow(() -> invalidPath(path));
 	}
 
 	@Override
@@ -235,17 +239,18 @@ public class S3FileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var connector = bucketPath.getFileSystem().connector();
-			var fileStore = bucketPath.getFileSystem().getFileStores().iterator().next();
-			var bucketName = fileStore.name();
+			var fileSystem = bucketPath.getFileSystem();
+			var bucketName = fileSystem.getFileStores().iterator().next().name();
 			var objectKey = bucketPath.toString();
+			var connector = fileSystem.connector();
 			try
 			{
 				connector.objectMetadata(bucketName, objectKey);
 			}
 			catch (NoSuchKeyException x)
 			{
-				var message = "File not found and not creatable: ".concat(x.getMessage());
+				var originalMessage = Optional.ofNullable(x.getMessage()).orElse("");
+				var message = "File not found and not creatable: ".concat(originalMessage);
 				throw new NoSuchFileException(path.toString(), null, message);
 			}
 			ObjectAccess.check(connector, bucketName, objectKey, modes);
@@ -356,7 +361,7 @@ public class S3FileSystemProvider
 		var pathType = path.getClass().getName();
 		var pathTemplate = "Expected path of type %s. Found: %s.";
 		var pathMessage = pathTemplate.formatted(BucketPath.class.getName(), pathType);
-		return new UnsupportedOperationException(pathMessage);
+		return new ProviderMismatchException(pathMessage);
 	}
 
 	private RuntimeException unexpectedFileAttributes(Class<? extends BasicFileAttributes> type)
