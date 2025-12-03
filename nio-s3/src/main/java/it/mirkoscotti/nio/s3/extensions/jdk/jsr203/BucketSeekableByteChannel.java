@@ -114,8 +114,11 @@ class BucketSeekableByteChannel
 	@Override
 	public SeekableByteChannel truncate(long size) throws IOException
 	{
-		writableByteChannel.orElseThrow(NonWritableChannelException::new).truncate(size);
-		return this;
+		// TODO - under evaluation:
+		// 1. in-ram truncation for singlepart uploads
+		// 2. temporary files truncation for multi-part uploads
+		// 3. custom OpenOption enum to enable truncation when needed
+		throw new UnsupportedOperationException("Truncate not supported yet.");
 	}
 
 	private Optional<BucketReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)

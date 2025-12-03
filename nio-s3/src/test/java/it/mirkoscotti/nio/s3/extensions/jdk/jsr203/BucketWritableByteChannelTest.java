@@ -5,7 +5,6 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,47 +53,5 @@ class BucketWritableByteChannelTest
 			Assertions.fail(x);
 		}
 		Assertions.assertFalse(writableByteChannel.isOpen());
-	}
-
-	@Test
-	void truncateWhileChannelIsClosedTest()
-	{
-		var writableByteChannel = new BucketWritableByteChannel(connector, path);
-		try (var channel = writableByteChannel)
-		{
-			// Nothing to do
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
-		Assertions.assertThrows(ClosedChannelException.class,
-								() -> writableByteChannel.truncate(10));
-	}
-
-	@Test
-	void negativeTruncationTest()
-	{
-		try (var channel = new BucketWritableByteChannel(connector, path))
-		{
-			Assertions.assertThrows(IllegalArgumentException.class, () -> channel.truncate(-1));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
-	}
-
-	@Test
-	void unsupportedTruncationTest()
-	{
-		try (var channel = new BucketWritableByteChannel(connector, path))
-		{
-			Assertions.assertThrows(UnsupportedOperationException.class, () -> channel.truncate(1));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 }

@@ -1,7 +1,6 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
-import java.nio.channels.NonWritableChannelException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
@@ -153,12 +152,13 @@ class BucketSeekableByteChannelTest
 	}
 
 	@Test
-	void truncateWhenChannelIsNotWritableTest(@Mock BucketReadableByteChannel readableChannel)
+	void truncateTest(@Mock BucketReadableByteChannel readableChannel)
 	{
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class);
 			 var channel = new BucketSeekableByteChannel(connector, path, Set.of()))
 		{
-			Assertions.assertThrows(NonWritableChannelException.class, () -> channel.truncate(10));
+			Assertions.assertThrows(UnsupportedOperationException.class,
+									() -> channel.truncate(10));
 		}
 		catch (IOException x)
 		{
