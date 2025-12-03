@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
@@ -13,6 +9,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * @author mirko.scotti
@@ -47,6 +49,15 @@ class ObjectBasicFileSAttributeViewTest
 	{
 		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
 		Assertions.assertEquals("basic", view.name());
+	}
+
+	@Test
+	void s3exceptionWhileReadAttributesTest()
+	{
+		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenThrow(S3Exception.class);
+		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
+		Assertions.assertThrows(S3Exception.class, view::readAttributes);
 	}
 
 	@Test
