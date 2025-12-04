@@ -13,7 +13,6 @@ import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,7 +38,6 @@ import it.mirkoscotti.nio.s3.records.BucketRecord;
 import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
@@ -243,16 +241,6 @@ public class S3FileSystemProvider
 			var bucketName = fileSystem.getFileStores().iterator().next().name();
 			var objectKey = bucketPath.toString();
 			var connector = fileSystem.connector();
-			try
-			{
-				connector.objectMetadata(bucketName, objectKey);
-			}
-			catch (NoSuchKeyException x)
-			{
-				var originalMessage = Optional.ofNullable(x.getMessage()).orElse("");
-				var message = "File not found and not creatable: ".concat(originalMessage);
-				throw new NoSuchFileException(path.toString(), null, message);
-			}
 			ObjectAccess.check(connector, bucketName, objectKey, modes);
 			return;
 		}

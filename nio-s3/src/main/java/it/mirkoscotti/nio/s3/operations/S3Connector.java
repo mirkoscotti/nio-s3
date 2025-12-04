@@ -41,6 +41,7 @@ import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest.Builder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectAclResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -117,6 +118,16 @@ public final class S3Connector
 				  .get();
 	}
 
+	public String objectAcl(String bucketName, String key)
+	{
+		return Try.to(() -> client.getObjectAcl(item -> item.bucket(bucketName).key(key))
+								  .thenApply(this::permissions)
+								  .exceptionally(ExceptionsHelper::redirectException)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(ExceptionsHelper::redirectException)
+				  .get();
+	}
+
 	public BasicFileAttributes objectMetadata(String bucketName, String key)
 	{
 		return Try.to(() -> client.headObject(item -> item.bucket(bucketName).key(key))
@@ -134,10 +145,17 @@ public final class S3Connector
 
 	public Map<String, Instant> listObjects(String bucketName, String key)
 	{
+		return listObjects(bucketName, key, null);
+	}
+
+	public Map<String, Instant> listObjects(String bucketName, String key, Integer pageSize)
+	{
 		var separator = BucketDescriptor.PATH_SEPARATOR;
 		var prefix = key.endsWith(separator) ? key : key.concat(separator);
 		var result = new ConcurrentHashMap<String, Instant>();
-		client.listObjectsV2Paginator(item -> item.bucket(bucketName).prefix(prefix))
+		client.listObjectsV2Paginator(item -> item.bucket(bucketName)
+												  .prefix(prefix)
+												  .maxKeys(pageSize))
 			  .subscribe(item -> reportObjects(item, result))
 			  .join();
 		return result.entrySet()
@@ -269,6 +287,14 @@ public final class S3Connector
 		return response.grants()
 					   .stream()
 					   .map(Grant::permissionAsString)
+					   .collect(Collectors.joining(";"));
+	}
+
+	private String permissions(GetObjectAclResponse response)
+	{
+		return response.grants()
+					   .stream()
+					   .map(software.amazon.awssdk.services.s3.model.Grant::permissionAsString)
 					   .collect(Collectors.joining(";"));
 	}
 
