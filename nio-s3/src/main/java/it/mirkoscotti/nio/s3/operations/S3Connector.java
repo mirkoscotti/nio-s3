@@ -41,7 +41,6 @@ import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest.Builder;
 import software.amazon.awssdk.services.s3.model.GetBucketAclResponse;
 import software.amazon.awssdk.services.s3.model.GetBucketPolicyResponse;
-import software.amazon.awssdk.services.s3.model.GetObjectAclResponse;
 import software.amazon.awssdk.services.s3.model.Grant;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -277,14 +276,6 @@ public final class S3Connector
 		return response.grants()
 					   .stream()
 					   .map(Grant::permissionAsString)
-					   .collect(Collectors.joining(";"));
-	}
-
-	private String permissions(GetObjectAclResponse response)
-	{
-		return response.grants()
-					   .stream()
-					   .map(software.amazon.awssdk.services.s3.model.Grant::permissionAsString)
 					   .collect(Collectors.joining(";"));
 	}
 
