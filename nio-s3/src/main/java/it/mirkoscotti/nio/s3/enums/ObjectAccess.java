@@ -31,7 +31,14 @@ public enum ObjectAccess
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
-			return null;
+			var key = basicFileAttributes.fileKey().toString();
+			return basicFileAttributes.isDirectory()
+				// As well as for traditional file systems, let's consider a directory readable if
+				// it has the permission to be traversed.
+				? tryListObjects(connector, bucket, key)
+				// Files metadata are already available. If it is possible, it means that also the
+				// content is accessible.
+				: null;
 		}
 	},
 	WRITE
@@ -63,28 +70,28 @@ public enum ObjectAccess
 				// Files cannot be executed on S3 buckets
 				: ERROR_TEMPLATE.formatted(bucket, "File", key, name());
 		}
-
-		private String tryListObjects(S3Connector connector, String bucket, String key)
-		{
-			String result = null;
-			try
-			{
-				connector.listObjects(bucket, key, 0);
-			}
-			catch (S3Exception x)
-			{
-				result = Optional.of(x.awsErrorDetails())
-								 .filter(item -> "AccessDenied".equals(item.errorCode()))
-								 .map(AwsErrorDetails::toString)
-								 .orElseThrow(() -> x);
-			}
-			return result;
-		}
 	};
 
 	protected abstract String checkAccess(S3Connector connector,
 										  BasicFileAttributes basicFileAttributes,
 										  String bucket);
+
+	protected String tryListObjects(S3Connector connector, String bucket, String key)
+	{
+		String result = null;
+		try
+		{
+			connector.listObjects(bucket, key, 0);
+		}
+		catch (S3Exception x)
+		{
+			result = Optional.of(x.awsErrorDetails())
+							 .filter(item -> "AccessDenied".equals(item.errorCode()))
+							 .map(AwsErrorDetails::toString)
+							 .orElseThrow(() -> x);
+		}
+		return result;
+	}
 
 	public static void check(S3Connector connector,
 							 String bucket,
