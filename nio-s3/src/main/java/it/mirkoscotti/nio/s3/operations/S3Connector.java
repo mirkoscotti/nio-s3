@@ -118,16 +118,6 @@ public final class S3Connector
 				  .get();
 	}
 
-	public String objectAcl(String bucketName, String key)
-	{
-		return Try.to(() -> client.getObjectAcl(item -> item.bucket(bucketName).key(key))
-								  .thenApply(this::permissions)
-								  .exceptionally(ExceptionsHelper::redirectException)
-								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::redirectException)
-				  .get();
-	}
-
 	public BasicFileAttributes objectMetadata(String bucketName, String key)
 	{
 		return Try.to(() -> client.headObject(item -> item.bucket(bucketName).key(key))

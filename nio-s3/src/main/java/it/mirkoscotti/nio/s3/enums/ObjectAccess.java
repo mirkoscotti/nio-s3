@@ -48,6 +48,8 @@ public enum ObjectAccess
 	EXECUTE
 	{
 
+		private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
+
 		@Override
 		protected String checkAccess(S3Connector connector,
 									 BasicFileAttributes basicFileAttributes,
@@ -55,11 +57,11 @@ public enum ObjectAccess
 		{
 			var key = basicFileAttributes.fileKey().toString();
 			return basicFileAttributes.isDirectory()
-				// As well as for traditional file systems, directory is executable if it has the
-				// permission to be traversed.
+				// Similarly to traditional file systems, let's consider a directory executable if
+				// it has the permission to be traversed.
 				? tryListObjects(connector, bucket, key)
 				// Files cannot be executed on S3 buckets
-				: "Bucket: %s, File: %s, Permission: %s".formatted(bucket, key, name());
+				: ERROR_TEMPLATE.formatted(bucket, "File", key, name());
 		}
 
 		private String tryListObjects(S3Connector connector, String bucket, String key)
