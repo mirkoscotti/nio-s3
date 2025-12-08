@@ -88,7 +88,7 @@ public class ObjectBasicFileAttributes
 	}
 
 	@Override
-	public Object fileKey()
+	public String fileKey()
 	{
 		return object.key();
 	}

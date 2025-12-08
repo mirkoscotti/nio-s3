@@ -26,6 +26,11 @@ public final class JunitHelper
 		super();
 	}
 
+	public static void tryRun(Callable<Void> callable)
+	{
+		Try.call(callable).ifFailure(Assertions::fail).toOptional();
+	}
+
 	public static <T> T tryCall(Callable<T> callable)
 	{
 		return Try.call(callable)

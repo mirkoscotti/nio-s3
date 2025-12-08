@@ -11,17 +11,22 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>21</java.version>
-		<maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+		<maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+		<!-- 
+			WARNING!!! Cannot update to 3.5.0 until due to a bug. For futher details: 
+			https://github.com/apache/maven-jar-plugin/issues/506 
+		-->
 		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
-		<maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
-		<maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
-		<jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
+		<!-- END OF WARNING -->
+		<maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+		<maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
+		<jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>11.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.31.41</bom.version>
-		<aws-crt.version>0.38.2</aws-crt.version>
-		<junit-bom.version>5.12.2</junit-bom.version>
-		<mockito-bom.version>5.17.0</mockito-bom.version>
-		<testcontainers-bom.version>1.21.0</testcontainers-bom.version>
+		<bom.version>2.39.1</bom.version>
+		<aws-crt.version>0.40.0</aws-crt.version>
+		<junit-bom.version>6.0.1</junit-bom.version>
+		<mockito-bom.version>5.20.0</mockito-bom.version>
+		<testcontainers-bom.version>2.0.2</testcontainers-bom.version>
 		<slf4j-simple.version>2.0.17</slf4j-simple.version>
 		<yasson.version>3.0.4</yasson.version>
 	</properties>
@@ -62,33 +67,20 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-			<dependency>
-				<groupId>software.amazon.awssdk.crt</groupId>
-				<artifactId>aws-crt</artifactId>
-				<version>${aws-crt.version}</version>
-			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>jakarta.json.bind</groupId>
 			<artifactId>jakarta.json.bind-api</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>iam</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>software.amazon.awssdk.crt</groupId>
-			<artifactId>aws-crt</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -102,12 +94,12 @@
 		</dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>
-			<artifactId>junit-jupiter</artifactId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>
-			<artifactId>localstack</artifactId>
+			<artifactId>testcontainers-localstack</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -115,6 +107,11 @@
 			<artifactId>slf4j-simple</artifactId>
 			<version>${slf4j-simple.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk.crt</groupId>
+			<artifactId>aws-crt</artifactId>
+			<version>${aws-crt.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse</groupId>
@@ -194,24 +191,6 @@
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
-					</execution>
-					<execution>
-						<id>merge</id>
-						<phase>post-integration-test</phase>
-						<goals>
-							<goal>merge</goal>
-						</goals>
-						<configuration>
-							<destFile>${project.build.directory}/jacoco.exec</destFile>
-							<fileSets>
-								<fileSet>
-									<directory>${project.build.directory}</directory>
-									<includes>
-										<include>jacoco-*.exec</include>
-									</includes>
-								</fileSet>
-							</fileSets>
-						</configuration>
 					</execution>
 					<execution>
 						<id>report</id>

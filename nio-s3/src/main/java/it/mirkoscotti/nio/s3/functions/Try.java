@@ -6,6 +6,8 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+
 /**
  * @author mirko.scotti
  * @version Oct 24, 2024
@@ -16,7 +18,7 @@ public class Try<T>
 
 	private final Callable<T> tryBlock;
 
-	private Consumer<? super Exception> catchBlock = this::toRuntimeException;
+	private Consumer<? super Exception> catchBlock = ExceptionsHelper::sneakyThrow;
 
 	private Callable<Void> finallyBlock = this::doNothing;
 
@@ -71,11 +73,6 @@ public class Try<T>
 	public void run()
 	{
 		get();
-	}
-
-	private void toRuntimeException(Exception exception)
-	{
-		throw new IllegalStateException(exception);
 	}
 
 	private Exception toException(Exception exception)

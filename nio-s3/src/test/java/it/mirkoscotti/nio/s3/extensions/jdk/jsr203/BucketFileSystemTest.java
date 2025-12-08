@@ -1,11 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.util.stream.StreamSupport;
@@ -16,6 +10,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
+import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
 
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
@@ -219,14 +219,14 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToNullTest()
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
 		{
-			Assertions.assertFalse(fileSystem.equals(null));
+			var result = fileSystem.equals(null);
+			Assertions.assertFalse(result);
 		}
 		catch (IOException x)
 		{
@@ -235,7 +235,6 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToDifferentFileSystemTest(@Mock FileSystem otherFileSystem)
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
@@ -244,7 +243,8 @@ class BucketFileSystemTest
 													   bucketDescriptor,
 													   fileSystemProvider))
 		{
-			Assertions.assertFalse(thisFileSystem.equals(otherFileSystem));
+			var result = thisFileSystem.equals(otherFileSystem);
+			Assertions.assertFalse(result);
 		}
 		catch (IOException x)
 		{
@@ -253,7 +253,6 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToFileSystemWithDifferentProviderTest(@Mock S3FileSystemProvider fileSystemProvider)
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
@@ -266,7 +265,8 @@ class BucketFileSystemTest
 													bucketDescriptor,
 													fileSystemProvider))
 		{
-			Assertions.assertFalse(fileSystem1.equals(fileSystem2));
+			var result = fileSystem1.equals(fileSystem2);
+			Assertions.assertFalse(result);
 		}
 		catch (IOException x)
 		{
@@ -275,7 +275,6 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToFileSystemWithDifferentFileStoreTest(@Mock BucketDescriptor bucketDescriptor,
 													  @Mock BucketRecord bucketKey)
 	{
@@ -290,7 +289,8 @@ class BucketFileSystemTest
 													bucketDescriptor,
 													fileSystemProvider))
 		{
-			Assertions.assertFalse(fileSystem1.equals(fileSystem2));
+			var result = fileSystem1.equals(fileSystem2);
+			Assertions.assertFalse(result);
 		}
 		catch (IOException x)
 		{
@@ -299,7 +299,6 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsTest()
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
@@ -311,7 +310,8 @@ class BucketFileSystemTest
 													bucketDescriptor,
 													fileSystemProvider))
 		{
-			Assertions.assertTrue(fileSystem1.equals(fileSystem2));
+			var result = fileSystem1.equals(fileSystem2);
+			Assertions.assertTrue(result);
 		}
 		catch (IOException x)
 		{

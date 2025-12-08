@@ -1,0 +1,117 @@
+package it.mirkoscotti.nio.s3.operations;
+
+import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.records.OperationRecord;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.CleanupMode;
+import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+
+/**
+ * @author mirko.scotti
+ * @version May 28, 2025
+ */
+@Testcontainers
+class MultipartWriterIT
+{
+
+	private static final String TEST_BUCKET = "test-bucket";
+
+	private static final String TEST_KEY = "test-key";
+
+	private static final String TEST_FILE = "file.txt";
+
+	@Container
+	@SuppressWarnings("resource")
+	private static final S3Container CONTAINER = new S3Container().withBucket(TEST_BUCKET);
+
+	@TempDir(cleanup = CleanupMode.ALWAYS)
+	private static Path baseDirectory;
+
+	private static S3AsyncClient client;
+
+	@BeforeAll
+	static void beforeAll()
+	{
+		client = S3AsyncClient.crtBuilder()
+							  .endpointOverride(CONTAINER.getEndpoint())
+							  .region(Region.of(CONTAINER.getRegion()))
+							  .credentialsProvider(() -> AwsBasicCredentials.create(CONTAINER.getAccessKey(),
+																					CONTAINER.getSecretKey()))
+							  .build();
+	}
+
+	@AfterEach
+	void afterEach()
+	{
+		Optional.of(TEST_BUCKET)
+				.filter(CONTAINER::bucketExists)
+				.ifPresent(item -> ContainersHelper.deleteObjects(CONTAINER, item));
+	}
+
+	@Test
+	void multipartUploadWithoutPartsTest()
+	{
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
+		{
+			var uploadId = JunitHelper.findFieldValueByName(writer, "uploadId", String.class);
+			Assertions.assertNotNull(uploadId);
+		}
+	}
+
+	@Test
+	void multipartSingleUploadTest()
+	{
+		var test = "test";
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
+		{
+			writer.write(test.getBytes(StandardCharsets.UTF_8));
+		}
+		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
+		var output = baseDirectory.resolve(TEST_FILE);
+		CONTAINER.readObject(TEST_BUCKET, TEST_KEY, output);
+		Assertions.assertEquals(test.length(), JunitHelper.tryCall(() -> Files.size(output)));
+		JunitHelper.tryCall(() -> Files.deleteIfExists(output));
+	}
+
+	@Test
+	void multipartUploadTest()
+	{
+		var test = "test";
+		var part = Stream.generate(() -> test)
+						 .limit(5 * 1024 * 1024 / test.length())
+						 .collect(Collectors.joining());
+		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
+		try (var writer = new MultipartWriter(operationRecord))
+		{
+			writer.write(part.getBytes(StandardCharsets.UTF_8));
+			writer.write(test.getBytes(StandardCharsets.UTF_8));
+		}
+		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
+		var output = baseDirectory.resolve(TEST_FILE);
+		CONTAINER.readObject(TEST_BUCKET, TEST_KEY, output);
+		Assertions.assertEquals(test.length() + part.length(),
+								JunitHelper.tryCall(() -> Files.size(output)));
+		JunitHelper.tryCall(() -> Files.deleteIfExists(output));
+	}
+}

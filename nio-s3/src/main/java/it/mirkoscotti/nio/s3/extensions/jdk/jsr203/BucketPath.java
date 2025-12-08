@@ -1,8 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketModifier;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -29,6 +26,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.BucketModifier;
 
 /**
  * Defines an S3 bucket object with a name compliant with the rules described in
@@ -277,11 +277,16 @@ public class BucketPath
 		{
 			case BucketPath bucketPath when bucketPath.objectKey == null -> this;
 			case BucketPath bucketPath when bucketPath.isAbsolute() -> bucketPath;
-			default -> objectKey.endsWith(BucketDescriptor.PATH_SEPARATOR)
-				? new BucketPath(fileSystem, objectKey.concat(path.objectKey))
-				: new BucketPath(fileSystem,
-								 Stream.of(objectKey, path.objectKey)
-									   .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR)));
+			default ->
+			{
+				var basePath = Optional.ofNullable(objectKey)
+									   .orElse(BucketDescriptor.PATH_SEPARATOR);
+				yield basePath.endsWith(BucketDescriptor.PATH_SEPARATOR)
+					? new BucketPath(fileSystem, basePath.concat(path.objectKey))
+					: new BucketPath(fileSystem,
+									 Stream.of(basePath, path.objectKey)
+										   .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR)));
+			}
 		};
 	}
 
@@ -338,7 +343,7 @@ public class BucketPath
 	public WatchKey register(WatchService watcher, Kind<?>[] events, Modifier... modifiers)
 		throws IOException
 	{
-		if (!Files.isDirectory(this) || !Files.exists(this))
+		if (!Files.isDirectory(this) || Files.notExists(this))
 		{
 			throw new NotDirectoryException("""
 				Only existing directories can be watched.

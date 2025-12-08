@@ -1,11 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -22,6 +16,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.ProviderMismatchException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
@@ -34,6 +29,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.enums.ObjectAccess;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.ConnectorRecord;
+
+import software.amazon.awssdk.regions.Region;
 
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
@@ -158,8 +162,12 @@ public class S3FileSystemProvider
 											  FileAttribute<?>... attrs)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (path instanceof BucketPath bucketPath)
+		{
+			var connector = bucketPath.getFileSystem().connector();
+			return new BucketSeekableByteChannel(connector, bucketPath, options);
+		}
+		throw invalidPath(path);
 	}
 
 	@Override
@@ -208,7 +216,10 @@ public class S3FileSystemProvider
 	@Override
 	public boolean isHidden(Path path) throws IOException
 	{
-		return false;
+		return Optional.ofNullable(path)
+					   .filter(BucketPath.class::isInstance)
+					   .map(item -> false)
+					   .orElseThrow(() -> invalidPath(path));
 	}
 
 	@Override
@@ -224,8 +235,16 @@ public class S3FileSystemProvider
 	@Override
 	public void checkAccess(Path path, AccessMode... modes) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		if (path instanceof BucketPath bucketPath)
+		{
+			var fileSystem = bucketPath.getFileSystem();
+			var bucketName = fileSystem.getFileStores().iterator().next().name();
+			var objectKey = bucketPath.toString();
+			var connector = fileSystem.connector();
+			ObjectAccess.check(connector, bucketName, objectKey, modes);
+			return;
+		}
+		throw invalidPath(path);
 	}
 
 	@Override
@@ -258,6 +277,7 @@ public class S3FileSystemProvider
 		if (path instanceof BucketPath bucketPath)
 		{
 			var map = new HashMap<Class<? extends BasicFileAttributes>, Class<? extends BasicFileAttributeView>>();
+			map.put(BasicFileAttributes.class, ObjectBasicFileAttributeView.class);
 			map.put(ObjectBasicFileAttributes.class, ObjectBasicFileAttributeView.class);
 			var fileAttributeViewType = Optional.ofNullable(type)
 												.filter(map::containsKey)
@@ -304,6 +324,7 @@ public class S3FileSystemProvider
 										  .withCredentials(credentials.accessKey(),
 														   credentials.secretKey());
 		connectorKey.endpoint().map(URI::create).ifPresent(connectorBuilder::withEndpoint);
+		connectorKey.region().map(Region::toString).ifPresent(connectorBuilder::withRegion);
 		return connectorBuilder.build();
 	}
 
@@ -328,7 +349,7 @@ public class S3FileSystemProvider
 		var pathType = path.getClass().getName();
 		var pathTemplate = "Expected path of type %s. Found: %s.";
 		var pathMessage = pathTemplate.formatted(BucketPath.class.getName(), pathType);
-		return new UnsupportedOperationException(pathMessage);
+		return new ProviderMismatchException(pathMessage);
 	}
 
 	private RuntimeException unexpectedFileAttributes(Class<? extends BasicFileAttributes> type)

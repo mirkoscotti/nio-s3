@@ -2,6 +2,7 @@ package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -45,10 +46,9 @@ class BucketPathIT
 	static void beforeAll()
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
-		// CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
 		CONTAINER.createObject(BUCKET_NAME, SUB_DIRECTORY);
 		var file = path.resolve("test.txt");
-		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
+		JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(file));
 		CONTAINER.createObject(BUCKET_NAME, FILE, file);
 	}
 

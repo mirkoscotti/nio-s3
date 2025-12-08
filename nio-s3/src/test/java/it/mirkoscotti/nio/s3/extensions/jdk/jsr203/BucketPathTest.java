@@ -1,8 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-
 import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.nio.file.FileStore;
@@ -34,6 +31,9 @@ import org.junit.platform.commons.support.ReflectionSupport;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti
@@ -603,7 +603,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(false);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(true);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertThrows(NotDirectoryException.class,
 									() -> bucketPath.register(watchService));
@@ -616,7 +616,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
 													() -> bucketPath.register(watchService,
@@ -634,7 +634,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var kinds = new Kind[] {StandardWatchEventKinds.ENTRY_CREATE};
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
@@ -653,7 +653,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertThrows(ProviderMismatchException.class,
 									() -> bucketPath.register(watchService,
@@ -667,7 +667,7 @@ class BucketPathTest
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
-			mock.when(() -> Files.exists(Mockito.any(Path.class))).thenReturn(true);
+			mock.when(() -> Files.notExists(Mockito.any(Path.class))).thenReturn(false);
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			Assertions.assertDoesNotThrow(() -> bucketPath.register(watchService,
 																	StandardWatchEventKinds.ENTRY_CREATE));
@@ -675,62 +675,62 @@ class BucketPathTest
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToPathOfDifferentTypeTest(@Mock Path path)
 	{
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		Assertions.assertNotEquals(path, bucketPath.equals(path));
+		var result = bucketPath.equals(path);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToPathWithDifferentFileSystemTest(@Mock FileSystem fileSystem, @Mock BucketPath path)
 	{
 		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
-		Assertions.assertFalse(bucketPath.equals(path));
+		var result = bucketPath.equals(path);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToDifferentPathTest(@Mock BucketPath path)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		Assertions.assertFalse(bucketPath.equals(path));
+		var result = bucketPath.equals(path);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToRelativePathWithSameKeyTest()
 	{
 		var absolutePath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var relativePath = new BucketPath(fileSystem, ABSOLUTE.concat(PATH));
-		Assertions.assertFalse(absolutePath.equals(relativePath));
+		var result = absolutePath.equals(relativePath);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToAbsolutePathWithSameKeyTest()
 	{
 		var relativePath = new BucketPath(fileSystem, RELATIVE_PATH);
 		var absolutePath = new BucketPath(fileSystem, "/".concat(RELATIVE_PATH));
-		Assertions.assertFalse(relativePath.equals(absolutePath));
+		var result = relativePath.equals(absolutePath);
+		Assertions.assertFalse(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToAbsolutePathTest()
 	{
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		Assertions.assertTrue(bucketPath.equals(bucketPath));
+		var result = bucketPath.equals(bucketPath);
+		Assertions.assertTrue(result);
 	}
 
 	@Test
-	@SuppressWarnings("java:S5785")
 	void equalsToRelativePathTest()
 	{
 		var bucketPath = new BucketPath(fileSystem, RELATIVE_PATH);
-		Assertions.assertTrue(bucketPath.equals(bucketPath));
+		var result = bucketPath.equals(bucketPath);
+		Assertions.assertTrue(result);
 	}
 
 	@Test

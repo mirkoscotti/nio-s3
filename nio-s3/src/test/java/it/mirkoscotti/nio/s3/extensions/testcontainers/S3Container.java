@@ -2,23 +2,35 @@ package it.mirkoscotti.nio.s3.extensions.testcontainers;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.SequencedMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import jakarta.json.bind.JsonbBuilder;
 
 import org.junit.jupiter.api.Assertions;
-import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
+
+import it.mirkoscotti.nio.s3.records.ObjectAttributes;
+import it.mirkoscotti.nio.s3.records.ObjectParts;
 
 /**
  * @author mirko.scotti
@@ -30,7 +42,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.11.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -67,9 +79,17 @@ public class S3Container
 		%s
 		""";
 
-	private static final String CREATE_BUCKET_COMMAND = "awslocal s3api create-bucket --bucket %s";
-
 	private static final String INSTALL_JQ_COMMAND = "apt-get update && apt-get install -y jq";
+
+	private static final String CREATE_USER_COMMAND = "awslocal iam create-user --user-name %s";
+
+	private static final String CREATE_READ_ONLY_USER_COMMAND = "awslocal iam create-user --user-name %s --permissions-boundary arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess";
+
+	private static final String LIST_USERS_COMMAND = "awslocal iam list-users | jq -r '.Users[].UserName'";
+
+	private static final String CREATE_ACCESS_KEY_COMMAND = "awslocal iam create-access-key --user-name %s | jq -r '.AccessKey | \"\\(.AccessKeyId) \\(.SecretAccessKey)\"'";
+
+	private static final String CREATE_BUCKET_COMMAND = "awslocal s3api create-bucket --bucket %s";
 
 	private static final String HEAD_BUCKET_COMMAND = "awslocal s3api head-bucket --bucket %s";
 
@@ -91,18 +111,26 @@ public class S3Container
 
 	private static final String HEAD_OBJECT_COMMAND = "awslocal s3api head-object --bucket %s --key %s";
 
+	private static final String GET_OBJECT_COMMAND = "awslocal s3api get-object --bucket %s --key %s %s";
+
+	private static final String GET_OBJECT_ATTRIBUTES_COMMAND = "awslocal s3api get-object-attributes --bucket %s --key %s --object-attributes Checksum ObjectSize ObjectParts";
+
 	private static final String LIST_OBJECTS_COMMAND = "awslocal s3api list-objects-v2 --bucket %s --query Contents[*].Key --output text";
 
 	private static final String DELETE_OBJECT_COMMAND = "awslocal s3api delete-object --bucket %s --key %s";
 
 	private static final String OUTPUT_PROPERTY_COMMAND = " | jq -r '.%s'";
 
+	private static final String CHECKSUM_OPTION = " --checksum-algorithm SHA256";
+
 	private final List<String> commands = new ArrayList<>();
+
+	private final Map<String, Credentials> credentials = new HashMap<>();
 
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
-		withServices(Service.S3);
+		withServices("s3", "iam");
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 
@@ -114,6 +142,21 @@ public class S3Container
 		withCopyToContainer(Transferable.of(script.getBytes(StandardCharsets.UTF_8), 755),
 							INITIALIZATION_FILE);
 		super.start();
+		createCredentials();
+	}
+
+	public S3Container withUser(String user)
+	{
+		Objects.requireNonNull(user, () -> "Missing user.");
+		commands.add(CREATE_USER_COMMAND.formatted(user));
+		return this;
+	}
+
+	public S3Container withReadOnlyUser(String user)
+	{
+		Objects.requireNonNull(user, () -> "Missing user.");
+		commands.add(CREATE_READ_ONLY_USER_COMMAND.formatted(user));
+		return this;
 	}
 
 	public S3Container withBucket(String bucketName)
@@ -123,15 +166,24 @@ public class S3Container
 		return this;
 	}
 
+	public String getAccessKey(String user)
+	{
+		return credentials.get(user).accessKey();
+	}
+
+	public String getSecretKey(String user)
+	{
+		return credentials.get(user).secretKey();
+	}
+
 	public void createBucket(String bucketName)
 	{
 		var command = CREATE_BUCKET_COMMAND.formatted(bucketName);
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to create bucket %s".formatted(bucketName));
+			var message = "Failed to create bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -171,9 +223,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to delete bucket %s".formatted(bucketName));
+			var message = "Failed to delete bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -194,9 +245,8 @@ public class S3Container
 			copyFileToContainer(Transferable.of(policy), POLICY_FILE);
 			var command = PUT_BUCKET_POLICY_COMMAND.formatted(bucketName);
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to create policy for bucket %s".formatted(bucketName));
+			var message = "Failed to create policy for bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -243,9 +293,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to delete policy for bucket %s".formatted(bucketName));
+			var message = "Failed to delete policy for bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -264,9 +313,8 @@ public class S3Container
 		{
 			var command = PUT_BUCKET_ACL_COMMAND.formatted(bucketName, acl);
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to create ACL for bucket %s".formatted(bucketName));
+			var message = "Failed to create ACL for bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -289,10 +337,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to create object %s in bucket %s".formatted(key,
-																						bucketName));
+			var message = "Failed to create object %s in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
 		catch (InterruptedException x)
 		{
@@ -307,16 +353,82 @@ public class S3Container
 
 	public void createObject(String bucketName, String key, Path file)
 	{
-		var path = "/tmp/file.txt";
+		var path = "/tmp/input.txt";
 		copyFileToContainer(MountableFile.forHostPath(file), path);
 		var command = PUT_OBJECT_WITH_TEXT_COMMAND.formatted(bucketName, key, path);
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to create object %s in bucket %s".formatted(key,
-																						bucketName));
+			var message = "Failed to create object %s in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void createObjectWithChecksum(String bucketName, String key)
+	{
+		var command = PUT_OBJECT_COMMAND.concat(CHECKSUM_OPTION).formatted(bucketName, key);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			var message = "Failed to create object %s with checksum in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void createObjectWithChecksum(String bucketName, String key, Path file)
+	{
+		var path = "/tmp/input.txt";
+		copyFileToContainer(MountableFile.forHostPath(file), path);
+		var command = PUT_OBJECT_WITH_TEXT_COMMAND.concat(CHECKSUM_OPTION)
+												  .formatted(bucketName, key, path);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			var message = "Failed to create object %s with checksum in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	public void readObject(String bucketName, String key, Path file)
+	{
+		var path = "/tmp/output.txt";
+		var command = GET_OBJECT_COMMAND.formatted(bucketName, key, path);
+		try
+		{
+			var output = execInContainer(command.split(" "));
+			var message = "Failed to read object %s in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+			copyFileFromContainer(path,
+								  item -> Files.copy(item,
+													 file,
+													 StandardCopyOption.REPLACE_EXISTING));
 		}
 		catch (InterruptedException x)
 		{
@@ -358,10 +470,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer("sh", "-c", command);
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to retrieve the 'LastModified' property from object %s in bucket %s".formatted(key,
-																														   bucketName));
+			var message = "Failed to retrieve the 'LastModified' property from object %s in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 			result = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH)
 									  .withZone(ZoneOffset.UTC)
 									  .parse(output.getStdout().trim(), Instant::from);
@@ -378,6 +488,35 @@ public class S3Container
 		return result;
 	}
 
+	public SequencedMap<String, Long> checksum(String bucketName, String key)
+	{
+		var result = new LinkedHashMap<String, Long>();
+		var command = GET_OBJECT_ATTRIBUTES_COMMAND.formatted(bucketName, key);
+		try (var jsonb = JsonbBuilder.create())
+		{
+			var output = execInContainer("sh", "-c", command);
+			var message = "Failed to retrieve the checksum of object %s in bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+			var attributes = jsonb.fromJson(output.getStdout(), ObjectAttributes.class);
+			Optional.ofNullable(attributes.objectParts())
+					.map(ObjectParts::parts)
+					.stream()
+					.flatMap(List::stream)
+					.forEach(item -> result.put(item.checksumSha256(), item.size()));
+			result.put(attributes.checksum().checksumSha256(), attributes.objectSize());
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+		return result;
+	}
+
 	public String[] listObjects(String bucketName)
 	{
 		String[] result;
@@ -385,9 +524,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to list objects from bucket %s".formatted(bucketName));
+			var message = "Failed to list objects from bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 			result = output.getStdout().replace("\n", "").split("\t");
 		}
 		catch (InterruptedException x)
@@ -408,10 +546,54 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to delete object %s from bucket %s".formatted(key,
-																						  bucketName));
+			var message = "Failed to delete object %s from bucket %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	private void createCredentials()
+	{
+		try
+		{
+			var output = execInContainer("sh", "-c", LIST_USERS_COMMAND);
+			var message = "Failed to list users.";
+			Assertions.assertEquals(0, output.getExitCode(), message);
+			Optional.of(output.getStdout())
+					.filter(Predicate.not(String::isBlank))
+					.stream()
+					.flatMap(item -> Stream.of(item.split("\n")))
+					.forEach(this::createCredentials);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	private void createCredentials(String user)
+	{
+		var command = CREATE_ACCESS_KEY_COMMAND.formatted(user);
+		try
+		{
+			var output = execInContainer("sh", "-c", command);
+			var message = "Failed to create credentials for user %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(user));
+			var result = output.getStdout().split(" ");
+			credentials.put(user, new Credentials(result[0], result[1]));
 		}
 		catch (InterruptedException x)
 		{
@@ -429,9 +611,8 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(DELETE_POLICY_FILE_COMMAND.split(" "));
-			Assertions.assertEquals(0,
-									output.getExitCode(),
-									"Failed to delete temporary policy file.");
+			var message = "Failed to delete temporary policy file.";
+			Assertions.assertEquals(0, output.getExitCode(), message);
 		}
 		catch (InterruptedException x)
 		{
@@ -442,5 +623,10 @@ public class S3Container
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	private static record Credentials(String accessKey, String secretKey)
+	{
+
 	}
 }
