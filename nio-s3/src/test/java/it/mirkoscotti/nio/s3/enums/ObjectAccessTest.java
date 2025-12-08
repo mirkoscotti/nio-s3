@@ -56,6 +56,58 @@ class ObjectAccessTest
 	}
 
 	@Test
+	void readDeniedForDirectoryTest(@Mock S3Exception exception, @Mock AwsErrorDetails errorDetails)
+	{
+		actionDeniedForDirectory(exception, errorDetails, AccessMode.READ);
+	}
+
+	@Test
+	void unexpectedExceptionWhileCheckingForReadTest(@Mock S3Exception exception,
+													 @Mock AwsErrorDetails errorDetails)
+	{
+		unexpectedExceptionWhileCheckingDirectory(exception, errorDetails, AccessMode.READ);
+	}
+
+	@Test
+	void readAllowedForDirectoryTest()
+	{
+		actionAllowedForDirectory(AccessMode.READ);
+	}
+
+	@Test
+	void readAllowedForFileTest()
+	{
+		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connector,
+															   TEST_BUCKET,
+															   TEST_OBJECT,
+															   AccessMode.READ));
+	}
+
+	@Test
+	void executeDeniedForDirectoryTest(@Mock S3Exception exception,
+									   @Mock AwsErrorDetails errorDetails)
+	{
+		actionDeniedForDirectory(exception, errorDetails, AccessMode.EXECUTE);
+	}
+
+	@Test
+	void unexpectedExceptionWhileCheckingForExecuteTest(@Mock S3Exception exception,
+														@Mock AwsErrorDetails errorDetails)
+	{
+		unexpectedExceptionWhileCheckingDirectory(exception, errorDetails, AccessMode.EXECUTE);
+	}
+
+	@Test
+	void executeAllowedForDirectoryTest()
+	{
+		actionAllowedForDirectory(AccessMode.EXECUTE);
+	}
+
+	@Test
 	void executeDeniedForFileTest()
 	{
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
@@ -69,27 +121,9 @@ class ObjectAccessTest
 														 AccessMode.EXECUTE));
 	}
 
-	@Test
-	void unexpectedExceptionWhileCheckingForExecuteTest(@Mock S3Exception exception,
-														@Mock AwsErrorDetails errorDetails)
-	{
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
-		Mockito.when(connector.listObjects(Mockito.anyString(), Mockito.anyString(), Mockito.eq(0)))
-			   .thenThrow(exception);
-		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
-		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
-		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
-		Assertions.assertThrows(S3Exception.class,
-								() -> ObjectAccess.check(connector,
-														 TEST_BUCKET,
-														 TEST_OBJECT,
-														 AccessMode.EXECUTE));
-	}
-
-	@Test
-	void executeDeniedForDirectoryTest(@Mock S3Exception exception,
-									   @Mock AwsErrorDetails errorDetails)
+	private void actionDeniedForDirectory(S3Exception exception,
+										  AwsErrorDetails errorDetails,
+										  AccessMode accessMode)
 	{
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(basicFileAttributes);
@@ -103,11 +137,28 @@ class ObjectAccessTest
 								() -> ObjectAccess.check(connector,
 														 TEST_BUCKET,
 														 TEST_OBJECT,
-														 AccessMode.EXECUTE));
+														 accessMode));
 	}
 
-	@Test
-	void executeAllowedForDirectoryTest()
+	private void unexpectedExceptionWhileCheckingDirectory(S3Exception exception,
+														   AwsErrorDetails errorDetails,
+														   AccessMode accessMode)
+	{
+		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(connector.listObjects(Mockito.anyString(), Mockito.anyString(), Mockito.eq(0)))
+			   .thenThrow(exception);
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		Assertions.assertThrows(S3Exception.class,
+								() -> ObjectAccess.check(connector,
+														 TEST_BUCKET,
+														 TEST_OBJECT,
+														 accessMode));
+	}
+
+	private void actionAllowedForDirectory(AccessMode accessMode)
 	{
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(basicFileAttributes);
@@ -116,6 +167,6 @@ class ObjectAccessTest
 		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connector,
 															   TEST_BUCKET,
 															   TEST_OBJECT,
-															   AccessMode.EXECUTE));
+															   accessMode));
 	}
 }
