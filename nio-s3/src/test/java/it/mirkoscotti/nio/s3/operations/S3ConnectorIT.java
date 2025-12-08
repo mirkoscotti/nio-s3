@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.CleanupMode;
@@ -78,6 +79,7 @@ class S3ConnectorIT
 	}
 
 	@Test
+	@Disabled("TODO: access policies to be managed considering that Enforcement IAM is a Localstack Pro feature")
 	void createBucketWithReadOnlyUserTest(@Mock BucketDescriptor bucketDescriptor,
 										  @Mock BucketRecord bucketKey)
 	{
@@ -88,6 +90,7 @@ class S3ConnectorIT
 	}
 
 	@Test
+	@Disabled("TODO: access policies to be managed considering that Enforcement IAM is a Localstack Pro feature")
 	void isBucketReadOnlyForUserTest()
 	{
 		CONTAINER.createBucket(BUCKET_NAME);

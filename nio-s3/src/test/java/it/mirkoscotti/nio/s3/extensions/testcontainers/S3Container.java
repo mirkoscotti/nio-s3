@@ -567,7 +567,11 @@ public class S3Container
 			var output = execInContainer("sh", "-c", LIST_USERS_COMMAND);
 			var message = "Failed to list users.";
 			Assertions.assertEquals(0, output.getExitCode(), message);
-			Stream.of(output.getStdout().split("\n")).forEach(this::createCredentials);
+			Optional.of(output.getStdout())
+					.filter(Predicate.not(String::isBlank))
+					.stream()
+					.flatMap(item -> Stream.of(item.split("\n")))
+					.forEach(this::createCredentials);
 		}
 		catch (InterruptedException x)
 		{

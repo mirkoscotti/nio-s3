@@ -1,10 +1,10 @@
 package it.mirkoscotti.nio.s3.helpers;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-
 import java.util.Map;
 import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 
 /**
  * @author mirko.scotti
