@@ -1,17 +1,11 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
-import it.mirkoscotti.nio.s3.helpers.IoHelper;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.CleanupMode;
@@ -23,6 +17,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.IoHelper;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
+
+import software.amazon.awssdk.services.s3.model.S3Exception;
+
 /**
  * @author mirko.scotti
  * @version Oct 24, 2024
@@ -32,7 +34,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class S3ConnectorIT
 {
 
+	private static final String READ_USER = "read-user";
+
 	private static final String BUCKET_NAME = "test-bucket";
+
+	private static final String TEST_OBJECT = "test.txt";
 
 	private static final String PUBLIC_READ = "public-read";
 
@@ -47,22 +53,11 @@ class S3ConnectorIT
 	private static final String OBJECT = DIRECTORY.concat(FILE);
 
 	@Container
-	private static final S3Container CONTAINER = new S3Container();
+	@SuppressWarnings("resource")
+	private static final S3Container CONTAINER = new S3Container().withUser(READ_USER);
 
 	@TempDir(cleanup = CleanupMode.ALWAYS)
 	private static Path baseDirectory;
-
-	private static S3Connector connector;
-
-	@BeforeAll
-	static void beforeAll()
-	{
-		connector = S3Connector.create()
-							   .withEndpoint(CONTAINER.getEndpoint())
-							   .withRegion(CONTAINER.getRegion())
-							   .withCredentials(CONTAINER.getAccessKey(), CONTAINER.getSecretKey())
-							   .build();
-	}
 
 	@AfterEach
 	void afterEach()
@@ -78,15 +73,36 @@ class S3ConnectorIT
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
-		connector.createBucket(bucketDescriptor);
+		createConnector(READ_USER).createBucket(bucketDescriptor);
 		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
+	}
+
+	@Test
+	void createBucketWithReadOnlyUserTest(@Mock BucketDescriptor bucketDescriptor,
+										  @Mock BucketRecord bucketKey)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		var connector = createConnector(READ_USER);
+		Assertions.assertThrows(S3Exception.class, () -> connector.createBucket(bucketDescriptor));
+	}
+
+	@Test
+	void isBucketReadOnlyForUserTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		var connector = createConnector(READ_USER);
+		connector.createBucket(null);
+		var content = "test".getBytes(StandardCharsets.UTF_8);
+		Assertions.assertThrows(S3Exception.class,
+								() -> connector.writeObject(BUCKET_NAME, TEST_OBJECT, content));
 	}
 
 	@Test
 	void isBucketReadOnlyWithoutPolicyTest()
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
-		Assertions.assertFalse(connector.isBucketReadOnly(BUCKET_NAME));
+		Assertions.assertFalse(createConnector().isBucketReadOnly(BUCKET_NAME));
 	}
 
 	@Test
@@ -94,7 +110,7 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createBucketPolicy(BUCKET_NAME);
-		Assertions.assertTrue(connector.isBucketReadOnly(BUCKET_NAME));
+		Assertions.assertTrue(createConnector().isBucketReadOnly(BUCKET_NAME));
 	}
 
 	@Test
@@ -102,7 +118,7 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createBucketAcl(BUCKET_NAME, PUBLIC_READ);
-		Assertions.assertTrue(connector.isBucketReadOnly(BUCKET_NAME));
+		Assertions.assertTrue(createConnector().isBucketReadOnly(BUCKET_NAME));
 	}
 
 	@Test
@@ -110,12 +126,13 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createBucketAcl(BUCKET_NAME, PUBLIC_READ);
-		Assertions.assertTrue(connector.bucketAcl(BUCKET_NAME).contains("READ"));
+		Assertions.assertTrue(createConnector().bucketAcl(BUCKET_NAME).contains("READ"));
 	}
 
 	@Test
 	void bucketAclWhenBucketDoesNotExistTest()
 	{
+		var connector = createConnector();
 		Assertions.assertThrows(IllegalStateException.class,
 								() -> connector.bucketAcl(BUCKET_NAME));
 	}
@@ -125,7 +142,7 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createObject(BUCKET_NAME, KEY);
-		var basicFileAttributes = connector.objectMetadata(BUCKET_NAME, KEY);
+		var basicFileAttributes = createConnector().objectMetadata(BUCKET_NAME, KEY);
 		var lastModified = basicFileAttributes.lastModifiedTime();
 		Assertions.assertEquals(CONTAINER.lastModified(BUCKET_NAME, KEY), lastModified.toInstant());
 		Assertions.assertEquals(0, basicFileAttributes.size());
@@ -137,7 +154,7 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createObject(BUCKET_NAME, PREFIX);
-		var map = connector.listObjects(BUCKET_NAME, PREFIX);
+		var map = createConnector().listObjects(BUCKET_NAME, PREFIX);
 		Assertions.assertTrue(map.isEmpty());
 	}
 
@@ -149,7 +166,24 @@ class S3ConnectorIT
 		var file = baseDirectory.resolve("test.txt");
 		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
 		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
-		var map = connector.listObjects(BUCKET_NAME, DIRECTORY);
+		var map = createConnector().listObjects(BUCKET_NAME, DIRECTORY);
 		Assertions.assertTrue(map.containsKey(OBJECT));
+	}
+
+	private S3Connector createConnector()
+	{
+		return createConnector(null);
+	}
+
+	private S3Connector createConnector(String user)
+	{
+		var optional = Optional.ofNullable(user);
+		var accessKey = optional.map(CONTAINER::getAccessKey).orElseGet(CONTAINER::getAccessKey);
+		var secretKey = optional.map(CONTAINER::getSecretKey).orElseGet(CONTAINER::getSecretKey);
+		return S3Connector.create()
+						  .withEndpoint(CONTAINER.getEndpoint())
+						  .withRegion(CONTAINER.getRegion())
+						  .withCredentials(accessKey, secretKey)
+						  .build();
 	}
 }

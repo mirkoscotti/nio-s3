@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -11,6 +7,10 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
 import java.util.Optional;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * According to the {@link FileStore} specification, this one represents a single bucket in the same
@@ -30,7 +30,7 @@ public class BucketFileStore
 	/**
 	 * @param bucketName
 	 */
-	public BucketFileStore(S3Connector connector, String bucketName)
+	BucketFileStore(S3Connector connector, String bucketName)
 	{
 		this.connector = Objects.requireNonNull(connector, () -> "Missing AWS connector.");
 		this.bucketName = Objects.requireNonNull(bucketName, () -> "Missing bucket name.");

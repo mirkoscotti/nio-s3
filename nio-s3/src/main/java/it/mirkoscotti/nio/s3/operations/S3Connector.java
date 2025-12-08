@@ -103,6 +103,9 @@ public final class S3Connector
 
 	public boolean isBucketReadOnly(String bucketName)
 	{
+		// 1. check for user permissions
+		// 2. check for policy
+		// 3. check for ACL
 		return isBucketPolicyReadOnly(client, bucketName)
 			|| isBucketAclReadOnly(client, bucketName);
 	}

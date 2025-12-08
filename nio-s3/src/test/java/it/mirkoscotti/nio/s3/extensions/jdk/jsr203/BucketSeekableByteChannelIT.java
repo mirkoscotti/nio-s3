@@ -25,8 +25,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
@@ -42,7 +40,6 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
  * @version May 30, 2025
  */
 @Testcontainers
-@TestInstance(Lifecycle.PER_CLASS)
 class BucketSeekableByteChannelIT
 {
 

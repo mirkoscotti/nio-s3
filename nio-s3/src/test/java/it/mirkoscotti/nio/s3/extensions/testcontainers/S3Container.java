@@ -9,14 +9,17 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jakarta.json.bind.JsonbBuilder;
 
@@ -76,9 +79,17 @@ public class S3Container
 		%s
 		""";
 
-	private static final String CREATE_BUCKET_COMMAND = "awslocal s3api create-bucket --bucket %s";
-
 	private static final String INSTALL_JQ_COMMAND = "apt-get update && apt-get install -y jq";
+
+	private static final String CREATE_USER_COMMAND = "awslocal iam create-user --user-name %s";
+
+	private static final String CREATE_READ_ONLY_USER_COMMAND = "awslocal iam create-user --user-name %s --permissions-boundary arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess";
+
+	private static final String LIST_USERS_COMMAND = "awslocal iam list-users | jq -r '.Users[].UserName'";
+
+	private static final String CREATE_ACCESS_KEY_COMMAND = "awslocal iam create-access-key --user-name %s | jq -r '.AccessKey | \"\\(.AccessKeyId) \\(.SecretAccessKey)\"'";
+
+	private static final String CREATE_BUCKET_COMMAND = "awslocal s3api create-bucket --bucket %s";
 
 	private static final String HEAD_BUCKET_COMMAND = "awslocal s3api head-bucket --bucket %s";
 
@@ -114,10 +125,12 @@ public class S3Container
 
 	private final List<String> commands = new ArrayList<>();
 
+	private final Map<String, Credentials> credentials = new HashMap<>();
+
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
-		withServices("s3");
+		withServices("s3", "iam");
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 
@@ -129,6 +142,21 @@ public class S3Container
 		withCopyToContainer(Transferable.of(script.getBytes(StandardCharsets.UTF_8), 755),
 							INITIALIZATION_FILE);
 		super.start();
+		createCredentials();
+	}
+
+	public S3Container withUser(String user)
+	{
+		Objects.requireNonNull(user, () -> "Missing user.");
+		commands.add(CREATE_USER_COMMAND.formatted(user));
+		return this;
+	}
+
+	public S3Container withReadOnlyUser(String user)
+	{
+		Objects.requireNonNull(user, () -> "Missing user.");
+		commands.add(CREATE_READ_ONLY_USER_COMMAND.formatted(user));
+		return this;
 	}
 
 	public S3Container withBucket(String bucketName)
@@ -136,6 +164,16 @@ public class S3Container
 		Objects.requireNonNull(bucketName, () -> "Missing bucket name.");
 		commands.add(CREATE_BUCKET_COMMAND.formatted(bucketName));
 		return this;
+	}
+
+	public String getAccessKey(String user)
+	{
+		return credentials.get(user).accessKey();
+	}
+
+	public String getSecretKey(String user)
+	{
+		return credentials.get(user).secretKey();
 	}
 
 	public void createBucket(String bucketName)
@@ -522,6 +560,48 @@ public class S3Container
 		}
 	}
 
+	private void createCredentials()
+	{
+		try
+		{
+			var output = execInContainer("sh", "-c", LIST_USERS_COMMAND);
+			var message = "Failed to list users.";
+			Assertions.assertEquals(0, output.getExitCode(), message);
+			Stream.of(output.getStdout().split("\n")).forEach(this::createCredentials);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	private void createCredentials(String user)
+	{
+		var command = CREATE_ACCESS_KEY_COMMAND.formatted(user);
+		try
+		{
+			var output = execInContainer("sh", "-c", command);
+			var message = "Failed to create credentials for user %s";
+			Assertions.assertEquals(0, output.getExitCode(), message.formatted(user));
+			var result = output.getStdout().split(" ");
+			credentials.put(user, new Credentials(result[0], result[1]));
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
 	private void deletePolicyFile()
 	{
 		try
@@ -539,5 +619,10 @@ public class S3Container
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	private static record Credentials(String accessKey, String secretKey)
+	{
+
 	}
 }
