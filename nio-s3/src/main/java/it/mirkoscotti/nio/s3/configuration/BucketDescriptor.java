@@ -4,7 +4,7 @@ import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
+import it.mirkoscotti.nio.s3.records.FactoryRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import java.net.URI;
@@ -149,7 +149,7 @@ public class BucketDescriptor
 
 	private final BucketRecord bucketKey;
 
-	private final ConnectorRecord connectorKey;
+	private final FactoryRecord connectorKey;
 
 	public BucketDescriptor(URI uri)
 	{
@@ -167,7 +167,7 @@ public class BucketDescriptor
 		var region = Optional.ofNullable(this.configuration.get(BucketProperty.REGION))
 							 .map(Region::of);
 		var credentials = createCredentials(uriDescriptor);
-		connectorKey = new ConnectorRecord(endpoint, region, credentials);
+		connectorKey = new FactoryRecord(endpoint, region, credentials);
 	}
 
 	/**
@@ -195,7 +195,7 @@ public class BucketDescriptor
 	 *
 	 * @return the value of the property
 	 */
-	public ConnectorRecord connectorKey()
+	public FactoryRecord connectorKey()
 	{
 		return connectorKey;
 	}

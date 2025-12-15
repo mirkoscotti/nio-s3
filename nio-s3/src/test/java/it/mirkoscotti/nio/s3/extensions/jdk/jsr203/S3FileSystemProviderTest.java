@@ -25,11 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import it.mirkoscotti.nio.s3.records.FactoryRecord;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
@@ -55,16 +55,16 @@ class S3FileSystemProviderTest
 																													   BucketFileSystem.class);
 
 	@SuppressWarnings("unchecked")
-	private final Map<ConnectorRecord, S3Connector> connectorsCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
-																													Map.class,
-																													ConnectorRecord.class,
-																													S3Connector.class);
+	private final Map<FactoryRecord, S3Connector> connectorsCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
+																												  Map.class,
+																												  FactoryRecord.class,
+																												  ConnectorFactory.class);
 
 	@Mock
 	private BucketRecord bucketKey;
 
 	@Mock
-	private ConnectorRecord connectorKey;
+	private FactoryRecord connectorKey;
 
 	@Mock
 	private BucketPath path;
@@ -85,18 +85,14 @@ class S3FileSystemProviderTest
 
 	@Test
 	void newFileSystemNotYetCachedTest(@Mock URI uri,
-									   @Mock S3ConnectorBuilder connectorBuilder,
+									   @Mock ConnectorFactory connectorFactory,
 									   @Mock S3Connector connector)
 	{
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
-			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
-			 var connectorMock = Mockito.mockStatic(S3Connector.class))
+			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var fileSystem = JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri,
 																						Map.of()));
@@ -118,18 +114,14 @@ class S3FileSystemProviderTest
 
 	@Test
 	void newFileSystemAlreadyCachedTest(@Mock URI uri,
-										@Mock S3ConnectorBuilder connectorBuilder,
+										@Mock ConnectorFactory connectorFactory,
 										@Mock S3Connector connector)
 	{
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
-			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
-			 var connectorMock = Mockito.mockStatic(S3Connector.class))
+			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
 			var fileSystemProvider = new S3FileSystemProvider();
 			JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri, Map.of()));
 			JunitHelper.failCall(FileSystemAlreadyExistsException.class,
@@ -167,20 +159,18 @@ class S3FileSystemProviderTest
 
 	@Test
 	void getPathCreatingNewFileSystemTest(@Mock URI uri,
-										  @Mock S3ConnectorBuilder connectorBuilder,
+										  @Mock ConnectorFactory connectorFactory,
 										  @Mock S3Connector connector)
 	{
-		Mockito.when(uri.getPath()).thenReturn("path");
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
-		try (var connectorMock = Mockito.mockStatic(S3Connector.class);
-			 var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
 			 var fileSystemMock = Mockito.mockConstruction(BucketFileSystem.class,
-														   this::initializeFileSystem))
+														   this::initializeFileSystem);
+			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
+			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = fileSystemProvider.getPath(uri);
 			Assertions.assertEquals(path, result);

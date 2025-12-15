@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -26,7 +27,6 @@ import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 import it.mirkoscotti.nio.s3.records.OperationRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
@@ -50,14 +50,14 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * @version Oct 22, 2024
  */
 public final class S3Connector
-	implements Closeable
+	implements AwsConnector, Closeable
 {
 
 	private static final Logger LOGGER = System.getLogger(S3Connector.class.getName());
 
 	private final S3AsyncClient client;
 
-	private S3Connector(S3AsyncClient client)
+	S3Connector(S3AsyncClient client)
 	{
 		this.client = client;
 	}
@@ -302,40 +302,45 @@ public final class S3Connector
 		response.contents().forEach(item -> report.put(item.key(), item.lastModified()));
 	}
 
-	public static final class S3ConnectorBuilder
+	static class S3ConnectorBuilder
+		extends
+		AwsConnectorBuilder<S3ConnectorBuilder, S3CrtAsyncClientBuilder, S3Connector, S3AsyncClient>
 	{
 
-		private final S3CrtAsyncClientBuilder builder = S3AsyncClient.crtBuilder();
-
-		private S3ConnectorBuilder()
+		S3ConnectorBuilder()
 		{
-			builder.crossRegionAccessEnabled(true);
+			super(S3AsyncClient.crtBuilder().crossRegionAccessEnabled(true));
 		}
 
-		public S3ConnectorBuilder withEndpoint(URI endpoint)
+		@Override
+		protected void endpointOverride(S3CrtAsyncClientBuilder builder, URI uri)
 		{
-			Optional.ofNullable(endpoint).ifPresent(builder::endpointOverride);
+			builder.endpointOverride(uri);
+		}
+
+		@Override
+		protected void region(S3CrtAsyncClientBuilder builder, Region region)
+		{
+			builder.region(region);
+		}
+
+		@Override
+		protected void credentialsProvider(S3CrtAsyncClientBuilder builder,
+										   AwsCredentialsProvider provider)
+		{
+			builder.credentialsProvider(provider);
+		}
+
+		@Override
+		protected Function<S3AsyncClient, S3Connector> connectorCreator()
+		{
+			return S3Connector::new;
+		}
+
+		@Override
+		protected S3ConnectorBuilder thisBuilder()
+		{
 			return this;
-		}
-
-		public S3ConnectorBuilder withRegion(String region)
-		{
-			Optional.ofNullable(region).map(Region::of).ifPresent(builder::region);
-			return this;
-		}
-
-		public S3ConnectorBuilder withCredentials(String accessKey, String secretKey)
-		{
-			Optional.ofNullable(accessKey)
-					.map(item -> new CredentialsRecord(item, secretKey))
-					.flatMap(item -> Optional.<AwsCredentialsProvider>of(item::awsCredentials))
-					.ifPresent(builder::credentialsProvider);
-			return this;
-		}
-
-		public S3Connector build()
-		{
-			return new S3Connector(builder.build());
 		}
 	}
 }

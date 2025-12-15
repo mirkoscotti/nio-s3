@@ -16,7 +16,7 @@
 			WARNING!!! Cannot update to 3.5.0 until due to a bug. For futher details: 
 			https://github.com/apache/maven-jar-plugin/issues/506 
 		-->
-		<maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+		<maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
 		<!-- END OF WARNING -->
 		<maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
 		<maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
@@ -76,11 +76,15 @@
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>iam</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>iam</artifactId>
+			<artifactId>sts</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
