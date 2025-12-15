@@ -94,7 +94,7 @@ class S3FileSystemProviderTest
 			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
 			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
-			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+			factoryMock.when(() -> ConnectorFactory.create(Mockito.any(FactoryRecord.class)))
 					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var fileSystem = JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri,
@@ -126,7 +126,7 @@ class S3FileSystemProviderTest
 			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
 			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
-			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+			factoryMock.when(() -> ConnectorFactory.create(Mockito.any(FactoryRecord.class)))
 					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri, Map.of()));
@@ -176,7 +176,7 @@ class S3FileSystemProviderTest
 														   this::initializeFileSystem);
 			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
-			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+			factoryMock.when(() -> ConnectorFactory.create(Mockito.any(FactoryRecord.class)))
 					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = fileSystemProvider.getPath(uri);

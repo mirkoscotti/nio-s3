@@ -309,7 +309,7 @@ public class S3FileSystemProvider
 	{
 		var factoryKey = bucketDescriptor.connectorKey();
 		var connectorFactory = FACTORIES_CACHE.computeIfAbsent(factoryKey,
-															   ConnectorFactory::createFactory);
+															   ConnectorFactory::create);
 		var result = new BucketFileSystem(connectorFactory.s3Connector(), bucketDescriptor, this);
 		var bucketKey = bucketDescriptor.bucketKey();
 		FILE_SYSTEMS_CACHE.put(bucketKey, result);

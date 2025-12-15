@@ -29,7 +29,7 @@ public class ConnectorFactory
 		this.factoryRecord = factoryRecord;
 	}
 
-	public static ConnectorFactory createFactory(FactoryRecord factoryRecord)
+	public static ConnectorFactory create(FactoryRecord factoryRecord)
 	{
 		Objects.requireNonNull(factoryRecord, () -> "Missing endpoint, region and credentials.");
 		return new ConnectorFactory(factoryRecord);
