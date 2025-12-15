@@ -55,10 +55,10 @@ class S3FileSystemProviderTest
 																													   BucketFileSystem.class);
 
 	@SuppressWarnings("unchecked")
-	private final Map<FactoryRecord, S3Connector> connectorsCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
-																												  Map.class,
-																												  FactoryRecord.class,
-																												  ConnectorFactory.class);
+	private final Map<FactoryRecord, ConnectorFactory> connectorsCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
+																													   Map.class,
+																													   FactoryRecord.class,
+																													   ConnectorFactory.class);
 
 	@Mock
 	private BucketRecord bucketKey;
@@ -91,15 +91,18 @@ class S3FileSystemProviderTest
 		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
-			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class))
+			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
+			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
+			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var fileSystem = JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri,
 																						Map.of()));
 			JunitHelper.findStaticFieldValues(S3FileSystemProvider.class, Map.class)
 					   .forEach(item -> Assertions.assertEquals(1, item.size()));
 			Assertions.assertEquals(fileSystem, fileSystemsCache.values().iterator().next());
-			Assertions.assertEquals(connector, connectorsCache.values().iterator().next());
+			Assertions.assertEquals(connectorFactory, connectorsCache.values().iterator().next());
 			var fileSystemConnector = JunitHelper.findFieldValueByType(fileSystem,
 																	   S3Connector.class);
 			Assertions.assertEquals(connector, fileSystemConnector);
@@ -120,8 +123,11 @@ class S3FileSystemProviderTest
 		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
-			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class))
+			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
+			 var factoryMock = Mockito.mockStatic(ConnectorFactory.class))
 		{
+			factoryMock.when(() -> ConnectorFactory.createFactory(Mockito.any(FactoryRecord.class)))
+					   .thenReturn(connectorFactory);
 			var fileSystemProvider = new S3FileSystemProvider();
 			JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri, Map.of()));
 			JunitHelper.failCall(FileSystemAlreadyExistsException.class,
@@ -144,14 +150,14 @@ class S3FileSystemProviderTest
 	@Test
 	void getFileSystemTest(@Mock URI uri,
 						   @Mock BucketFileSystem fileSystem,
-						   @Mock S3Connector connector)
+						   @Mock ConnectorFactory connectorFactory)
 	{
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
 			fileSystemsCache.put(bucketKey, fileSystem);
-			connectorsCache.put(connectorKey, connector);
+			connectorsCache.put(connectorKey, connectorFactory);
 			var currentFileSystem = fileSystemProvider.getFileSystem(uri);
 			Assertions.assertEquals(fileSystem, currentFileSystem);
 		}
@@ -162,6 +168,7 @@ class S3FileSystemProviderTest
 										  @Mock ConnectorFactory connectorFactory,
 										  @Mock S3Connector connector)
 	{
+		Mockito.when(uri.getPath()).thenReturn("path");
 		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
