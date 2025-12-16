@@ -3,6 +3,7 @@ package it.mirkoscotti.nio.s3.helpers;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
@@ -30,7 +31,13 @@ public final class ExceptionsHelper
 
 	public static <T> T redirectException(Throwable throwable)
 	{
-		var exception = toS3Exception(throwable);
+		return redirectException(throwable, S3Exception.class);
+	}
+
+	public static <T, E extends AwsServiceException> T redirectException(Throwable throwable,
+																		 Class<E> exceptionClass)
+	{
+		var exception = toAwsServiceException(throwable, exceptionClass);
 		throw new IllegalStateException(exception);
 	}
 
@@ -41,11 +48,19 @@ public final class ExceptionsHelper
 
 	public static S3Exception toS3Exception(Throwable throwable)
 	{
+		return toAwsServiceException(throwable, S3Exception.class);
+	}
+
+	public static <T extends AwsServiceException> T toAwsServiceException(Throwable throwable,
+																		  Class<T> exceptionClass)
+	{
 		return switch (throwable)
 		{
-			case S3Exception exception -> exception;
-			case CompletionException exception -> toS3Exception(exception.getCause());
-			case ExecutionException exception -> toS3Exception(exception.getCause());
+			case AwsServiceException exception -> exceptionClass.cast(exception);
+			case CompletionException exception -> toAwsServiceException(exception.getCause(),
+																		exceptionClass);
+			case ExecutionException exception -> toAwsServiceException(exception.getCause(),
+																	   exceptionClass);
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};

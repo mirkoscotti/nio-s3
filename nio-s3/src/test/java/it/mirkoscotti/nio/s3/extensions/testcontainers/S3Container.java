@@ -46,6 +46,15 @@ public class S3Container
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
+	private static final String AWS_CREDENTIALS_FILE = "/root/.aws/credentials";
+
+	private static final String PROFILE_TEMPLATE = """
+		[%s]
+		aws_access_key_id = %s
+		aws_secret_access_key = %s
+
+		""";
+
 	private static final String POLICY_FILE = "/tmp/bucket-policy.json";
 
 	private static final String READ_ONLY_POLICY = """
@@ -86,6 +95,8 @@ public class S3Container
 	private static final String CREATE_READ_ONLY_USER_COMMAND = "awslocal iam create-user --user-name %s --permissions-boundary arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess";
 
 	private static final String LIST_USERS_COMMAND = "awslocal iam list-users | jq -r '.Users[].UserName'";
+
+	private static final String GET_CALLER_IDENTITY_COMMAND = "awslocal sts get-caller-identity --profile %s";
 
 	private static final String CREATE_ACCESS_KEY_COMMAND = "awslocal iam create-access-key --user-name %s | jq -r '.AccessKey | \"\\(.AccessKeyId) \\(.SecretAccessKey)\"'";
 
@@ -130,7 +141,7 @@ public class S3Container
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
-		withServices("s3", "iam");
+		withServices("s3", "iam", "sts");
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 
@@ -143,6 +154,7 @@ public class S3Container
 							INITIALIZATION_FILE);
 		super.start();
 		createCredentials();
+		createProfiles();
 	}
 
 	public S3Container withUser(String user)
@@ -176,13 +188,39 @@ public class S3Container
 		return credentials.get(user).secretKey();
 	}
 
+	public String arn(String user)
+	{
+		String result = null;
+		var command = GET_CALLER_IDENTITY_COMMAND.concat(OUTPUT_PROPERTY_COMMAND)
+												 .formatted(user, "Arn");
+		try
+		{
+			var output = execInContainer("sh", "-c", command);
+			var message = "Failed to retrieve arn of user %s: %s.";
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									message.formatted(user, output.getStderr()));
+			result = output.getStdout().trim();
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+		return result;
+	}
+
 	public void createBucket(String bucketName)
 	{
 		var command = CREATE_BUCKET_COMMAND.formatted(bucketName);
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create bucket %s";
+			var message = "Failed to create bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
@@ -604,6 +642,21 @@ public class S3Container
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	private void createProfiles()
+	{
+		var content = credentials.entrySet()
+								 .stream()
+								 .map(item -> createProfile(item.getKey(), item.getValue()))
+								 .collect(Collectors.joining("\n"));
+		copyFileToContainer(Transferable.of(content.getBytes(StandardCharsets.UTF_8)),
+							AWS_CREDENTIALS_FILE);
+	}
+
+	private String createProfile(String user, Credentials credentials)
+	{
+		return PROFILE_TEMPLATE.formatted(user, credentials.accessKey(), credentials.secretKey());
 	}
 
 	private void deletePolicyFile()

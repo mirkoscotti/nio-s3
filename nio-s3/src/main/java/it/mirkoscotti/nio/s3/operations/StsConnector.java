@@ -3,10 +3,16 @@ package it.mirkoscotti.nio.s3.operations;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 import software.amazon.awssdk.services.sts.StsAsyncClient;
 import software.amazon.awssdk.services.sts.StsAsyncClientBuilder;
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
@@ -44,6 +50,15 @@ public final class StsConnector
 	public static StsConnectorBuilder create()
 	{
 		return new StsConnectorBuilder();
+	}
+
+	public String arn()
+	{
+		return Try.to(() -> client.getCallerIdentity()
+								  .thenApply(GetCallerIdentityResponse::arn)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
+				  .get();
 	}
 
 	public static final class StsConnectorBuilder
