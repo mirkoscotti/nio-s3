@@ -16,7 +16,7 @@ import software.amazon.awssdk.regions.Region;
 
 /**
  * @author mirko.scotti
- * @version Dec 15, 2025
+ * @version Dec 16, 2025
  */
 @ExtendWith(MockitoExtension.class)
 class ClientConnectorBuilderTest
