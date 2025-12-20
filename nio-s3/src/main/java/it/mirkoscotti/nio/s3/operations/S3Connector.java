@@ -80,6 +80,11 @@ public final class S3Connector
 		return obj instanceof S3Connector other && Objects.equals(client, other.client);
 	}
 
+	public static S3ConnectorBuilder create()
+	{
+		return new S3ConnectorBuilder();
+	}
+
 	public void createBucket(BucketDescriptor bucketDescriptor)
 	{
 		try
@@ -197,11 +202,6 @@ public final class S3Connector
 	{
 		var operationRecord = new OperationRecord(client, bucketName, key);
 		return new MultipartWriter(operationRecord);
-	}
-
-	public static S3ConnectorBuilder create()
-	{
-		return new S3ConnectorBuilder();
 	}
 
 	private void configureBucket(BucketDescriptor bucketDescriptor, Builder builder)
