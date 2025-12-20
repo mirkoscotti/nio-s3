@@ -14,6 +14,7 @@ import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 import software.amazon.awssdk.services.iam.IamAsyncClient;
 import software.amazon.awssdk.services.iam.IamAsyncClientBuilder;
+import software.amazon.awssdk.services.iam.model.PolicyEvaluationDecisionType;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyRequest.Builder;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyResponse;
 import software.amazon.awssdk.services.sts.model.StsException;
@@ -91,7 +92,6 @@ public final class IamConnector
 	private void simulateFile(SimulationRecord simulation, Builder builder)
 	{
 		var resourceArns = RESOURCE_ARN.formatted(simulation.bucket(), simulation.key());
-		System.out.println("File simulation: %s".formatted(simulation));
 		builder.policySourceArn(simulation.arn())
 			   .actionNames(PUT_OBJECT)
 			   .resourceArns(resourceArns);
@@ -111,7 +111,6 @@ public final class IamConnector
 	{
 		var resourceArns = RESOURCE_ARN.concat("/*")
 									   .formatted(simulation.bucket(), simulation.key());
-		System.out.println("Directory simulation: %s".formatted(simulation));
 		builder.policySourceArn(simulation.arn())
 			   .actionNames(PUT_OBJECT, DELETE_OBJECT)
 			   .resourceArns(resourceArns);
@@ -119,11 +118,10 @@ public final class IamConnector
 
 	private boolean guessCanWrite(SimulatePrincipalPolicyResponse response)
 	{
-		System.out.println("Response: %s".formatted(response));
 		return response.evaluationResults()
 					   .stream()
 					   .anyMatch(result -> PUT_OBJECT.equals(result.evalActionName())
-						   && "allowed".equalsIgnoreCase(result.evalDecisionAsString()));
+						   && PolicyEvaluationDecisionType.ALLOWED.equals(result.evalDecision()));
 	}
 
 	public static final class IamConnectorBuilder
