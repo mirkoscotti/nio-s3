@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
- * @version Oct 22, 2024
+ * @version Dec 14, 2025
  */
 public final class StsConnector
 	implements AwsConnector, Closeable
