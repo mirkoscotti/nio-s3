@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
@@ -27,7 +28,7 @@ public enum ObjectAccess
 	{
 
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(ConnectorFactory connectorFactory,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
@@ -35,7 +36,7 @@ public enum ObjectAccess
 			return basicFileAttributes.isDirectory()
 				// As well as for traditional file systems, let's consider a directory readable if
 				// it has the permission to be traversed.
-				? tryListObjects(connector, bucket, key)
+				? tryListObjects(connectorFactory.s3Connector(), bucket, key)
 				// Files metadata are already available. If it is possible, it means that also the
 				// content is accessible.
 				: null;
@@ -45,20 +46,36 @@ public enum ObjectAccess
 	{
 
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(ConnectorFactory connectorFactory,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
-			return null;
+			var key = basicFileAttributes.fileKey().toString();
+			var arn = connectorFactory.stsConnector().arn();
+			var connector = connectorFactory.iamConnector();
+			var isDirectory = basicFileAttributes.isDirectory();
+			var permission = isDirectory
+				? connector.permissionOnDirectory(arn, bucket, key)
+				: connector.permissionOnFile(arn, bucket, key);
+			return permission.toUpperCase().contains(BucketEffect.ALLOW.name())
+				? null
+				: errorMessage(bucket, key, isDirectory, permission);
+		}
+
+		private String errorMessage(String bucket,
+									String key,
+									boolean isDirectory,
+									String permission)
+		{
+			var resourceType = isDirectory ? "Directory" : "File";
+			return ERROR_TEMPLATE.formatted(bucket, resourceType, key, permission);
 		}
 	},
 	EXECUTE
 	{
 
-		private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
-
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(ConnectorFactory connectorFactory,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
@@ -66,13 +83,15 @@ public enum ObjectAccess
 			return basicFileAttributes.isDirectory()
 				// Similarly to traditional file systems, let's consider a directory executable if
 				// it has the permission to be traversed.
-				? tryListObjects(connector, bucket, key)
+				? tryListObjects(connectorFactory.s3Connector(), bucket, key)
 				// Files cannot be executed on S3 buckets
 				: ERROR_TEMPLATE.formatted(bucket, "File", key, name());
 		}
 	};
 
-	protected abstract String checkAccess(S3Connector connector,
+	private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
+
+	protected abstract String checkAccess(ConnectorFactory connectorFactory,
 										  BasicFileAttributes basicFileAttributes,
 										  String bucket);
 
@@ -93,7 +112,7 @@ public enum ObjectAccess
 		return result;
 	}
 
-	public static void check(S3Connector connector,
+	public static void check(ConnectorFactory connectorFactory,
 							 String bucket,
 							 String key,
 							 AccessMode... accessModes)
@@ -105,10 +124,11 @@ public enum ObjectAccess
 						 .toList();
 		try
 		{
+			var connector = connectorFactory.s3Connector();
 			var basicFileAttributes = connector.objectMetadata(bucket, key);
 			var result = Stream.of(ObjectAccess.values())
 							   .filter(item -> list.contains(item.name()))
-							   .map(item -> item.checkAccess(connector,
+							   .map(item -> item.checkAccess(connectorFactory,
 															 basicFileAttributes,
 															 bucket))
 							   .filter(Objects::nonNull)

@@ -5,6 +5,7 @@ import java.nio.file.FileSystem;
 import java.util.stream.StreamSupport;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
+import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
@@ -31,6 +33,9 @@ class BucketFileSystemTest
 	private static final String BUCKET_NAME = "bucket-name";
 
 	@Mock
+	private ConnectorFactory connectorFactory;
+
+	@Mock
 	private S3Connector connector;
 
 	@Mock
@@ -42,6 +47,12 @@ class BucketFileSystemTest
 	@Mock
 	private S3FileSystemProvider fileSystemProvider;
 
+	@BeforeEach
+	void beforeEach()
+	{
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+	}
+
 	@Test
 	void bucketAlreadyOwnedByYouExceptionTest()
 	{
@@ -50,7 +61,7 @@ class BucketFileSystemTest
 			   .createBucket(Mockito.any(BucketDescriptor.class));
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Assertions.assertDoesNotThrow(() -> new BucketFileSystem(connector,
+		Assertions.assertDoesNotThrow(() -> new BucketFileSystem(connectorFactory,
 																 bucketDescriptor,
 																 fileSystemProvider));
 	}
@@ -64,7 +75,7 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertThrows(IllegalArgumentException.class,
-								() -> new BucketFileSystem(connector,
+								() -> new BucketFileSystem(connectorFactory,
 														   bucketDescriptor,
 														   fileSystemProvider));
 	}
@@ -77,7 +88,7 @@ class BucketFileSystemTest
 			   .createBucket(Mockito.any(BucketDescriptor.class));
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Assertions.assertThrows(IllegalArgumentException.class,
-								() -> new BucketFileSystem(connector,
+								() -> new BucketFileSystem(connectorFactory,
 														   bucketDescriptor,
 														   fileSystemProvider));
 	}
@@ -90,7 +101,7 @@ class BucketFileSystemTest
 			   .createBucket(Mockito.any(BucketDescriptor.class));
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Assertions.assertThrows(IllegalArgumentException.class,
-								() -> new BucketFileSystem(connector,
+								() -> new BucketFileSystem(connectorFactory,
 														   bucketDescriptor,
 														   fileSystemProvider));
 	}
@@ -103,7 +114,7 @@ class BucketFileSystemTest
 			   .createBucket(Mockito.any(BucketDescriptor.class));
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Assertions.assertThrows(IllegalArgumentException.class,
-								() -> new BucketFileSystem(connector,
+								() -> new BucketFileSystem(connectorFactory,
 														   bucketDescriptor,
 														   fileSystemProvider));
 	}
@@ -113,7 +124,9 @@ class BucketFileSystemTest
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		try (var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		try (var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
 			Assertions.assertEquals(fileSystemProvider, fileSystem.provider());
 		}
@@ -129,7 +142,9 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(BucketFileStore.class);
-			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+			 var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
 			var list = StreamSupport.stream(fileSystem.getFileStores().spliterator(), false)
 									.toList();
@@ -147,7 +162,9 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(BucketPath.class);
-			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+			 var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
 			var path = fileSystem.getPath("path");
 			Assertions.assertEquals(mock.constructed().get(0), path);
@@ -164,7 +181,9 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(DirectoryWatchService.class);
-			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+			 var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
 			var watchService = fileSystem.newWatchService();
 			Assertions.assertEquals(mock.constructed().get(0), watchService);
@@ -180,10 +199,10 @@ class BucketFileSystemTest
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		try (var fileSystem1 = new BucketFileSystem(connector,
+		try (var fileSystem1 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider);
-			 var fileSystem2 = new BucketFileSystem(connector,
+			 var fileSystem2 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider))
 		{
@@ -196,17 +215,19 @@ class BucketFileSystemTest
 	}
 
 	@Test
-	void hashCodeWithDifferentInstancesTest(@Mock S3Connector connector,
+	void hashCodeWithDifferentInstancesTest(@Mock ConnectorFactory connectorFactory,
+											@Mock S3Connector connector,
 											@Mock BucketDescriptor bucketDescriptor,
 											@Mock S3FileSystemProvider fileSystemProvider)
 	{
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		Mockito.when(this.bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		try (var fileSystem1 = new BucketFileSystem(this.connector,
+		try (var fileSystem1 = new BucketFileSystem(this.connectorFactory,
 													this.bucketDescriptor,
 													this.fileSystemProvider);
-			 var fileSystem2 = new BucketFileSystem(connector,
+			 var fileSystem2 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider))
 		{
@@ -223,7 +244,9 @@ class BucketFileSystemTest
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		try (var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+		try (var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
 			var result = fileSystem.equals(null);
 			Assertions.assertFalse(result);
@@ -239,7 +262,7 @@ class BucketFileSystemTest
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		try (var thisFileSystem = new BucketFileSystem(connector,
+		try (var thisFileSystem = new BucketFileSystem(connectorFactory,
 													   bucketDescriptor,
 													   fileSystemProvider))
 		{
@@ -258,10 +281,10 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		try (var fileSystem1 = new BucketFileSystem(connector,
+		try (var fileSystem1 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													this.fileSystemProvider);
-			 var fileSystem2 = new BucketFileSystem(connector,
+			 var fileSystem2 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider))
 		{
@@ -282,10 +305,10 @@ class BucketFileSystemTest
 		Mockito.when(this.bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn("other-bucket");
-		try (var fileSystem1 = new BucketFileSystem(connector,
+		try (var fileSystem1 = new BucketFileSystem(connectorFactory,
 													this.bucketDescriptor,
 													fileSystemProvider);
-			 var fileSystem2 = new BucketFileSystem(connector,
+			 var fileSystem2 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider))
 		{
@@ -303,10 +326,10 @@ class BucketFileSystemTest
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		try (var fileSystem1 = new BucketFileSystem(connector,
+		try (var fileSystem1 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider);
-			 var fileSystem2 = new BucketFileSystem(connector,
+			 var fileSystem2 = new BucketFileSystem(connectorFactory,
 													bucketDescriptor,
 													fileSystemProvider))
 		{
@@ -325,9 +348,11 @@ class BucketFileSystemTest
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(DirectoryWatchService.class);
-			 var fileSystem = new BucketFileSystem(connector, bucketDescriptor, fileSystemProvider))
+			 var fileSystem = new BucketFileSystem(connectorFactory,
+												   bucketDescriptor,
+												   fileSystemProvider))
 		{
-			Assertions.assertEquals(connector, fileSystem.connector());
+			Assertions.assertEquals(connectorFactory, fileSystem.connectorFactory());
 		}
 		catch (IOException x)
 		{

@@ -2,11 +2,14 @@ package it.mirkoscotti.nio.s3.operations;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.BucketAction;
 import it.mirkoscotti.nio.s3.functions.Try;
@@ -14,6 +17,7 @@ import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 import software.amazon.awssdk.services.iam.IamAsyncClient;
 import software.amazon.awssdk.services.iam.IamAsyncClientBuilder;
+import software.amazon.awssdk.services.iam.model.EvaluationResult;
 import software.amazon.awssdk.services.iam.model.PolicyEvaluationDecisionType;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyRequest.Builder;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyResponse;
@@ -26,10 +30,6 @@ import software.amazon.awssdk.services.sts.model.StsException;
 public final class IamConnector
 	implements AwsConnector, Closeable
 {
-
-	private static final String PUT_OBJECT = BucketAction.S3_PUT_OBJECT.tag();
-
-	private static final String DELETE_OBJECT = BucketAction.S3_DELETE_OBJECT.tag();
 
 	private static final String RESOURCE_ARN = "arn:aws:s3:::%s/%s";
 
@@ -63,65 +63,52 @@ public final class IamConnector
 		return new IamConnectorBuilder();
 	}
 
-	public boolean canWriteFile(String arn, String bucket, String key)
+	public String permissionOnFile(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
-		return Try.to(() -> simulateFile(simulation))
+		return Try.to(() -> simulate(simulation, BucketAction.S3_PUT_OBJECT))
 				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
 				  .get();
 	}
 
-	public boolean canWriteDirectory(String arn, String bucket, String key)
+	public String permissionOnDirectory(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
-		return Try.to(() -> simulateDirectory(simulation))
+		return Try.to(() -> simulate(simulation,
+									 BucketAction.S3_PUT_OBJECT,
+									 BucketAction.S3_DELETE_OBJECT))
 				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
 				  .get();
 	}
 
-	private boolean simulateFile(SimulationRecord simulation)
+	private String simulate(SimulationRecord simulation, BucketAction... bucketActions)
 		throws TimeoutException,
 			ExecutionException,
 			InterruptedException
 	{
-		return client.simulatePrincipalPolicy(item -> simulateFile(simulation, item))
-					 .thenApply(this::guessCanWrite)
+		return client.simulatePrincipalPolicy(item -> simulate(simulation, item, bucketActions))
+					 .thenApply(this::guessPermission)
 					 .get(30, TimeUnit.SECONDS);
 	}
 
-	private void simulateFile(SimulationRecord simulation, Builder builder)
+	private void simulate(SimulationRecord simulation,
+						  Builder builder,
+						  BucketAction... bucketActions)
 	{
 		var resourceArns = RESOURCE_ARN.formatted(simulation.bucket(), simulation.key());
-		builder.policySourceArn(simulation.arn())
-			   .actionNames(PUT_OBJECT)
-			   .resourceArns(resourceArns);
+		var actions = Stream.of(bucketActions).map(BucketAction::tag).toArray(String[]::new);
+		builder.policySourceArn(simulation.arn()).actionNames(actions).resourceArns(resourceArns);
 	}
 
-	private boolean simulateDirectory(SimulationRecord simulation)
-		throws TimeoutException,
-			ExecutionException,
-			InterruptedException
-	{
-		return client.simulatePrincipalPolicy(item -> simulateDirectory(simulation, item))
-					 .thenApply(this::guessCanWrite)
-					 .get(30, TimeUnit.SECONDS);
-	}
-
-	private void simulateDirectory(SimulationRecord simulation, Builder builder)
-	{
-		var resourceArns = RESOURCE_ARN.concat("/*")
-									   .formatted(simulation.bucket(), simulation.key());
-		builder.policySourceArn(simulation.arn())
-			   .actionNames(PUT_OBJECT, DELETE_OBJECT)
-			   .resourceArns(resourceArns);
-	}
-
-	private boolean guessCanWrite(SimulatePrincipalPolicyResponse response)
+	private String guessPermission(SimulatePrincipalPolicyResponse response)
 	{
 		return response.evaluationResults()
 					   .stream()
-					   .anyMatch(result -> PUT_OBJECT.equals(result.evalActionName())
-						   && PolicyEvaluationDecisionType.ALLOWED.equals(result.evalDecision()));
+					   .map(EvaluationResult::evalDecision)
+					   .min(Comparator.comparingInt(PolicyEvaluationDecisionType::ordinal))
+					   .filter(Predicate.not(PolicyEvaluationDecisionType.ALLOWED::equals))
+					   .map(PolicyEvaluationDecisionType::toString)
+					   .orElse(null);
 	}
 
 	public static final class IamConnectorBuilder

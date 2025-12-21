@@ -6,12 +6,14 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributes;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
@@ -31,10 +33,19 @@ class ObjectAccessTest
 	private static final String TEST_OBJECT = "test-object";
 
 	@Mock
+	private ConnectorFactory connectorFactory;
+
+	@Mock
 	private S3Connector connector;
 
 	@Mock
 	private BasicFileAttributes basicFileAttributes;
+
+	@BeforeEach
+	void beforeEach()
+	{
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+	}
 
 	@Test
 	void checkNotExistingFileTest()
@@ -42,7 +53,9 @@ class ObjectAccessTest
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenThrow(NoSuchKeyException.class);
 		Assertions.assertThrows(NoSuchFileException.class,
-								() -> ObjectAccess.check(connector, TEST_BUCKET, TEST_OBJECT));
+								() -> ObjectAccess.check(connectorFactory,
+														 TEST_BUCKET,
+														 TEST_OBJECT));
 	}
 
 	@Test
@@ -50,7 +63,7 @@ class ObjectAccessTest
 	{
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(basicFileAttributes);
-		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connector,
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connectorFactory,
 															   TEST_BUCKET,
 															   TEST_OBJECT));
 	}
@@ -81,7 +94,7 @@ class ObjectAccessTest
 			   .thenReturn(basicFileAttributes);
 		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
 		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
-		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connector,
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connectorFactory,
 															   TEST_BUCKET,
 															   TEST_OBJECT,
 															   AccessMode.READ));
@@ -115,7 +128,7 @@ class ObjectAccessTest
 		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
 		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
 		Assertions.assertThrows(AccessDeniedException.class,
-								() -> ObjectAccess.check(connector,
+								() -> ObjectAccess.check(connectorFactory,
 														 TEST_BUCKET,
 														 TEST_OBJECT,
 														 AccessMode.EXECUTE));
@@ -134,7 +147,7 @@ class ObjectAccessTest
 		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
 		Mockito.when(errorDetails.errorCode()).thenReturn("AccessDenied");
 		Assertions.assertThrows(AccessDeniedException.class,
-								() -> ObjectAccess.check(connector,
+								() -> ObjectAccess.check(connectorFactory,
 														 TEST_BUCKET,
 														 TEST_OBJECT,
 														 accessMode));
@@ -152,7 +165,7 @@ class ObjectAccessTest
 		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
 		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
 		Assertions.assertThrows(S3Exception.class,
-								() -> ObjectAccess.check(connector,
+								() -> ObjectAccess.check(connectorFactory,
 														 TEST_BUCKET,
 														 TEST_OBJECT,
 														 accessMode));
@@ -164,7 +177,7 @@ class ObjectAccessTest
 			   .thenReturn(basicFileAttributes);
 		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
 		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
-		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connector,
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(connectorFactory,
 															   TEST_BUCKET,
 															   TEST_OBJECT,
 															   accessMode));

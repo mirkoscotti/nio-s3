@@ -33,7 +33,7 @@ class IamConnectorIT
 																  .withBucket(TEST_BUCKET);
 
 	@Test
-	void cannotWriteFileTest()
+	void permissionDeniedOnFileTest()
 	{
 		var readArn = CONTAINER.arn(READ_USER);
 		var result = IamConnector.create()
@@ -42,13 +42,13 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(READ_USER),
 												  CONTAINER.getSecretKey(READ_USER))
 								 .build()
-								 .canWriteFile(readArn, TEST_BUCKET, TEST_FILE);
-		Assertions.assertFalse(result);
+								 .permissionOnFile(readArn, TEST_BUCKET, TEST_FILE);
+		Assertions.assertNotNull(result);
 	}
 
 	@Test
 	@Disabled("Waiting for LocalStack bug fix.")
-	void canWriteFileTest()
+	void permissionAllowedOnFileTest()
 	{
 		/*
 		 * This test cannot be performed until the bug reported here is fixed:
@@ -61,12 +61,12 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(WRITE_USER),
 												  CONTAINER.getSecretKey(WRITE_USER))
 								 .build()
-								 .canWriteFile(readArn, TEST_BUCKET, TEST_FILE);
-		Assertions.assertTrue(result);
+								 .permissionOnFile(readArn, TEST_BUCKET, TEST_FILE);
+		Assertions.assertNull(result);
 	}
 
 	@Test
-	void cannotWriteDirectoryTest()
+	void permissionDeniedOnDirectoryTest()
 	{
 		var readArn = CONTAINER.arn(READ_USER);
 		var result = IamConnector.create()
@@ -75,7 +75,7 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(READ_USER),
 												  CONTAINER.getSecretKey(READ_USER))
 								 .build()
-								 .canWriteDirectory(readArn, TEST_BUCKET, TEST_DIRECTORY);
-		Assertions.assertFalse(result);
+								 .permissionOnDirectory(readArn, TEST_BUCKET, TEST_DIRECTORY);
+		Assertions.assertNotNull(result);
 	}
 }

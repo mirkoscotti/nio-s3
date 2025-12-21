@@ -104,8 +104,8 @@ class S3FileSystemProviderTest
 			Assertions.assertEquals(fileSystem, fileSystemsCache.values().iterator().next());
 			Assertions.assertEquals(connectorFactory, connectorsCache.values().iterator().next());
 			var fileSystemConnector = JunitHelper.findFieldValueByType(fileSystem,
-																	   S3Connector.class);
-			Assertions.assertEquals(connector, fileSystemConnector);
+																	   ConnectorFactory.class);
+			Assertions.assertEquals(connectorFactory, fileSystemConnector);
 			var provider = JunitHelper.findFieldValueByType(fileSystem, S3FileSystemProvider.class);
 			Assertions.assertEquals(fileSystemProvider, provider);
 			var expectedFileStore = fileStoreMock.constructed().get(0);
@@ -164,12 +164,9 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void getPathCreatingNewFileSystemTest(@Mock URI uri,
-										  @Mock ConnectorFactory connectorFactory,
-										  @Mock S3Connector connector)
+	void getPathCreatingNewFileSystemTest(@Mock URI uri, @Mock ConnectorFactory connectorFactory)
 	{
 		Mockito.when(uri.getPath()).thenReturn("path");
-		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
 			 var fileSystemMock = Mockito.mockConstruction(BucketFileSystem.class,
@@ -194,9 +191,11 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void newByteChannelTest(@Mock BucketFileSystem fileSystem)
+	void newByteChannelTest(@Mock BucketFileSystem fileSystem,
+							@Mock ConnectorFactory connectorFactory)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.connectorFactory()).thenReturn(connectorFactory);
 		try (var mock = Mockito.mockConstruction(BucketSeekableByteChannel.class))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
@@ -259,9 +258,11 @@ class S3FileSystemProviderTest
 	@Test
 	void checkAccessToNotExistingFileTest(@Mock BucketFileSystem fileSystem,
 										  @Mock BucketFileStore fileStore,
-										  @Mock S3Connector connector)
+										  @Mock S3Connector connector,
+										  @Mock ConnectorFactory connectorFactory)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		initializePath(fileSystem, fileStore, connectorFactory);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
 		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenThrow(NoSuchKeyException.class);
 		var fileSystemProvider = new S3FileSystemProvider();
@@ -272,9 +273,11 @@ class S3FileSystemProviderTest
 	@Test
 	void checkAccessToExistingFileTest(@Mock BucketFileSystem fileSystem,
 									   @Mock BucketFileStore fileStore,
+									   @Mock ConnectorFactory connectorFactory,
 									   @Mock S3Connector connector)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+		initializePath(fileSystem, fileStore, connectorFactory);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertDoesNotThrow(() -> fileSystemProvider.checkAccess(path));
 	}
@@ -299,9 +302,11 @@ class S3FileSystemProviderTest
 	@Test
 	void getFileAttributeViewTest(@Mock BucketFileSystem fileSystem,
 								  @Mock BucketFileStore fileStore,
+								  @Mock ConnectorFactory connectorFactory,
 								  @Mock S3Connector connector)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+		initializePath(fileSystem, fileStore, connectorFactory);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertNotNull(fileSystemProvider.getFileAttributeView(path,
 																		 ObjectBasicFileAttributeView.class));
@@ -328,9 +333,11 @@ class S3FileSystemProviderTest
 	@Test
 	void readFileAttributesTest(@Mock BucketFileSystem fileSystem,
 								@Mock BucketFileStore fileStore,
+								@Mock ConnectorFactory connectorFactory,
 								@Mock S3Connector connector)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		Mockito.when(connectorFactory.s3Connector()).thenReturn(connector);
+		initializePath(fileSystem, fileStore, connectorFactory);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
 																			  ObjectBasicFileAttributes.class));
@@ -350,10 +357,10 @@ class S3FileSystemProviderTest
 
 	private void initializePath(BucketFileSystem fileSystem,
 								BucketFileStore fileStore,
-								S3Connector connector)
+								ConnectorFactory connectorFactory)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.connector()).thenReturn(connector);
+		Mockito.when(fileSystem.connectorFactory()).thenReturn(connectorFactory);
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		Mockito.when(fileStore.name()).thenReturn("bucket-name");
 	}

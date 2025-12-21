@@ -137,11 +137,11 @@ class IamConnectorTest
 	 * https://github.com/localstack/localstack/issues/13073
 	 */
 	@Test
-	void canWriteFileTest(@Mock IamAsyncClientBuilder builder,
-						  @Mock IamAsyncClient client,
-						  @Mock SimulatePrincipalPolicyRequest request,
-						  @Mock SimulatePrincipalPolicyResponse response,
-						  @Mock EvaluationResult result)
+	void permissionOnFileTest(@Mock IamAsyncClientBuilder builder,
+							  @Mock IamAsyncClient client,
+							  @Mock SimulatePrincipalPolicyRequest request,
+							  @Mock SimulatePrincipalPolicyResponse response,
+							  @Mock EvaluationResult result)
 	{
 		Mockito.when(builder.build()).thenReturn(client);
 		@SuppressWarnings("unchecked")
@@ -149,13 +149,39 @@ class IamConnectorTest
 		Mockito.when(client.simulatePrincipalPolicy(consumer))
 			   .thenReturn(CompletableFuture.completedFuture(response));
 		Mockito.when(response.evaluationResults()).thenReturn(List.of(result));
-		Mockito.when(result.evalActionName()).thenReturn("s3:PutObject");
 		Mockito.when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
 			var connector = IamConnector.create().build();
-			Assertions.assertTrue(connector.canWriteFile("arn", "bucket", "key"));
+			Assertions.assertNull(connector.permissionOnFile("arn", "bucket", "key"));
+		}
+	}
+
+	/*
+	 * TODO: Remove this test once the bug reported here is fixed. It will be replaced by the
+	 * integration test in IamConnectorIT currently disabled.
+	 * https://github.com/localstack/localstack/issues/13073
+	 */
+	@Test
+	void permissionOnDirectoryTest(@Mock IamAsyncClientBuilder builder,
+								   @Mock IamAsyncClient client,
+								   @Mock SimulatePrincipalPolicyRequest request,
+								   @Mock SimulatePrincipalPolicyResponse response,
+								   @Mock EvaluationResult result)
+	{
+		Mockito.when(builder.build()).thenReturn(client);
+		@SuppressWarnings("unchecked")
+		Consumer<SimulatePrincipalPolicyRequest.Builder> consumer = Mockito.any(Consumer.class);
+		Mockito.when(client.simulatePrincipalPolicy(consumer))
+			   .thenReturn(CompletableFuture.completedFuture(response));
+		Mockito.when(response.evaluationResults()).thenReturn(List.of(result));
+		Mockito.when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
+		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
+		{
+			mock.when(IamAsyncClient::builder).thenReturn(builder);
+			var connector = IamConnector.create().build();
+			Assertions.assertNull(connector.permissionOnDirectory("arn", "bucket", "key"));
 		}
 	}
 }

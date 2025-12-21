@@ -162,8 +162,10 @@ public class S3FileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var connector = bucketPath.getFileSystem().connector();
-			return new BucketSeekableByteChannel(connector, bucketPath, options);
+			var connectorFactory = bucketPath.getFileSystem().connectorFactory();
+			return new BucketSeekableByteChannel(connectorFactory.s3Connector(),
+												 bucketPath,
+												 options);
 		}
 		throw invalidPath(path);
 	}
@@ -238,8 +240,8 @@ public class S3FileSystemProvider
 			var fileSystem = bucketPath.getFileSystem();
 			var bucketName = fileSystem.getFileStores().iterator().next().name();
 			var objectKey = bucketPath.toString();
-			var connector = fileSystem.connector();
-			ObjectAccess.check(connector, bucketName, objectKey, modes);
+			var connectorFactory = fileSystem.connectorFactory();
+			ObjectAccess.check(connectorFactory, bucketName, objectKey, modes);
 			return;
 		}
 		throw invalidPath(path);
@@ -310,7 +312,7 @@ public class S3FileSystemProvider
 		var factoryKey = bucketDescriptor.connectorKey();
 		var connectorFactory = FACTORIES_CACHE.computeIfAbsent(factoryKey,
 															   ConnectorFactory::create);
-		var result = new BucketFileSystem(connectorFactory.s3Connector(), bucketDescriptor, this);
+		var result = new BucketFileSystem(connectorFactory, bucketDescriptor, this);
 		var bucketKey = bucketDescriptor.bucketKey();
 		FILE_SYSTEMS_CACHE.put(bucketKey, result);
 		return result;
@@ -319,7 +321,7 @@ public class S3FileSystemProvider
 	private ObjectBasicFileAttributeView createObjectBasicFileAttributeView(BucketPath bucketPath)
 	{
 		var fileSystem = bucketPath.getFileSystem();
-		var connector = fileSystem.connector();
+		var connector = fileSystem.connectorFactory().s3Connector();
 		var bucketName = fileSystem.getFileStores().iterator().next().name();
 		var objectKey = bucketPath.toString();
 		return new ObjectBasicFileAttributeView(connector, bucketName, objectKey);
