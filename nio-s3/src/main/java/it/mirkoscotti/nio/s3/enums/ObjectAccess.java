@@ -13,8 +13,11 @@ import java.util.stream.Stream;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.iam.model.IamException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
@@ -49,14 +52,23 @@ public enum ObjectAccess
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
+			String result;
 			var key = basicFileAttributes.fileKey().toString();
 			var isDirectory = basicFileAttributes.isDirectory();
-			var permission = isDirectory
-				? awsFacade.filePermission(bucket, key)
-				: awsFacade.directoryPermission(bucket, key);
-			return permission.toUpperCase().contains(BucketEffect.ALLOW.name())
-				? null
-				: errorMessage(bucket, key, isDirectory, permission);
+			try
+			{
+				var permission = isDirectory
+					? awsFacade.directoryPermission(bucket, key)
+					: awsFacade.filePermission(bucket, key);
+				result = permission.toUpperCase().contains(BucketEffect.ALLOW.name())
+					? null
+					: errorMessage(bucket, key, isDirectory, permission);
+			}
+			catch (IamException | StsException x)
+			{
+				result = awsErrorMessage(x);
+			}
+			return result;
 		}
 
 		private String errorMessage(String bucket,
@@ -101,12 +113,17 @@ public enum ObjectAccess
 		}
 		catch (S3Exception x)
 		{
-			result = Optional.of(x.awsErrorDetails())
-							 .filter(item -> "AccessDenied".equals(item.errorCode()))
-							 .map(AwsErrorDetails::toString)
-							 .orElseThrow(() -> x);
+			result = awsErrorMessage(x);
 		}
 		return result;
+	}
+
+	protected String awsErrorMessage(AwsServiceException exception)
+	{
+		return Optional.of(exception.awsErrorDetails())
+					   .filter(item -> "AccessDenied".equals(item.errorCode()))
+					   .map(AwsErrorDetails::toString)
+					   .orElseThrow(() -> exception);
 	}
 
 	public static void check(AwsFacade awsFacade,

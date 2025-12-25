@@ -266,9 +266,4 @@ class AwsFacadeTest
 				   .startMultipartUpload(TEST_BUCKET, TEST_KEY);
 		}
 	}
-
-	private void initializeFacade(LazyReference<S3Connector> reference)
-	{
-		Mockito.when(awsRecord.credentials()).thenReturn(credentials);
-	}
 }

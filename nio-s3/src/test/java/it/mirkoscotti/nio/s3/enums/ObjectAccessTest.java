@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.iam.model.IamException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -88,6 +90,105 @@ class ObjectAccessTest
 	}
 
 	@Test
+	void writeDeniedForDirectoryTest(@Mock IamException exception,
+									 @Mock AwsErrorDetails errorDetails)
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.directoryPermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenThrow(exception);
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		Mockito.when(errorDetails.errorCode()).thenReturn("AccessDenied");
+		Assertions.assertThrows(AccessDeniedException.class,
+								() -> ObjectAccess.check(awsFacade,
+														 TEST_BUCKET,
+														 TEST_OBJECT,
+														 AccessMode.WRITE));
+	}
+
+	@Test
+	void unexpectedExceptionWhileCheckingForWriteTest(@Mock IamException exception,
+													  @Mock AwsErrorDetails errorDetails)
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.directoryPermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenThrow(exception);
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		Assertions.assertThrows(IamException.class,
+								() -> ObjectAccess.check(awsFacade,
+														 TEST_BUCKET,
+														 TEST_OBJECT,
+														 AccessMode.WRITE));
+	}
+
+	@Test
+	void writeDirectoryDeniedWithoutErrorsTest()
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.directoryPermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn("implicitDeny");
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		Assertions.assertThrows(AccessDeniedException.class,
+								() -> ObjectAccess.check(awsFacade,
+														 TEST_BUCKET,
+														 TEST_OBJECT,
+														 AccessMode.WRITE));
+	}
+
+	@Test
+	void writeFileDeniedWithoutErrorsTest()
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.filePermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn("implicitDeny");
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
+		Assertions.assertThrows(AccessDeniedException.class,
+								() -> ObjectAccess.check(awsFacade,
+														 TEST_BUCKET,
+														 TEST_OBJECT,
+														 AccessMode.WRITE));
+	}
+
+	@Test
+	void writeDirectoryAllowedTest()
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.directoryPermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn("allowed");
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(awsFacade,
+															   TEST_BUCKET,
+															   TEST_OBJECT,
+															   AccessMode.WRITE));
+	}
+
+	@Test
+	void writeFileAllowedTest()
+	{
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(basicFileAttributes);
+		Mockito.when(awsFacade.filePermission(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn("allowed");
+		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
+		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(awsFacade,
+															   TEST_BUCKET,
+															   TEST_OBJECT,
+															   AccessMode.WRITE));
+	}
+
+	@Test
 	void executeDeniedForDirectoryTest(@Mock S3Exception exception,
 									   @Mock AwsErrorDetails errorDetails)
 	{
@@ -140,7 +241,7 @@ class ObjectAccessTest
 														 accessMode));
 	}
 
-	private void unexpectedExceptionWhileCheckingDirectory(S3Exception exception,
+	private void unexpectedExceptionWhileCheckingDirectory(AwsServiceException exception,
 														   AwsErrorDetails errorDetails,
 														   AccessMode accessMode)
 	{
