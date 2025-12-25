@@ -10,11 +10,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.iam.model.IamException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
@@ -27,7 +30,7 @@ public enum ObjectAccess
 	{
 
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(AwsFacade awsFacade,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
@@ -35,7 +38,7 @@ public enum ObjectAccess
 			return basicFileAttributes.isDirectory()
 				// As well as for traditional file systems, let's consider a directory readable if
 				// it has the permission to be traversed.
-				? tryListObjects(connector, bucket, key)
+				? tryListObjects(awsFacade, bucket, key)
 				// Files metadata are already available. If it is possible, it means that also the
 				// content is accessible.
 				: null;
@@ -45,20 +48,43 @@ public enum ObjectAccess
 	{
 
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(AwsFacade awsFacade,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
-			return null;
+			String result;
+			var key = basicFileAttributes.fileKey().toString();
+			var isDirectory = basicFileAttributes.isDirectory();
+			try
+			{
+				var permission = isDirectory
+					? awsFacade.directoryPermission(bucket, key)
+					: awsFacade.filePermission(bucket, key);
+				result = permission.toUpperCase().contains(BucketEffect.ALLOW.name())
+					? null
+					: errorMessage(bucket, key, isDirectory, permission);
+			}
+			catch (IamException | StsException x)
+			{
+				result = awsErrorMessage(x);
+			}
+			return result;
+		}
+
+		private String errorMessage(String bucket,
+									String key,
+									boolean isDirectory,
+									String permission)
+		{
+			var resourceType = isDirectory ? "Directory" : "File";
+			return ERROR_TEMPLATE.formatted(bucket, resourceType, key, permission);
 		}
 	},
 	EXECUTE
 	{
 
-		private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
-
 		@Override
-		protected String checkAccess(S3Connector connector,
+		protected String checkAccess(AwsFacade awsFacade,
 									 BasicFileAttributes basicFileAttributes,
 									 String bucket)
 		{
@@ -66,34 +92,41 @@ public enum ObjectAccess
 			return basicFileAttributes.isDirectory()
 				// Similarly to traditional file systems, let's consider a directory executable if
 				// it has the permission to be traversed.
-				? tryListObjects(connector, bucket, key)
+				? tryListObjects(awsFacade, bucket, key)
 				// Files cannot be executed on S3 buckets
 				: ERROR_TEMPLATE.formatted(bucket, "File", key, name());
 		}
 	};
 
-	protected abstract String checkAccess(S3Connector connector,
+	private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
+
+	protected abstract String checkAccess(AwsFacade awsFacade,
 										  BasicFileAttributes basicFileAttributes,
 										  String bucket);
 
-	protected String tryListObjects(S3Connector connector, String bucket, String key)
+	protected String tryListObjects(AwsFacade awsFacade, String bucket, String key)
 	{
 		String result = null;
 		try
 		{
-			connector.listObjects(bucket, key, 0);
+			awsFacade.listObjects(bucket, key, 0);
 		}
 		catch (S3Exception x)
 		{
-			result = Optional.of(x.awsErrorDetails())
-							 .filter(item -> "AccessDenied".equals(item.errorCode()))
-							 .map(AwsErrorDetails::toString)
-							 .orElseThrow(() -> x);
+			result = awsErrorMessage(x);
 		}
 		return result;
 	}
 
-	public static void check(S3Connector connector,
+	protected String awsErrorMessage(AwsServiceException exception)
+	{
+		return Optional.of(exception.awsErrorDetails())
+					   .filter(item -> "AccessDenied".equals(item.errorCode()))
+					   .map(AwsErrorDetails::toString)
+					   .orElseThrow(() -> exception);
+	}
+
+	public static void check(AwsFacade awsFacade,
 							 String bucket,
 							 String key,
 							 AccessMode... accessModes)
@@ -105,10 +138,10 @@ public enum ObjectAccess
 						 .toList();
 		try
 		{
-			var basicFileAttributes = connector.objectMetadata(bucket, key);
+			var basicFileAttributes = awsFacade.objectMetadata(bucket, key);
 			var result = Stream.of(ObjectAccess.values())
 							   .filter(item -> list.contains(item.name()))
-							   .map(item -> item.checkAccess(connector,
+							   .map(item -> item.checkAccess(awsFacade,
 															 basicFileAttributes,
 															 bucket))
 							   .filter(Objects::nonNull)

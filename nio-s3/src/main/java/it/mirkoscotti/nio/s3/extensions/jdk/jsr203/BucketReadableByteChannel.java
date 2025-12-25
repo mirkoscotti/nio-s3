@@ -6,7 +6,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Optional;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -16,7 +16,7 @@ class BucketReadableByteChannel
 	implements ReadableByteChannel
 {
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final String bucket;
 
@@ -28,12 +28,12 @@ class BucketReadableByteChannel
 
 	private long position = 0;
 
-	BucketReadableByteChannel(S3Connector connector, BucketPath path)
+	BucketReadableByteChannel(AwsFacade awsFacade, BucketPath path)
 	{
-		this.connector = connector;
+		this.awsFacade = awsFacade;
 		bucket = path.getFileSystem().getFileStores().iterator().next().name();
 		key = path.toString();
-		size = connector.objectMetadata(bucket, key).size();
+		size = awsFacade.objectMetadata(bucket, key).size();
 	}
 
 	@Override
@@ -96,7 +96,7 @@ class BucketReadableByteChannel
 	private int readRemaining(ByteBuffer buffer, int remaining)
 	{
 		var to = position + remaining - 1;
-		var data = connector.readObject(bucket, key, position, to);
+		var data = awsFacade.readObject(bucket, key, position, to);
 		buffer.put(data);
 		var result = data.length;
 		position += result;

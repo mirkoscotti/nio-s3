@@ -42,11 +42,22 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.11.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.12.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
-	private static final String POLICY_FILE = "/tmp/bucket-policy.json";
+	private static final String AWS_CREDENTIALS_FILE = "/root/.aws/credentials";
+
+	private static final String PROFILE_TEMPLATE = """
+		[%s]
+		aws_access_key_id = %s
+		aws_secret_access_key = %s
+
+		""";
+
+	private static final String IAM_POLICY_FILE = "/tmp/iam-policy.json";
+
+	private static final String BUCKET_POLICY_FILE = "/tmp/bucket-policy.json";
 
 	private static final String READ_ONLY_POLICY = """
 		{
@@ -74,6 +85,27 @@ public class S3Container
 		}
 		""";
 
+	private static final String WRITE_POLICY = """
+		{
+		    "Version": "2012-10-17",
+		    "Statement": [
+		        {
+		            "Effect": "Allow",
+		            "Action": [
+		                "s3:PutObject",
+		                "s3:DeleteObject",
+		                "s3:GetObject",
+		                "s3:ListBucket"
+		            ],
+		            "Resource": [
+		                "arn:aws:s3:::*",
+		                "arn:aws:s3:::*/*"
+		            ]
+		        }
+		    ]
+		}
+		""";
+
 	private static final String GENERIC_COMMAND = """
 		#!/bin/bash
 		%s
@@ -83,9 +115,11 @@ public class S3Container
 
 	private static final String CREATE_USER_COMMAND = "awslocal iam create-user --user-name %s";
 
-	private static final String CREATE_READ_ONLY_USER_COMMAND = "awslocal iam create-user --user-name %s --permissions-boundary arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess";
+	private static final String PUT_USER_POLICY_COMMAND = "awslocal iam put-user-policy --user-name %%s --policy-name %%s --policy-document file://%s".formatted(IAM_POLICY_FILE);
 
 	private static final String LIST_USERS_COMMAND = "awslocal iam list-users | jq -r '.Users[].UserName'";
+
+	private static final String GET_CALLER_IDENTITY_COMMAND = "awslocal sts get-caller-identity --profile %s";
 
 	private static final String CREATE_ACCESS_KEY_COMMAND = "awslocal iam create-access-key --user-name %s | jq -r '.AccessKey | \"\\(.AccessKeyId) \\(.SecretAccessKey)\"'";
 
@@ -95,13 +129,13 @@ public class S3Container
 
 	private static final String DELETE_BUCKET_COMMAND = "awslocal s3api delete-bucket --bucket %s";
 
-	private static final String PUT_BUCKET_POLICY_COMMAND = "awslocal s3api put-bucket-policy --bucket %%s --policy file://%s".formatted(POLICY_FILE);
+	private static final String PUT_BUCKET_POLICY_COMMAND = "awslocal s3api put-bucket-policy --bucket %%s --policy file://%s".formatted(BUCKET_POLICY_FILE);
 
 	private static final String GET_BUCKET_POLICY_COMMAND = "awslocal s3api get-bucket-policy --bucket %s";
 
 	private static final String DELETE_BUCKET_POLICY_COMMAND = "awslocal s3api delete-bucket-policy --bucket %s";
 
-	private static final String DELETE_POLICY_FILE_COMMAND = "rm -f %s".formatted(POLICY_FILE);
+	private static final String DELETE_POLICY_FILE_COMMAND = "rm -f %s".formatted(BUCKET_POLICY_FILE);
 
 	private static final String PUT_BUCKET_ACL_COMMAND = "awslocal s3api put-bucket-acl --bucket %s --acl %s";
 
@@ -130,7 +164,9 @@ public class S3Container
 	public S3Container()
 	{
 		super(DockerImageName.parse(IMAGE_NAME));
-		withServices("s3", "iam");
+		withServices("s3", "iam", "sts");
+		withEnv("DEBUG", "1");
+		withEnv("LS_LOG", "trace");
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 
@@ -139,23 +175,27 @@ public class S3Container
 	{
 		var command = commands.stream().collect(Collectors.joining("\n"));
 		var script = GENERIC_COMMAND.formatted(command);
-		withCopyToContainer(Transferable.of(script.getBytes(StandardCharsets.UTF_8), 755),
-							INITIALIZATION_FILE);
+		var content = script.getBytes(StandardCharsets.UTF_8);
+		withCopyToContainer(Transferable.of(content, 755), INITIALIZATION_FILE);
 		super.start();
 		createCredentials();
+		createProfiles();
 	}
 
 	public S3Container withUser(String user)
 	{
 		Objects.requireNonNull(user, () -> "Missing user.");
 		commands.add(CREATE_USER_COMMAND.formatted(user));
+		var policy = WRITE_POLICY.getBytes(StandardCharsets.UTF_8);
+		withCopyToContainer(Transferable.of(policy), IAM_POLICY_FILE);
+		commands.add(PUT_USER_POLICY_COMMAND.formatted(user, "bucket-write-policy"));
 		return this;
 	}
 
 	public S3Container withReadOnlyUser(String user)
 	{
 		Objects.requireNonNull(user, () -> "Missing user.");
-		commands.add(CREATE_READ_ONLY_USER_COMMAND.formatted(user));
+		commands.add(CREATE_USER_COMMAND.formatted(user));
 		return this;
 	}
 
@@ -176,13 +216,39 @@ public class S3Container
 		return credentials.get(user).secretKey();
 	}
 
+	public String arn(String user)
+	{
+		String result = null;
+		var command = GET_CALLER_IDENTITY_COMMAND.concat(OUTPUT_PROPERTY_COMMAND)
+												 .formatted(user, "Arn");
+		try
+		{
+			var output = execInContainer("sh", "-c", command);
+			var message = "Failed to retrieve arn of user %s: %s.";
+			Assertions.assertEquals(0,
+									output.getExitCode(),
+									message.formatted(user, output.getStderr()));
+			result = output.getStdout().trim();
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			Assertions.fail(x);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+		return result;
+	}
+
 	public void createBucket(String bucketName)
 	{
 		var command = CREATE_BUCKET_COMMAND.formatted(bucketName);
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create bucket %s";
+			var message = "Failed to create bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
@@ -242,7 +308,7 @@ public class S3Container
 		try
 		{
 			var policy = READ_ONLY_POLICY.getBytes(StandardCharsets.UTF_8);
-			copyFileToContainer(Transferable.of(policy), POLICY_FILE);
+			copyFileToContainer(Transferable.of(policy), BUCKET_POLICY_FILE);
 			var command = PUT_BUCKET_POLICY_COMMAND.formatted(bucketName);
 			var output = execInContainer(command.split(" "));
 			var message = "Failed to create policy for bucket %s";
@@ -293,7 +359,7 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to delete policy for bucket %s";
+			var message = "Failed to delete policy for bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
@@ -313,7 +379,7 @@ public class S3Container
 		{
 			var command = PUT_BUCKET_ACL_COMMAND.formatted(bucketName, acl);
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create ACL for bucket %s";
+			var message = "Failed to create ACL for bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
 		catch (InterruptedException x)
@@ -337,7 +403,7 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create object %s in bucket %s";
+			var message = "Failed to create object %s in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
 		catch (InterruptedException x)
@@ -359,7 +425,7 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create object %s in bucket %s";
+			var message = "Failed to create object %s in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
 		catch (InterruptedException x)
@@ -379,7 +445,7 @@ public class S3Container
 		try
 		{
 			var output = execInContainer(command.split(" "));
-			var message = "Failed to create object %s with checksum in bucket %s";
+			var message = "Failed to create object %s with checksum in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
 		catch (InterruptedException x)
@@ -604,6 +670,21 @@ public class S3Container
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	private void createProfiles()
+	{
+		var content = credentials.entrySet()
+								 .stream()
+								 .map(item -> createProfile(item.getKey(), item.getValue()))
+								 .collect(Collectors.joining("\n"));
+		copyFileToContainer(Transferable.of(content.getBytes(StandardCharsets.UTF_8)),
+							AWS_CREDENTIALS_FILE);
+	}
+
+	private String createProfile(String user, Credentials credentials)
+	{
+		return PROFILE_TEMPLATE.formatted(user, credentials.accessKey(), credentials.secretKey());
 	}
 
 	private void deletePolicyFile()

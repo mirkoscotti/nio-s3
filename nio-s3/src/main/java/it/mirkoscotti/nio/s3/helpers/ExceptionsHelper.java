@@ -1,9 +1,11 @@
 package it.mirkoscotti.nio.s3.helpers;
 
+import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 /**
  * @author mirko.scotti
@@ -17,35 +19,27 @@ public final class ExceptionsHelper
 		super();
 	}
 
-	public static <X extends Exception> Void sneakyThrow(X exception)
+	public static <T> T sneakyThrow(Throwable throwable)
 	{
-		sneakyThrow(new IllegalStateException(exception));
-		return null;
+		throw redirectException(throwable);
 	}
 
-	public static <T, X extends RuntimeException> T sneakyThrow(X exception)
-	{
-		throw exception;
-	}
-
-	public static <T> T redirectException(Throwable throwable)
-	{
-		var exception = toS3Exception(throwable);
-		throw new IllegalStateException(exception);
-	}
-
-	public static <T> T throwS3Exception(Throwable throwable)
-	{
-		throw toS3Exception(throwable);
-	}
-
-	public static S3Exception toS3Exception(Throwable throwable)
+	public static RuntimeException redirectException(Throwable throwable)
 	{
 		return switch (throwable)
 		{
-			case S3Exception exception -> exception;
-			case CompletionException exception -> toS3Exception(exception.getCause());
-			case ExecutionException exception -> toS3Exception(exception.getCause());
+			case NoSuchBucketException exception -> new FileSystemNotFoundException(exception.getMessage());
+			default -> toAwsServiceException(throwable);
+		};
+	}
+
+	public static AwsServiceException toAwsServiceException(Throwable throwable)
+	{
+		return switch (throwable)
+		{
+			case AwsServiceException exception -> exception;
+			case CompletionException exception -> toAwsServiceException(exception.getCause());
+			case ExecutionException exception -> toAwsServiceException(exception.getCause());
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};

@@ -24,11 +24,12 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.functions.LazyReference;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
-import it.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
+import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.ConnectorRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -55,16 +56,16 @@ class S3FileSystemProviderTest
 																													   BucketFileSystem.class);
 
 	@SuppressWarnings("unchecked")
-	private final Map<ConnectorRecord, S3Connector> connectorsCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
-																													Map.class,
-																													ConnectorRecord.class,
-																													S3Connector.class);
+	private final Map<AwsRecord, AwsFacade> facadeCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
+																										Map.class,
+																										AwsRecord.class,
+																										AwsFacade.class);
 
 	@Mock
 	private BucketRecord bucketKey;
 
 	@Mock
-	private ConnectorRecord connectorKey;
+	private AwsRecord connectorKey;
 
 	@Mock
 	private BucketPath path;
@@ -73,7 +74,7 @@ class S3FileSystemProviderTest
 	void afterEach()
 	{
 		fileSystemsCache.clear();
-		connectorsCache.clear();
+		facadeCache.clear();
 	}
 
 	@Test
@@ -85,51 +86,55 @@ class S3FileSystemProviderTest
 
 	@Test
 	void newFileSystemNotYetCachedTest(@Mock URI uri,
-									   @Mock S3ConnectorBuilder connectorBuilder,
+									   @Mock AwsRecord awsRecord,
+									   @Mock LazyReference<S3Connector> reference,
 									   @Mock S3Connector connector)
 	{
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
-		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
+		try (var referenceMock = Mockito.mockStatic(LazyReference.class);
+			 var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
-			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
-			 var connectorMock = Mockito.mockStatic(S3Connector.class))
+			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
-			var fileSystemProvider = new S3FileSystemProvider();
-			var fileSystem = JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri,
-																						Map.of()));
-			JunitHelper.findStaticFieldValues(S3FileSystemProvider.class, Map.class)
-					   .forEach(item -> Assertions.assertEquals(1, item.size()));
-			Assertions.assertEquals(fileSystem, fileSystemsCache.values().iterator().next());
-			Assertions.assertEquals(connector, connectorsCache.values().iterator().next());
-			var fileSystemConnector = JunitHelper.findFieldValueByType(fileSystem,
-																	   S3Connector.class);
-			Assertions.assertEquals(connector, fileSystemConnector);
-			var provider = JunitHelper.findFieldValueByType(fileSystem, S3FileSystemProvider.class);
-			Assertions.assertEquals(fileSystemProvider, provider);
-			var expectedFileStore = fileStoreMock.constructed().get(0);
-			var resultFileStore = JunitHelper.findFieldValueByType(fileSystem,
-																   BucketFileStore.class);
-			Assertions.assertEquals(expectedFileStore, resultFileStore);
+			referenceMock.when(() -> LazyReference.of(Mockito.any())).thenReturn(reference);
+			Mockito.when(reference.get()).thenReturn(connector);
+			var awsFacade = Mockito.spy(AwsFacade.create(awsRecord));
+			try (var facadeMock = Mockito.mockStatic(AwsFacade.class))
+			{
+				facadeMock.when(() -> AwsFacade.create(Mockito.any(AwsRecord.class)))
+						  .thenReturn(awsFacade);
+				var fileSystemProvider = new S3FileSystemProvider();
+				var fileSystem = JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri,
+																							Map.of()));
+				JunitHelper.findStaticFieldValues(S3FileSystemProvider.class, Map.class)
+						   .forEach(item -> Assertions.assertEquals(1, item.size()));
+				Assertions.assertEquals(fileSystem, fileSystemsCache.values().iterator().next());
+				Assertions.assertEquals(awsFacade, facadeCache.values().iterator().next());
+				var fileSystemFacade = JunitHelper.findFieldValueByType(fileSystem,
+																		AwsFacade.class);
+				Assertions.assertEquals(awsFacade, fileSystemFacade);
+				var provider = JunitHelper.findFieldValueByType(fileSystem,
+																S3FileSystemProvider.class);
+				Assertions.assertEquals(fileSystemProvider, provider);
+				var expectedFileStore = fileStoreMock.constructed().get(0);
+				var resultFileStore = JunitHelper.findFieldValueByType(fileSystem,
+																	   BucketFileStore.class);
+				Assertions.assertEquals(expectedFileStore, resultFileStore);
+			}
 		}
 	}
 
 	@Test
 	void newFileSystemAlreadyCachedTest(@Mock URI uri,
-										@Mock S3ConnectorBuilder connectorBuilder,
+										@Mock AwsFacade awsFacade,
 										@Mock S3Connector connector)
 	{
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
 			 var fileStoreMock = Mockito.mockConstruction(BucketFileStore.class);
-			 var connectorMock = Mockito.mockStatic(S3Connector.class))
+			 var factoryMock = Mockito.mockStatic(AwsFacade.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
+			factoryMock.when(() -> AwsFacade.create(Mockito.any(AwsRecord.class)))
+					   .thenReturn(awsFacade);
 			var fileSystemProvider = new S3FileSystemProvider();
 			JunitHelper.tryCall(() -> fileSystemProvider.newFileSystem(uri, Map.of()));
 			JunitHelper.failCall(FileSystemAlreadyExistsException.class,
@@ -152,35 +157,31 @@ class S3FileSystemProviderTest
 	@Test
 	void getFileSystemTest(@Mock URI uri,
 						   @Mock BucketFileSystem fileSystem,
-						   @Mock S3Connector connector)
+						   @Mock AwsFacade awsFacade)
 	{
 		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
 			fileSystemsCache.put(bucketKey, fileSystem);
-			connectorsCache.put(connectorKey, connector);
+			facadeCache.put(connectorKey, awsFacade);
 			var currentFileSystem = fileSystemProvider.getFileSystem(uri);
 			Assertions.assertEquals(fileSystem, currentFileSystem);
 		}
 	}
 
 	@Test
-	void getPathCreatingNewFileSystemTest(@Mock URI uri,
-										  @Mock S3ConnectorBuilder connectorBuilder,
-										  @Mock S3Connector connector)
+	void getPathCreatingNewFileSystemTest(@Mock URI uri, @Mock AwsFacade awsFacade)
 	{
 		Mockito.when(uri.getPath()).thenReturn("path");
-		Mockito.when(connectorBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(connectorBuilder);
-		Mockito.when(connectorBuilder.build()).thenReturn(connector);
-		try (var connectorMock = Mockito.mockStatic(S3Connector.class);
-			 var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
+		try (var bucketDescriptorMock = Mockito.mockConstruction(BucketDescriptor.class,
 																 this::initializeBucketDescriptor);
 			 var fileSystemMock = Mockito.mockConstruction(BucketFileSystem.class,
-														   this::initializeFileSystem))
+														   this::initializeFileSystem);
+			 var factoryMock = Mockito.mockStatic(AwsFacade.class))
 		{
-			connectorMock.when(S3Connector::create).thenReturn(connectorBuilder);
+			factoryMock.when(() -> AwsFacade.create(Mockito.any(AwsRecord.class)))
+					   .thenReturn(awsFacade);
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = fileSystemProvider.getPath(uri);
 			Assertions.assertEquals(path, result);
@@ -197,9 +198,10 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void newByteChannelTest(@Mock BucketFileSystem fileSystem)
+	void newByteChannelTest(@Mock BucketFileSystem fileSystem, @Mock AwsFacade awsFacade)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		try (var mock = Mockito.mockConstruction(BucketSeekableByteChannel.class))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
@@ -262,10 +264,10 @@ class S3FileSystemProviderTest
 	@Test
 	void checkAccessToNotExistingFileTest(@Mock BucketFileSystem fileSystem,
 										  @Mock BucketFileStore fileStore,
-										  @Mock S3Connector connector)
+										  @Mock AwsFacade awsFacade)
 	{
-		initializePath(fileSystem, fileStore, connector);
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+		initializePath(fileSystem, fileStore, awsFacade);
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenThrow(NoSuchKeyException.class);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertThrows(NoSuchFileException.class,
@@ -275,9 +277,9 @@ class S3FileSystemProviderTest
 	@Test
 	void checkAccessToExistingFileTest(@Mock BucketFileSystem fileSystem,
 									   @Mock BucketFileStore fileStore,
-									   @Mock S3Connector connector)
+									   @Mock AwsFacade awsFacade)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		initializePath(fileSystem, fileStore, awsFacade);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertDoesNotThrow(() -> fileSystemProvider.checkAccess(path));
 	}
@@ -302,9 +304,9 @@ class S3FileSystemProviderTest
 	@Test
 	void getFileAttributeViewTest(@Mock BucketFileSystem fileSystem,
 								  @Mock BucketFileStore fileStore,
-								  @Mock S3Connector connector)
+								  @Mock AwsFacade awsFacade)
 	{
-		initializePath(fileSystem, fileStore, connector);
+		initializePath(fileSystem, fileStore, awsFacade);
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertNotNull(fileSystemProvider.getFileAttributeView(path,
 																		 ObjectBasicFileAttributeView.class));
@@ -331,12 +333,20 @@ class S3FileSystemProviderTest
 	@Test
 	void readFileAttributesTest(@Mock BucketFileSystem fileSystem,
 								@Mock BucketFileStore fileStore,
+								@Mock AwsRecord awsRecord,
+								@Mock LazyReference<S3Connector> reference,
 								@Mock S3Connector connector)
 	{
-		initializePath(fileSystem, fileStore, connector);
-		var fileSystemProvider = new S3FileSystemProvider();
-		Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
-																			  ObjectBasicFileAttributes.class));
+		try (var mock = Mockito.mockStatic(LazyReference.class))
+		{
+			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(reference);
+			Mockito.when(reference.get()).thenReturn(connector);
+			var awsFacade = Mockito.spy(AwsFacade.create(awsRecord));
+			initializePath(fileSystem, fileStore, awsFacade);
+			var fileSystemProvider = new S3FileSystemProvider();
+			Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
+																				  ObjectBasicFileAttributes.class));
+		}
 	}
 
 	private void initializeBucketDescriptor(BucketDescriptor bucketDescriptor, Context context)
@@ -353,10 +363,10 @@ class S3FileSystemProviderTest
 
 	private void initializePath(BucketFileSystem fileSystem,
 								BucketFileStore fileStore,
-								S3Connector connector)
+								AwsFacade awsFacade)
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.connector()).thenReturn(connector);
+		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		Mockito.when(fileStore.name()).thenReturn("bucket-name");
 	}

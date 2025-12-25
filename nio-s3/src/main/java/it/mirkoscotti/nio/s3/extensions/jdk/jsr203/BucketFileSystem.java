@@ -1,10 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
@@ -17,6 +12,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
+import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
+
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
@@ -28,20 +28,20 @@ class BucketFileSystem
 	extends FileSystem
 {
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final S3FileSystemProvider fileSystemProvider;
 
 	private final BucketFileStore fileStore;
 
-	BucketFileSystem(S3Connector connector,
+	BucketFileSystem(AwsFacade awsFacade,
 					 BucketDescriptor bucketDescriptor,
 					 S3FileSystemProvider fileSystemProvider)
 	{
-		this.connector = connector;
+		this.awsFacade = awsFacade;
 		this.fileSystemProvider = fileSystemProvider;
 		var bucketName = ensureBucketExists(bucketDescriptor);
-		fileStore = new BucketFileStore(connector, bucketName);
+		fileStore = new BucketFileStore(awsFacade, bucketName);
 	}
 
 	@Override
@@ -120,7 +120,7 @@ class BucketFileSystem
 	@Override
 	public WatchService newWatchService() throws IOException
 	{
-		return new DirectoryWatchService(connector);
+		return new DirectoryWatchService(awsFacade);
 	}
 
 	@Override
@@ -147,16 +147,16 @@ class BucketFileSystem
 	 *
 	 * @return the value of the property
 	 */
-	S3Connector connector()
+	AwsFacade awsFacade()
 	{
-		return connector;
+		return awsFacade;
 	}
 
 	private String ensureBucketExists(BucketDescriptor bucketDescriptor)
 	{
 		try
 		{
-			connector.createBucket(bucketDescriptor);
+			awsFacade.createBucket(bucketDescriptor);
 		}
 		catch (BucketAlreadyOwnedByYouException x)
 		{

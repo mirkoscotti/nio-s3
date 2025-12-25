@@ -8,7 +8,7 @@ import java.nio.file.attribute.FileTime;
 import java.util.Objects;
 
 import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -23,15 +23,15 @@ public class ObjectBasicFileAttributeView
 
 	static final String BASIC_FILE_ATTRIBUTE_VIEW = "basic";
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final String bucketName;
 
 	private final String objectKey;
 
-	public ObjectBasicFileAttributeView(S3Connector connector, String bucketName, String objectKey)
+	public ObjectBasicFileAttributeView(AwsFacade awsFacade, String bucketName, String objectKey)
 	{
-		this.connector = Objects.requireNonNull(connector, () -> "Missing AWS connector.");
+		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing AWS connector.");
 		this.bucketName = Objects.requireNonNull(bucketName, () -> "Missing bucket name.");
 		this.objectKey = Objects.requireNonNull(objectKey, () -> "Missing object key.");
 	}
@@ -47,7 +47,7 @@ public class ObjectBasicFileAttributeView
 	{
 		try
 		{
-			return connector.objectMetadata(bucketName, objectKey);
+			return awsFacade.objectMetadata(bucketName, objectKey);
 		}
 		catch (NoSuchKeyException x)
 		{

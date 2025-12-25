@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -35,13 +35,13 @@ public class DirectoryWatchService
 
 	private final Lock lock = new ReentrantLock();
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final ScheduledExecutorService scheduler;
 
-	DirectoryWatchService(S3Connector connector)
+	DirectoryWatchService(AwsFacade awsFacade)
 	{
-		this.connector = Objects.requireNonNull(connector, () -> "Missing connector.");
+		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing connector.");
 		scheduler = Executors.newSingleThreadScheduledExecutor(this::createDaemon);
 		Runnable action = () -> registry.forEach(this::detectEvents);
 		scheduler.scheduleAtFixedRate(action, 0, FREQUENCY, TimeUnit.SECONDS);
@@ -110,7 +110,7 @@ public class DirectoryWatchService
 	private void detectEvents(BucketPath directory, DirectoryWatchKey watchKey)
 	{
 		var bucketName = directory.getFileSystem().getFileStores().iterator().next().name();
-		var objects = connector.listObjects(bucketName, directory.toString());
+		var objects = awsFacade.listObjects(bucketName, directory.toString());
 		watchKey.updateEvents(objects);
 	}
 }

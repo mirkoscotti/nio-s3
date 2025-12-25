@@ -1,14 +1,14 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -21,12 +21,12 @@ class BucketFileStoreAttributeViewTest
 	private static final String BUCKET_NAME = "test-bucket";
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Test
 	void nameTest()
 	{
-		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(connector, BUCKET_NAME);
+		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(awsFacade, BUCKET_NAME);
 		Assertions.assertEquals(BucketFileStoreAttributeView.class.getSimpleName(),
 								bucketFileStoreAttributeView.name());
 	}
@@ -34,17 +34,17 @@ class BucketFileStoreAttributeViewTest
 	@Test
 	void getGenericPropertyTest(@Mock BucketProperty bucketProperty)
 	{
-		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(connector, BUCKET_NAME);
+		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(awsFacade, BUCKET_NAME);
 		Assertions.assertNull(bucketFileStoreAttributeView.get(bucketProperty));
-		Mockito.verify(connector, Mockito.never()).bucketAcl(Mockito.anyString());
+		Mockito.verify(awsFacade, Mockito.never()).bucketAcl(Mockito.anyString());
 	}
 
 	@Test
 	void getAclPropertyTest()
 	{
-		Mockito.when(connector.bucketAcl(Mockito.anyString())).thenReturn("value");
-		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(connector, BUCKET_NAME);
+		Mockito.when(awsFacade.bucketAcl(Mockito.anyString())).thenReturn("value");
+		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(awsFacade, BUCKET_NAME);
 		Assertions.assertNotNull(bucketFileStoreAttributeView.get(BucketProperty.ACL));
-		Mockito.verify(connector, Mockito.atLeastOnce()).bucketAcl(Mockito.anyString());
+		Mockito.verify(awsFacade, Mockito.atLeastOnce()).bucketAcl(Mockito.anyString());
 	}
 }

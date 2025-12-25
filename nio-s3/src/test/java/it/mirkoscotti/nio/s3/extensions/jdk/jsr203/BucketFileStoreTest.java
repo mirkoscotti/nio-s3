@@ -17,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -34,42 +34,42 @@ class BucketFileStoreTest
 	private static final String VALUE = "value";
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Test
 	void nullTest()
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> new BucketFileStore(null, null));
 		Assertions.assertThrows(NullPointerException.class,
-								() -> new BucketFileStore(connector, null));
+								() -> new BucketFileStore(awsFacade, null));
 	}
 
 	@Test
 	void nameTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertEquals(BUCKET_NAME, fileStore.name());
 	}
 
 	@Test
 	void typeTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertEquals("AWS S3 Bucket", fileStore.type());
 	}
 
 	@Test
 	void isReadOnlyTest()
 	{
-		Mockito.when(connector.isBucketReadOnly(BUCKET_NAME)).thenReturn(true);
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		Mockito.when(awsFacade.isBucketReadOnly(BUCKET_NAME)).thenReturn(true);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.isReadOnly());
 	}
 
 	@Test
 	void getTotalSpaceTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var totalSpace = Try.to(fileStore::getTotalSpace).onCatch(Assertions::fail).get();
 		Assertions.assertEquals(Long.MAX_VALUE, totalSpace);
 	}
@@ -77,7 +77,7 @@ class BucketFileStoreTest
 	@Test
 	void getUsableSpaceTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var usableSpace = Try.to(fileStore::getUsableSpace).onCatch(Assertions::fail).get();
 		Assertions.assertEquals(Long.MAX_VALUE, usableSpace);
 	}
@@ -85,7 +85,7 @@ class BucketFileStoreTest
 	@Test
 	void getUnallocatedSpaceTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var unallocatedSpace = Try.to(fileStore::getUnallocatedSpace)
 								  .onCatch(Assertions::fail)
 								  .get();
@@ -95,7 +95,7 @@ class BucketFileStoreTest
 	@Test
 	void supportsFileAttributesViewByClassTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.supportsFileAttributeView(BasicFileAttributeView.class));
 		Assertions.assertTrue(fileStore.supportsFileAttributeView(ObjectBasicFileAttributeView.class));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView(FileAttributeView.class));
@@ -104,7 +104,7 @@ class BucketFileStoreTest
 	@Test
 	void supportsFileAttributesViewByNameTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.supportsFileAttributeView("basic"));
 		Assertions.assertFalse(fileStore.supportsFileAttributeView("other"));
 	}
@@ -112,7 +112,7 @@ class BucketFileStoreTest
 	@Test
 	void getFileStoreAttributeViewTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertNull(fileStore.getFileStoreAttributeView(FileStoreAttributeView.class));
 		Assertions.assertNotNull(fileStore.getFileStoreAttributeView(BucketFileStoreAttributeView.class));
 	}
@@ -126,7 +126,7 @@ class BucketFileStoreTest
 		{
 			propertyMock.when(() -> BucketProperty.of(Mockito.anyString()))
 						.thenReturn(Optional.of(bucketProperty));
-			var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+			var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 			Assertions.assertEquals(VALUE,
 									JunitHelper.tryCall(() -> fileStore.getAttribute("attribute")));
 		}
@@ -135,23 +135,23 @@ class BucketFileStoreTest
 	@Test
 	void hashCodeWithSameInstancesTest()
 	{
-		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
-		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore1 = new BucketFileStore(awsFacade, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertEquals(fileStore1.hashCode(), fileStore2.hashCode());
 	}
 
 	@Test
 	void hashCodeWithDifferentInstancesTest()
 	{
-		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
-		var fileStore2 = new BucketFileStore(connector, OTHER_BUCKET);
+		var fileStore1 = new BucketFileStore(awsFacade, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(awsFacade, OTHER_BUCKET);
 		Assertions.assertNotEquals(fileStore1.hashCode(), fileStore2.hashCode());
 	}
 
 	@Test
 	void equalsToNullTest()
 	{
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var result = fileStore.equals(null);
 		Assertions.assertFalse(result);
 	}
@@ -160,16 +160,16 @@ class BucketFileStoreTest
 	void equalsToDifferentFileStoreTest(@Mock FileStore otherFileStore)
 	{
 
-		var fileStore = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var result = fileStore.equals(otherFileStore);
 		Assertions.assertFalse(result);
 	}
 
 	@Test
-	void equalsToFileStoreWithDifferentConnectorTest(@Mock S3Connector connector)
+	void equalsToFileStoreWithDifferentFacadeTest(@Mock AwsFacade awsFacade)
 	{
-		var fileStore1 = new BucketFileStore(this.connector, BUCKET_NAME);
-		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore1 = new BucketFileStore(this.awsFacade, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var result = fileStore1.equals(fileStore2);
 		Assertions.assertFalse(result);
 	}
@@ -177,8 +177,8 @@ class BucketFileStoreTest
 	@Test
 	void equalsToFileStoreWithDifferentBucketNameTest()
 	{
-		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
-		var fileStore2 = new BucketFileStore(connector, OTHER_BUCKET);
+		var fileStore1 = new BucketFileStore(awsFacade, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(awsFacade, OTHER_BUCKET);
 		var result = fileStore1.equals(fileStore2);
 		Assertions.assertFalse(result);
 	}
@@ -186,8 +186,8 @@ class BucketFileStoreTest
 	@Test
 	void equalsTest()
 	{
-		var fileStore1 = new BucketFileStore(connector, BUCKET_NAME);
-		var fileStore2 = new BucketFileStore(connector, BUCKET_NAME);
+		var fileStore1 = new BucketFileStore(awsFacade, BUCKET_NAME);
+		var fileStore2 = new BucketFileStore(awsFacade, BUCKET_NAME);
 		var result = fileStore1.equals(fileStore2);
 		Assertions.assertTrue(result);
 	}

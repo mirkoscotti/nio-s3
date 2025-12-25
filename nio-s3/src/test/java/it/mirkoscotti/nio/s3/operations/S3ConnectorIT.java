@@ -24,6 +24,7 @@ import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
@@ -136,7 +137,7 @@ class S3ConnectorIT
 	void bucketAclWhenBucketDoesNotExistTest()
 	{
 		var connector = createConnector();
-		Assertions.assertThrows(IllegalStateException.class,
+		Assertions.assertThrows(NoSuchBucketException.class,
 								() -> connector.bucketAcl(BUCKET_NAME));
 	}
 

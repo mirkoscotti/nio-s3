@@ -13,7 +13,7 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -24,7 +24,7 @@ class BucketSeekableByteChannelTest
 {
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Mock
 	private BucketPath path;
@@ -41,9 +41,9 @@ class BucketSeekableByteChannelTest
 		Assertions.assertThrows(NullPointerException.class,
 								() -> new BucketSeekableByteChannel(null, null, null));
 		Assertions.assertThrows(NullPointerException.class,
-								() -> new BucketSeekableByteChannel(connector, null, null));
+								() -> new BucketSeekableByteChannel(awsFacade, null, null));
 		Assertions.assertThrows(NullPointerException.class,
-								() -> new BucketSeekableByteChannel(connector, path, null));
+								() -> new BucketSeekableByteChannel(awsFacade, path, null));
 	}
 
 	@Test
@@ -52,7 +52,7 @@ class BucketSeekableByteChannelTest
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class,
 												 this::readableThrowsIoException))
 		{
-			var channel = new BucketSeekableByteChannel(connector, path, Set.of());
+			var channel = new BucketSeekableByteChannel(awsFacade, path, Set.of());
 			Assertions.assertThrows(IOException.class, channel::close);
 		}
 		catch (IOException x)
@@ -69,7 +69,7 @@ class BucketSeekableByteChannelTest
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class,
 												 this::initializeWritable))
 		{
-			var channel = new BucketSeekableByteChannel(connector,
+			var channel = new BucketSeekableByteChannel(awsFacade,
 														path,
 														Set.of(StandardOpenOption.WRITE));
 			Assertions.assertThrows(RuntimeException.class, channel::close);
@@ -86,7 +86,7 @@ class BucketSeekableByteChannelTest
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class,
 												 this::readableThrowsException))
 		{
-			var channel = new BucketSeekableByteChannel(connector, path, Set.of());
+			var channel = new BucketSeekableByteChannel(awsFacade, path, Set.of());
 			var exception = Assertions.assertThrows(IllegalStateException.class, channel::close);
 			Assertions.assertInstanceOf(Exception.class, exception.getCause());
 		}
@@ -102,7 +102,7 @@ class BucketSeekableByteChannelTest
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
-			 var channel = new BucketSeekableByteChannel(connector,
+			 var channel = new BucketSeekableByteChannel(awsFacade,
 														 path,
 														 Set.of(StandardOpenOption.WRITE)))
 		{
@@ -120,7 +120,7 @@ class BucketSeekableByteChannelTest
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
-			 var channel = new BucketSeekableByteChannel(connector,
+			 var channel = new BucketSeekableByteChannel(awsFacade,
 														 path,
 														 Set.of(StandardOpenOption.WRITE)))
 		{
@@ -139,7 +139,7 @@ class BucketSeekableByteChannelTest
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
-			 var channel = new BucketSeekableByteChannel(connector,
+			 var channel = new BucketSeekableByteChannel(awsFacade,
 														 path,
 														 Set.of(StandardOpenOption.WRITE)))
 		{
@@ -155,7 +155,7 @@ class BucketSeekableByteChannelTest
 	void truncateTest(@Mock BucketReadableByteChannel readableChannel)
 	{
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class);
-			 var channel = new BucketSeekableByteChannel(connector, path, Set.of()))
+			 var channel = new BucketSeekableByteChannel(awsFacade, path, Set.of()))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class,
 									() -> channel.truncate(10));
