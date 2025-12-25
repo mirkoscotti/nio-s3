@@ -12,7 +12,6 @@ import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 import software.amazon.awssdk.services.sts.StsAsyncClient;
 import software.amazon.awssdk.services.sts.StsAsyncClientBuilder;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
-import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
@@ -57,7 +56,7 @@ public final class StsConnector
 		return Try.to(() -> client.getCallerIdentity()
 								  .thenApply(GetCallerIdentityResponse::arn)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 

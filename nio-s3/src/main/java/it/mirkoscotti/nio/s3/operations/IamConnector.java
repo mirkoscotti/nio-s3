@@ -21,7 +21,6 @@ import software.amazon.awssdk.services.iam.model.EvaluationResult;
 import software.amazon.awssdk.services.iam.model.PolicyEvaluationDecisionType;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyRequest.Builder;
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyResponse;
-import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * @author mirko.scotti
@@ -67,7 +66,7 @@ public final class IamConnector
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
 		return Try.to(() -> simulate(simulation, BucketAction.S3_PUT_OBJECT))
-				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -77,7 +76,7 @@ public final class IamConnector
 		return Try.to(() -> simulate(simulation,
 									 BucketAction.S3_PUT_OBJECT,
 									 BucketAction.S3_DELETE_OBJECT))
-				  .onCatch(item -> ExceptionsHelper.redirectException(item, StsException.class))
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 

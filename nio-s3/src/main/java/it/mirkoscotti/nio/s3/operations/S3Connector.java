@@ -119,9 +119,9 @@ public final class S3Connector
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
 								  .thenApply(this::permissions)
-								  .exceptionally(ExceptionsHelper::redirectException)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::redirectException)
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -134,9 +134,9 @@ public final class S3Connector
 															 .lastModified(item.lastModified())
 															 .build())
 								  .thenApply(ObjectBasicFileAttributes::new)
-								  .exceptionally(ExceptionsHelper::throwS3Exception)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::throwS3Exception)
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -167,9 +167,9 @@ public final class S3Connector
 		return Try.to(() -> client.getObject(item -> item.bucket(bucketName).key(key),
 											 AsyncResponseTransformer.toBytes())
 								  .thenApply(BytesWrapper::asByteArray)
-								  .exceptionally(ExceptionsHelper::redirectException)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::redirectException)
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -180,9 +180,9 @@ public final class S3Connector
 														 .range("bytes=%d-%d".formatted(from, to)),
 											 AsyncResponseTransformer.toBytes())
 								  .thenApply(BytesWrapper::asByteArray)
-								  .exceptionally(ExceptionsHelper::redirectException)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::redirectException)
+				  .onCatch(ExceptionsHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -192,9 +192,9 @@ public final class S3Connector
 												  .key(key)
 												  .checksumAlgorithm(ChecksumAlgorithm.SHA256),
 									  AsyncRequestBody.fromBytes(content))
-						   .exceptionally(ExceptionsHelper::redirectException)
+						   .exceptionally(ExceptionsHelper::sneakyThrow)
 						   .get(30, TimeUnit.SECONDS))
-		   .onCatch(ExceptionsHelper::redirectException)
+		   .onCatch(ExceptionsHelper::sneakyThrow)
 		   .run();
 	}
 
@@ -265,7 +265,7 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		var exception = ExceptionsHelper.toS3Exception(throwable);
+		var exception = ExceptionsHelper.toAwsServiceException(throwable);
 		var errorCode = exception.awsErrorDetails().errorCode();
 		return switch (errorCode)
 		{

@@ -64,7 +64,7 @@ public final class MultipartWriter
 		client = Objects.requireNonNull(operationRecord.client(), () -> "Missing client.");
 		bucket = Objects.requireNonNull(operationRecord.bucket(), () -> "Missing bucket.");
 		key = Objects.requireNonNull(operationRecord.key(), () -> "Missing key.");
-		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::redirectException).get();
+		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::sneakyThrow).get();
 	}
 
 	@Override
@@ -76,21 +76,21 @@ public final class MultipartWriter
 	public void write(byte[] buffer)
 	{
 		parts.add(Try.to(() -> createCompletedPart(buffer))
-					 .onCatch(ExceptionsHelper::redirectException)
+					 .onCatch(ExceptionsHelper::sneakyThrow)
 					 .get());
 	}
 
 	public void copy(long size)
 	{
 		parts.add(Try.to(() -> createCompletedPart(size))
-					 .onCatch(ExceptionsHelper::redirectException)
+					 .onCatch(ExceptionsHelper::sneakyThrow)
 					 .get());
 	}
 
 	public void copy(long from, long to)
 	{
 		parts.add(Try.to(() -> createCompletedPart(from, to))
-					 .onCatch(ExceptionsHelper::redirectException)
+					 .onCatch(ExceptionsHelper::sneakyThrow)
 					 .get());
 	}
 
@@ -174,7 +174,7 @@ public final class MultipartWriter
 			See the command put-bucket-lifecycle-configuration for further details.
 			""";
 		Try.to(this::cancelUpload).onCatch(item -> LOGGER.log(Level.WARNING, warning, item)).run();
-		var s3Exception = ExceptionsHelper.toS3Exception(exception);
+		var s3Exception = ExceptionsHelper.redirectException(exception);
 		if (!(s3Exception instanceof NoSuchUploadException)
 			&& !(s3Exception instanceof InvalidRequestException))
 		{

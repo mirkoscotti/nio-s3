@@ -1,10 +1,11 @@
 package it.mirkoscotti.nio.s3.helpers;
 
+import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 /**
  * @author mirko.scotti
@@ -18,49 +19,27 @@ public final class ExceptionsHelper
 		super();
 	}
 
-	public static <X extends Exception> Void sneakyThrow(X exception)
+	public static <T> T sneakyThrow(Throwable throwable)
 	{
-		sneakyThrow(new IllegalStateException(exception));
-		return null;
+		throw redirectException(throwable);
 	}
 
-	public static <T, X extends RuntimeException> T sneakyThrow(X exception)
-	{
-		throw exception;
-	}
-
-	public static <T> T redirectException(Throwable throwable)
-	{
-		return redirectException(throwable, S3Exception.class);
-	}
-
-	public static <T, E extends AwsServiceException> T redirectException(Throwable throwable,
-																		 Class<E> exceptionClass)
-	{
-		var exception = toAwsServiceException(throwable, exceptionClass);
-		throw new IllegalStateException(exception);
-	}
-
-	public static <T> T throwS3Exception(Throwable throwable)
-	{
-		throw toS3Exception(throwable);
-	}
-
-	public static S3Exception toS3Exception(Throwable throwable)
-	{
-		return toAwsServiceException(throwable, S3Exception.class);
-	}
-
-	public static <T extends AwsServiceException> T toAwsServiceException(Throwable throwable,
-																		  Class<T> exceptionClass)
+	public static RuntimeException redirectException(Throwable throwable)
 	{
 		return switch (throwable)
 		{
-			case AwsServiceException exception -> exceptionClass.cast(exception);
-			case CompletionException exception -> toAwsServiceException(exception.getCause(),
-																		exceptionClass);
-			case ExecutionException exception -> toAwsServiceException(exception.getCause(),
-																	   exceptionClass);
+			case NoSuchBucketException exception -> new FileSystemNotFoundException(exception.getMessage());
+			default -> toAwsServiceException(throwable);
+		};
+	}
+
+	public static AwsServiceException toAwsServiceException(Throwable throwable)
+	{
+		return switch (throwable)
+		{
+			case AwsServiceException exception -> exception;
+			case CompletionException exception -> toAwsServiceException(exception.getCause());
+			case ExecutionException exception -> toAwsServiceException(exception.getCause());
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};
