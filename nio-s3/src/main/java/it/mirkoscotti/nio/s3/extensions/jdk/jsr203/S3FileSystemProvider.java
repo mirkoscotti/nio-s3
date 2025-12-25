@@ -33,9 +33,9 @@ import java.util.function.Function;
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.enums.ObjectAccess;
-import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.FactoryRecord;
 
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
@@ -87,7 +87,7 @@ public class S3FileSystemProvider
 
 	private static final Map<BucketRecord, BucketFileSystem> FILE_SYSTEMS_CACHE = new ConcurrentHashMap<>();
 
-	private static final Map<FactoryRecord, ConnectorFactory> FACTORIES_CACHE = new ConcurrentHashMap<>();
+	private static final Map<AwsRecord, AwsFacade> FACADE_CACHE = new ConcurrentHashMap<>();
 
 	@Override
 	public String getScheme()
@@ -162,10 +162,8 @@ public class S3FileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var connectorFactory = bucketPath.getFileSystem().connectorFactory();
-			return new BucketSeekableByteChannel(connectorFactory.s3Connector(),
-												 bucketPath,
-												 options);
+			var awsFacade = bucketPath.getFileSystem().awsFacade();
+			return new BucketSeekableByteChannel(awsFacade, bucketPath, options);
 		}
 		throw invalidPath(path);
 	}
@@ -240,8 +238,8 @@ public class S3FileSystemProvider
 			var fileSystem = bucketPath.getFileSystem();
 			var bucketName = fileSystem.getFileStores().iterator().next().name();
 			var objectKey = bucketPath.toString();
-			var connectorFactory = fileSystem.connectorFactory();
-			ObjectAccess.check(connectorFactory, bucketName, objectKey, modes);
+			var awsFacade = fileSystem.awsFacade();
+			ObjectAccess.check(awsFacade, bucketName, objectKey, modes);
 			return;
 		}
 		throw invalidPath(path);
@@ -309,10 +307,9 @@ public class S3FileSystemProvider
 
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
 	{
-		var factoryKey = bucketDescriptor.connectorKey();
-		var connectorFactory = FACTORIES_CACHE.computeIfAbsent(factoryKey,
-															   ConnectorFactory::create);
-		var result = new BucketFileSystem(connectorFactory, bucketDescriptor, this);
+		var facadeKey = bucketDescriptor.connectorKey();
+		var awsFacade = FACADE_CACHE.computeIfAbsent(facadeKey, AwsFacade::create);
+		var result = new BucketFileSystem(awsFacade, bucketDescriptor, this);
 		var bucketKey = bucketDescriptor.bucketKey();
 		FILE_SYSTEMS_CACHE.put(bucketKey, result);
 		return result;
@@ -321,10 +318,10 @@ public class S3FileSystemProvider
 	private ObjectBasicFileAttributeView createObjectBasicFileAttributeView(BucketPath bucketPath)
 	{
 		var fileSystem = bucketPath.getFileSystem();
-		var connector = fileSystem.connectorFactory().s3Connector();
+		var awsFacade = fileSystem.awsFacade();
 		var bucketName = fileSystem.getFileStores().iterator().next().name();
 		var objectKey = bucketPath.toString();
-		return new ObjectBasicFileAttributeView(connector, bucketName, objectKey);
+		return new ObjectBasicFileAttributeView(awsFacade, bucketName, objectKey);
 	}
 
 	private RuntimeException invalidPath(Path path)

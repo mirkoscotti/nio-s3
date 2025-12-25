@@ -1,12 +1,12 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * The whole set of properties of the bucket mapped to the file store defining this view.
@@ -21,13 +21,13 @@ public class BucketFileStoreAttributeView
 
 	private final Map<BucketProperty, String> attributes = new EnumMap<>(BucketProperty.class);
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final String bucketName;
 
-	public BucketFileStoreAttributeView(S3Connector connector, String bucketName)
+	public BucketFileStoreAttributeView(AwsFacade awsFacade, String bucketName)
 	{
-		this.connector = Objects.requireNonNull(connector, "Missing AWS connector.");
+		this.awsFacade = Objects.requireNonNull(awsFacade, "Missing AWS connector.");
 		this.bucketName = Objects.requireNonNull(bucketName, "Missing bucket name");
 	}
 
@@ -46,7 +46,7 @@ public class BucketFileStoreAttributeView
 	{
 		return switch (bucketProperty)
 		{
-			case ACL -> connector.bucketAcl(bucketName);
+			case ACL -> awsFacade.bucketAcl(bucketName);
 			default -> null;
 		};
 	}

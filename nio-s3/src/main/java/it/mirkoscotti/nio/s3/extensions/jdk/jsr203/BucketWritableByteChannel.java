@@ -9,8 +9,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
 
 /**
  * @author mirko.scotti
@@ -28,7 +28,7 @@ class BucketWritableByteChannel
 
 	private boolean isOpen = true;
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final String bucket;
 
@@ -50,30 +50,30 @@ class BucketWritableByteChannel
 	 * Example: if the existing file contains "text123" and I write "abcd", at the end of the
 	 * session the file will contain "abcd"
 	 */
-	BucketWritableByteChannel(S3Connector connector, BucketPath path)
+	BucketWritableByteChannel(AwsFacade awsFacade, BucketPath path)
 	{
-		this(connector, path.getFileSystem().bucketName(), path.toString(), 0, false);
+		this(awsFacade, path.getFileSystem().bucketName(), path.toString(), 0, false);
 	}
 
-	BucketWritableByteChannel(S3Connector connector,
+	BucketWritableByteChannel(AwsFacade awsFacade,
 							  String bucket,
 							  ObjectBasicFileAttributes attributes,
 							  Optional<ObjectFlag> objectFlag)
 	{
-		this(connector,
+		this(awsFacade,
 			 bucket,
 			 attributes.fileKey(),
 			 objectFlag.filter(ObjectFlag.IS_TRUNCATABLE::equals).isEmpty() ? attributes.size() : 0,
 			 objectFlag.filter(ObjectFlag.IS_APPENDABLE::equals).isPresent());
 	}
 
-	private BucketWritableByteChannel(S3Connector connector,
+	private BucketWritableByteChannel(AwsFacade awsFacade,
 									  String bucket,
 									  String key,
 									  long oldFileSize,
 									  boolean isAppendable)
 	{
-		this.connector = connector;
+		this.awsFacade = awsFacade;
 		this.bucket = bucket;
 		this.key = key;
 		this.oldFileSize = oldFileSize;
@@ -82,7 +82,7 @@ class BucketWritableByteChannel
 			Optional.of(oldFileSize)
 					.filter(item -> item > MULTIPART_THRESHOLD)
 					.ifPresentOrElse(item -> startMultipartUploadAndCopy(oldFileSize),
-									 () -> buffer.put(connector.readObject(bucket, key)));
+									 () -> buffer.put(awsFacade.readObject(bucket, key)));
 		}
 	}
 
@@ -154,7 +154,7 @@ class BucketWritableByteChannel
 
 	private void singlepartOverwrite(long newFileSize)
 	{
-		var array = connector.readObject(bucket, key, newFileSize, oldFileSize - 1);
+		var array = awsFacade.readObject(bucket, key, newFileSize, oldFileSize - 1);
 		buffer.put(array);
 		flushBuffer();
 	}
@@ -163,7 +163,7 @@ class BucketWritableByteChannel
 	{
 		var remaining = buffer.remaining();
 		var startLastPart = newFileSize + remaining;
-		var array = connector.readObject(bucket, key, newFileSize, startLastPart - 1);
+		var array = awsFacade.readObject(bucket, key, newFileSize, startLastPart - 1);
 		buffer.put(array);
 		flushBuffer();
 		multipartWriter.ifPresent(item -> copyAndClose(item, startLastPart - 1, oldFileSize - 1));
@@ -182,14 +182,14 @@ class BucketWritableByteChannel
 		else
 		{
 			multipartWriter.ifPresentOrElse(item -> writeAndClose(item, array),
-											() -> connector.writeObject(bucket, key, array));
+											() -> awsFacade.writeObject(bucket, key, array));
 		}
 		buffer.compact();
 	}
 
 	private void startMultipartUpload()
 	{
-		multipartWriter = multipartWriter.or(() -> Optional.of(connector.startMultipartUpload(bucket,
+		multipartWriter = multipartWriter.or(() -> Optional.of(awsFacade.startMultipartUpload(bucket,
 																							  key)));
 	}
 

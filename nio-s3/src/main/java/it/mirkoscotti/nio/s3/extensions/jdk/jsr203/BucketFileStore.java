@@ -10,7 +10,7 @@ import java.util.Optional;
 
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * According to the {@link FileStore} specification, this one represents a single bucket in the same
@@ -23,16 +23,16 @@ public class BucketFileStore
 	extends FileStore
 {
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final String bucketName;
 
 	/**
 	 * @param bucketName
 	 */
-	BucketFileStore(S3Connector connector, String bucketName)
+	BucketFileStore(AwsFacade awsFacade, String bucketName)
 	{
-		this.connector = Objects.requireNonNull(connector, () -> "Missing AWS connector.");
+		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing AWS connector.");
 		this.bucketName = Objects.requireNonNull(bucketName, () -> "Missing bucket name.");
 	}
 
@@ -51,7 +51,7 @@ public class BucketFileStore
 	@Override
 	public boolean isReadOnly()
 	{
-		return connector.isBucketReadOnly(bucketName);
+		return awsFacade.isBucketReadOnly(bucketName);
 	}
 
 	@Override
@@ -89,9 +89,8 @@ public class BucketFileStore
 	{
 		return Optional.ofNullable(type)
 					   .filter(BucketFileStoreAttributeView.class::isAssignableFrom)
-					   .map(item -> Try.to(() -> item.getConstructor(S3Connector.class,
-																	 String.class)
-													 .newInstance(connector, bucketName))
+					   .map(item -> Try.to(() -> item.getConstructor(AwsFacade.class, String.class)
+													 .newInstance(awsFacade, bucketName))
 									   .get())
 					   .orElse(null);
 	}
@@ -107,14 +106,14 @@ public class BucketFileStore
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(connector, bucketName);
+		return Objects.hash(awsFacade, bucketName);
 	}
 
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof BucketFileStore other
-			&& Objects.equals(connector, other.connector)
+			&& Objects.equals(awsFacade, other.awsFacade)
 			&& Objects.equals(bucketName, other.bucketName);
 	}
 }

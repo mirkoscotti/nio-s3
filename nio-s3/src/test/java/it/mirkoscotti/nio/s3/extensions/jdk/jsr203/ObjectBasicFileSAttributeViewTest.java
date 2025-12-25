@@ -12,7 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -29,7 +29,7 @@ class ObjectBasicFileSAttributeViewTest
 	private static final String KEY = "key";
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Test
 	void nullTest()
@@ -37,9 +37,9 @@ class ObjectBasicFileSAttributeViewTest
 		Assertions.assertThrows(NullPointerException.class,
 								() -> new ObjectBasicFileAttributeView(null, null, null));
 		Assertions.assertThrows(NullPointerException.class,
-								() -> new ObjectBasicFileAttributeView(connector, null, null));
+								() -> new ObjectBasicFileAttributeView(awsFacade, null, null));
 		Assertions.assertThrows(NullPointerException.class,
-								() -> new ObjectBasicFileAttributeView(connector,
+								() -> new ObjectBasicFileAttributeView(awsFacade,
 																	   BUCKET_NAME,
 																	   null));
 	}
@@ -47,25 +47,25 @@ class ObjectBasicFileSAttributeViewTest
 	@Test
 	void nameTest()
 	{
-		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
+		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		Assertions.assertEquals("basic", view.name());
 	}
 
 	@Test
 	void s3exceptionWhileReadAttributesTest()
 	{
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenThrow(S3Exception.class);
-		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
+		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		Assertions.assertThrows(S3Exception.class, view::readAttributes);
 	}
 
 	@Test
 	void readAttributesTest(@Mock BasicFileAttributes basicFileAttributes)
 	{
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(basicFileAttributes);
-		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
+		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		var result = JunitHelper.tryCall(view::readAttributes);
 		Assertions.assertEquals(basicFileAttributes, result);
 	}
@@ -73,7 +73,7 @@ class ObjectBasicFileSAttributeViewTest
 	@Test
 	void setTimesTest(@Mock FileTime fileTime)
 	{
-		var view = new ObjectBasicFileAttributeView(connector, BUCKET_NAME, KEY);
+		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		Assertions.assertThrows(UnsupportedIoOperationException.class,
 								() -> view.setTimes(fileTime, fileTime, fileTime));
 	}

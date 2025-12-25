@@ -42,7 +42,7 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(READ_USER),
 												  CONTAINER.getSecretKey(READ_USER))
 								 .build()
-								 .permissionOnFile(readArn, TEST_BUCKET, TEST_FILE);
+								 .filePermission(readArn, TEST_BUCKET, TEST_FILE);
 		Assertions.assertNotNull(result);
 	}
 
@@ -61,7 +61,7 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(WRITE_USER),
 												  CONTAINER.getSecretKey(WRITE_USER))
 								 .build()
-								 .permissionOnFile(readArn, TEST_BUCKET, TEST_FILE);
+								 .filePermission(readArn, TEST_BUCKET, TEST_FILE);
 		Assertions.assertNull(result);
 	}
 
@@ -75,7 +75,7 @@ class IamConnectorIT
 								 .withCredentials(CONTAINER.getAccessKey(READ_USER),
 												  CONTAINER.getSecretKey(READ_USER))
 								 .build()
-								 .permissionOnDirectory(readArn, TEST_BUCKET, TEST_DIRECTORY);
+								 .directoryPermission(readArn, TEST_BUCKET, TEST_DIRECTORY);
 		Assertions.assertNotNull(result);
 	}
 }

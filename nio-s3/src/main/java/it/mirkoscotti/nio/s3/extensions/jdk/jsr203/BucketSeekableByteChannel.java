@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -28,7 +28,7 @@ class BucketSeekableByteChannel
 	implements SeekableByteChannel
 {
 
-	private final S3Connector connector;
+	private final AwsFacade awsFacade;
 
 	private final BucketPath path;
 
@@ -40,12 +40,12 @@ class BucketSeekableByteChannel
 	 * @param connector
 	 * @param path
 	 */
-	BucketSeekableByteChannel(S3Connector connector,
+	BucketSeekableByteChannel(AwsFacade awsFacade,
 							  BucketPath path,
 							  Set<? extends OpenOption> openOptions)
 		throws IOException
 	{
-		this.connector = Objects.requireNonNull(connector, () -> "Missing connector.");
+		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing connector.");
 		Objects.requireNonNull(path, () -> "Missing path.");
 		this.path = path;
 		ObjectFlag.readWriteCheck(openOptions);
@@ -124,7 +124,7 @@ class BucketSeekableByteChannel
 	private Optional<BucketReadableByteChannel> createReadableByteChannel(Set<? extends OpenOption> options)
 	{
 		return ObjectFlag.IS_READABLE.matches(options)
-			? Optional.of(new BucketReadableByteChannel(connector, path))
+			? Optional.of(new BucketReadableByteChannel(awsFacade, path))
 			: Optional.empty();
 	}
 
@@ -148,7 +148,7 @@ class BucketSeekableByteChannel
 													  LinkOption.NOFOLLOW_LINKS);
 			ObjectFlag.creationWhenFileExistingCheck(options, path);
 			var bucketName = path.getFileSystem().bucketName();
-			result = new BucketWritableByteChannel(connector,
+			result = new BucketWritableByteChannel(awsFacade,
 												   bucketName,
 												   fileAttributes,
 												   objectFlag);
@@ -156,7 +156,7 @@ class BucketSeekableByteChannel
 		catch (NoSuchFileException x)
 		{
 			ObjectFlag.creationWhenFileNotFoundCheck(options, path);
-			result = new BucketWritableByteChannel(connector, path);
+			result = new BucketWritableByteChannel(awsFacade, path);
 		}
 		return result;
 	}

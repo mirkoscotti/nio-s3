@@ -154,7 +154,7 @@ class IamConnectorTest
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
 			var connector = IamConnector.create().build();
-			Assertions.assertNull(connector.permissionOnFile("arn", "bucket", "key"));
+			Assertions.assertNull(connector.filePermission("arn", "bucket", "key"));
 		}
 	}
 
@@ -181,7 +181,7 @@ class IamConnectorTest
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
 			var connector = IamConnector.create().build();
-			Assertions.assertNull(connector.permissionOnDirectory("arn", "bucket", "key"));
+			Assertions.assertNull(connector.directoryPermission("arn", "bucket", "key"));
 		}
 	}
 }

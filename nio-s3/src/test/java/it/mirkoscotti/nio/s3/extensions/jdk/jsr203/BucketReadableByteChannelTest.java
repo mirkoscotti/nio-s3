@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -25,7 +25,7 @@ class BucketReadableByteChannelTest
 {
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Mock
 	private BucketPath path;
@@ -42,7 +42,7 @@ class BucketReadableByteChannelTest
 	@BeforeEach
 	void beforeEach()
 	{
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(fileAttributes);
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
@@ -53,7 +53,7 @@ class BucketReadableByteChannelTest
 	@Test
 	void isOpenTest()
 	{
-		var readableByteChannel = new BucketReadableByteChannel(connector, path);
+		var readableByteChannel = new BucketReadableByteChannel(awsFacade, path);
 		try (var channel = readableByteChannel)
 		{
 			Assertions.assertTrue(channel.isOpen());
@@ -68,7 +68,7 @@ class BucketReadableByteChannelTest
 	@Test
 	void positionWhileChannelIsClosedTest()
 	{
-		var readableByteChannel = new BucketReadableByteChannel(connector, path);
+		var readableByteChannel = new BucketReadableByteChannel(awsFacade, path);
 		try (var channel = readableByteChannel)
 		{
 			// Nothing to do
@@ -85,7 +85,7 @@ class BucketReadableByteChannelTest
 	@Test
 	void negativePositionTest()
 	{
-		try (var channel = new BucketReadableByteChannel(connector, path))
+		try (var channel = new BucketReadableByteChannel(awsFacade, path))
 		{
 			Assertions.assertThrows(IllegalArgumentException.class, () -> channel.position(-1));
 		}

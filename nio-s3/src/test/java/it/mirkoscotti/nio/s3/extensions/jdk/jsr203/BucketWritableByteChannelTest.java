@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti
@@ -25,7 +25,7 @@ class BucketWritableByteChannelTest
 {
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Mock
 	private BucketPath path;
@@ -43,7 +43,7 @@ class BucketWritableByteChannelTest
 	@Test
 	void isOpenTest()
 	{
-		var writableByteChannel = new BucketWritableByteChannel(connector, path);
+		var writableByteChannel = new BucketWritableByteChannel(awsFacade, path);
 		try (var channel = writableByteChannel)
 		{
 			Assertions.assertTrue(channel.isOpen());

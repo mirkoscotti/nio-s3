@@ -15,7 +15,7 @@ import java.util.Set;
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
-import it.mirkoscotti.nio.s3.operations.ConnectorFactory;
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
@@ -28,20 +28,20 @@ class BucketFileSystem
 	extends FileSystem
 {
 
-	private final ConnectorFactory connectorFactory;
+	private final AwsFacade awsFacade;
 
 	private final S3FileSystemProvider fileSystemProvider;
 
 	private final BucketFileStore fileStore;
 
-	BucketFileSystem(ConnectorFactory connectorFactory,
+	BucketFileSystem(AwsFacade awsFacade,
 					 BucketDescriptor bucketDescriptor,
 					 S3FileSystemProvider fileSystemProvider)
 	{
-		this.connectorFactory = connectorFactory;
+		this.awsFacade = awsFacade;
 		this.fileSystemProvider = fileSystemProvider;
 		var bucketName = ensureBucketExists(bucketDescriptor);
-		fileStore = new BucketFileStore(connectorFactory.s3Connector(), bucketName);
+		fileStore = new BucketFileStore(awsFacade, bucketName);
 	}
 
 	@Override
@@ -120,7 +120,7 @@ class BucketFileSystem
 	@Override
 	public WatchService newWatchService() throws IOException
 	{
-		return new DirectoryWatchService(connectorFactory.s3Connector());
+		return new DirectoryWatchService(awsFacade);
 	}
 
 	@Override
@@ -147,16 +147,16 @@ class BucketFileSystem
 	 *
 	 * @return the value of the property
 	 */
-	ConnectorFactory connectorFactory()
+	AwsFacade awsFacade()
 	{
-		return connectorFactory;
+		return awsFacade;
 	}
 
 	private String ensureBucketExists(BucketDescriptor bucketDescriptor)
 	{
 		try
 		{
-			connectorFactory.s3Connector().createBucket(bucketDescriptor);
+			awsFacade.createBucket(bucketDescriptor);
 		}
 		catch (BucketAlreadyOwnedByYouException x)
 		{

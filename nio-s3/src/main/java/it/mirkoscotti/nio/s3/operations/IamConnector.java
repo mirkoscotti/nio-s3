@@ -63,7 +63,7 @@ public final class IamConnector
 		return new IamConnectorBuilder();
 	}
 
-	public String permissionOnFile(String arn, String bucket, String key)
+	public String filePermission(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
 		return Try.to(() -> simulate(simulation, BucketAction.S3_PUT_OBJECT))
@@ -71,7 +71,7 @@ public final class IamConnector
 				  .get();
 	}
 
-	public String permissionOnDirectory(String arn, String bucket, String key)
+	public String directoryPermission(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
 		return Try.to(() -> simulate(simulation,

@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.operations.S3Connector;
-
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.time.Instant;
@@ -26,6 +24,8 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.mirkoscotti.nio.s3.operations.AwsFacade;
+
 /**
  * @author mirko.scotti
  * @version Apr 22, 2025
@@ -35,13 +35,13 @@ class DirectoryWatchServiceTest
 {
 
 	@Mock
-	private S3Connector connector;
+	private AwsFacade awsFacade;
 
 	@Test
 	void nullTest()
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> new DirectoryWatchService(null));
-		Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(connector));
+		Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(awsFacade));
 	}
 
 	@Test
@@ -54,7 +54,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(false));
 			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 				.thenReturn(scheduler);
-			var watchService = new DirectoryWatchService(connector);
+			var watchService = new DirectoryWatchService(awsFacade);
 			Assertions.assertThrows(IOException.class, watchService::close);
 		}
 	}
@@ -70,7 +70,7 @@ class DirectoryWatchServiceTest
 													Mockito.any(TimeUnit.class)));
 			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 				.thenReturn(scheduler);
-			var watchService = new DirectoryWatchService(connector);
+			var watchService = new DirectoryWatchService(awsFacade);
 			Assertions.assertThrows(IOException.class, watchService::close);
 		}
 	}
@@ -85,7 +85,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 				.thenReturn(scheduler);
-			var watchService = new DirectoryWatchService(connector);
+			var watchService = new DirectoryWatchService(awsFacade);
 			Assertions.assertDoesNotThrow(watchService::close);
 		}
 	}
@@ -101,7 +101,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 						 .thenReturn(scheduler);
-			try (var watchService = new DirectoryWatchService(connector))
+			try (var watchService = new DirectoryWatchService(awsFacade))
 			{
 				watchService.poll();
 				var queue = queueMock.constructed().get(0);
@@ -125,7 +125,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 						 .thenReturn(scheduler);
-			try (var watchService = new DirectoryWatchService(connector))
+			try (var watchService = new DirectoryWatchService(awsFacade))
 			{
 				watchService.poll(1, TimeUnit.SECONDS);
 				var queue = queueMock.constructed().get(0);
@@ -150,7 +150,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 						 .thenReturn(scheduler);
-			try (var watchService = new DirectoryWatchService(connector))
+			try (var watchService = new DirectoryWatchService(awsFacade))
 			{
 				watchService.take();
 				var queue = queueMock.constructed().get(0);
@@ -174,7 +174,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 						 .thenReturn(scheduler);
-			try (var watchService = new DirectoryWatchService(connector))
+			try (var watchService = new DirectoryWatchService(awsFacade))
 			{
 				Assertions.assertThrows(NullPointerException.class,
 										() -> watchService.registerPath(null));
@@ -199,7 +199,7 @@ class DirectoryWatchServiceTest
 								  .thenReturn(true));
 			schedulerMock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
 						 .thenReturn(scheduler);
-			try (var watchService = new DirectoryWatchService(connector))
+			try (var watchService = new DirectoryWatchService(awsFacade))
 			{
 				watchService.registerPath(directory);
 				if (mapMock.constructed().get(0) instanceof Map<?, ?> map)
@@ -214,7 +214,7 @@ class DirectoryWatchServiceTest
 					Assertions.assertNotNull(runnable);
 					runnable.run();
 					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
-					Mockito.verify(connector, Mockito.atLeastOnce())
+					Mockito.verify(awsFacade, Mockito.atLeastOnce())
 						   .listObjects(Mockito.anyString(), Mockito.anyString());
 				}
 				else
