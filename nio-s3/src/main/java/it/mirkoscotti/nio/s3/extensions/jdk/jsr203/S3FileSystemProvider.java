@@ -162,8 +162,7 @@ public class S3FileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var awsFacade = bucketPath.getFileSystem().awsFacade();
-			return new BucketSeekableByteChannel(awsFacade, bucketPath, options);
+			return new BucketSeekableByteChannel(bucketPath, options);
 		}
 		throw invalidPath(path);
 	}
@@ -172,8 +171,11 @@ public class S3FileSystemProvider
 	public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		if (dir instanceof BucketPath bucketPath)
+		{
+			return new BucketDirectoryStream(bucketPath, filter);
+		}
+		throw invalidPath(dir);
 	}
 
 	@Override
@@ -281,8 +283,7 @@ public class S3FileSystemProvider
 												.filter(map::containsKey)
 												.map(map::get)
 												.orElseThrow(() -> unexpectedFileAttributes(type));
-			var fileAttributeView = getFileAttributeView(bucketPath,
-														 fileAttributeViewType,
+			var fileAttributeView = getFileAttributeView(bucketPath, fileAttributeViewType,
 														 options);
 			return (A) fileAttributeView.readAttributes();
 		}

@@ -198,10 +198,8 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void newByteChannelTest(@Mock BucketFileSystem fileSystem, @Mock AwsFacade awsFacade)
+	void newByteChannelTest()
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		try (var mock = Mockito.mockConstruction(BucketSeekableByteChannel.class))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();

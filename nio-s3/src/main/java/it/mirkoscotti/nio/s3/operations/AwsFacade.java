@@ -3,6 +3,7 @@ package it.mirkoscotti.nio.s3.operations;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -79,6 +80,11 @@ public class AwsFacade
 	public Map<String, Instant> listObjects(String bucketName, String key, Integer pageSize)
 	{
 		return s3.get().listObjects(bucketName, key, pageSize);
+	}
+
+	public Iterator<String> scanDirectory(String bucketName, String prefix)
+	{
+		return s3.get().scanDirectory(bucketName, prefix);
 	}
 
 	public byte[] readObject(String bucketName, String key)

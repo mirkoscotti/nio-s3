@@ -3,6 +3,7 @@ package it.mirkoscotti.nio.s3.operations;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -167,11 +168,32 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
-		var file = baseDirectory.resolve("test.txt");
+		var file = baseDirectory.resolve(TEST_OBJECT);
 		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
 		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
 		var map = createConnector().listObjects(BUCKET_NAME, DIRECTORY);
 		Assertions.assertTrue(map.containsKey(OBJECT));
+	}
+
+	@Test
+	void listObjectsWithPaginationTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
+		IntStream.range(0, 10)
+				 .mapToObj("test-%d.txt"::formatted)
+				 .map(baseDirectory::resolve)
+				 .map(item -> Try.call(() -> IoHelper.createNotEmptyFile(item))
+								 .getOrThrow(IllegalStateException::new))
+				 .forEach(item -> CONTAINER.createObject(BUCKET_NAME,
+														 DIRECTORY.concat(item.getFileName()
+																			  .toString()),
+														 item));
+		var map = createConnector().listObjects(BUCKET_NAME, DIRECTORY, 5);
+		IntStream.range(0, 10)
+				 .mapToObj(DIRECTORY.concat("test-%d.txt")::formatted)
+				 .map(map::containsKey)
+				 .forEach(Assertions::assertTrue);
 	}
 
 	private S3Connector createConnector()
