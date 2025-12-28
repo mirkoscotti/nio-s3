@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.net.URI;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
@@ -205,6 +206,28 @@ class S3FileSystemProviderTest
 			var fileSystemProvider = new S3FileSystemProvider();
 			var result = Assertions.assertDoesNotThrow(() -> fileSystemProvider.newByteChannel(path,
 																							   Set.of()));
+			var expected = mock.constructed().get(0);
+			Assertions.assertEquals(expected, result);
+		}
+	}
+
+	@Test
+	void newDirectoryStreamWithUnsupportedPathTest(@Mock Path path,
+												   @Mock Filter<? super Path> filter)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(ProviderMismatchException.class,
+								() -> fileSystemProvider.newDirectoryStream(path, filter));
+	}
+
+	@Test
+	void newDirectoryStreamTest(@Mock Filter<? super Path> filter)
+	{
+		try (var mock = Mockito.mockConstruction(BucketDirectoryStream.class))
+		{
+			var fileSystemProvider = new S3FileSystemProvider();
+			var result = Assertions.assertDoesNotThrow(() -> fileSystemProvider.newDirectoryStream(path,
+																								   filter));
 			var expected = mock.constructed().get(0);
 			Assertions.assertEquals(expected, result);
 		}
