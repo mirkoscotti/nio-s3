@@ -26,11 +26,11 @@ public class DirectoryIterator
 
 	private static final int PAGE_SIZE = 50;
 
-	private static final int QUEUE_SIZE = 2 * PAGE_SIZE;
-
 	private static final String END_MARKER = "\0".repeat(1025);
 
-	private final BlockingQueue<String> queue = new LinkedBlockingQueue<>(QUEUE_SIZE);
+	private final BlockingQueue<String> queue = new LinkedBlockingQueue<>(2 * PAGE_SIZE);
+
+	private final String bucket;
 
 	private final String prefix;
 
@@ -38,9 +38,10 @@ public class DirectoryIterator
 
 	public DirectoryIterator(S3AsyncClient client, String bucket, String prefix)
 	{
+		this.bucket = bucket;
 		this.prefix = prefix;
-		client.listObjectsV2Paginator(item -> configurePagination(item, bucket))
-			  .subscribe(this::processResponse);
+		client.listObjectsV2Paginator(this::configurePagination).subscribe(this::processResponse);
+		next = take();
 	}
 
 	@Override
@@ -72,12 +73,12 @@ public class DirectoryIterator
 				.ifPresent(item -> put(END_MARKER));
 	}
 
-	private void configurePagination(Builder builder, String bucket)
+	private void configurePagination(Builder builder)
 	{
 		builder.bucket(bucket)
 			   .prefix(prefix)
 			   .delimiter(BucketDescriptor.PATH_SEPARATOR)
-			   .maxKeys(50);
+			   .maxKeys(PAGE_SIZE);
 	}
 
 	private String take()
