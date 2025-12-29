@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,8 +44,8 @@ class BucketDirectoryStreamTest
 	@Mock
 	private Filter<? super Path> filter;
 
-	@Test
-	void filterFailureTest()
+	@BeforeEach
+	void beforeEach()
 	{
 		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
@@ -52,6 +53,48 @@ class BucketDirectoryStreamTest
 		Mockito.when(fileStore.name()).thenReturn(BUCKET);
 		Mockito.when(awsFacade.scanDirectory(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(List.of(FILE).iterator());
+	}
+
+	@Test
+	void iteratorWhenStreamIsClosedTest()
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			var directoryStream = new BucketDirectoryStream(path, filter);
+			try (var stream = directoryStream)
+			{
+				stream.forEach(this::doNothing);
+			}
+			Assertions.assertThrows(IllegalStateException.class, directoryStream::iterator);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void iteratorWhenStreamIsOverTest()
+	{
+		try (var mock = Mockito.mockStatic(Files.class))
+		{
+			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
+			try (var stream = new BucketDirectoryStream(path, filter))
+			{
+				Assertions.assertDoesNotThrow(stream::iterator);
+				Assertions.assertThrows(IllegalStateException.class, stream::iterator);
+			}
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void filterFailureTest()
+	{
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
 			Mockito.when(filter.accept(Mockito.any(Path.class))).thenThrow(IOException.class);
