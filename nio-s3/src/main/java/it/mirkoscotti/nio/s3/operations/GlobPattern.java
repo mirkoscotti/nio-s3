@@ -1,8 +1,8 @@
 package it.mirkoscotti.nio.s3.operations;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -36,25 +36,24 @@ public final class GlobPattern
 
 	private String toRegex()
 	{
-		return "^%s$".formatted(parseGlob(0).regex());
+		var regex = parseGlob(0).map(ParseState::regex).orElse("");
+		return "^%s$".formatted(regex);
 	}
 
-	private ParseState parseGlob(int start)
+	private Optional<ParseState> parseGlob(int start)
 	{
-		return Stream.iterate(ParseState.initial(start), this::parseGlob)
-					 .takeWhile(Predicate.not(Objects::isNull))
+		return Stream.iterate(Optional.of(ParseState.initial(start)), this::parseGlob)
+					 .takeWhile(Optional::isPresent)
 					 .reduce((item1, item2) -> item2)
-					 .orElseGet(() -> ParseState.initial(start));
+					 .flatMap(Function.identity());
 	}
 
-	private ParseState parseGlob(ParseState current)
+	private Optional<ParseState> parseGlob(Optional<ParseState> current)
 	{
-		return Optional.of(current)
-					   .filter(Predicate.not(ParseState::shouldSkip))
-					   .map(this::processPosition)
-					   .orElseGet(() -> Optional.of(current))
-					   .map(ParseState::advance)
-					   .orElse(null);
+		return current.filter(Predicate.not(ParseState::shouldSkip))
+					  .map(this::processPosition)
+					  .orElse(current)
+					  .map(ParseState::advance);
 	}
 
 	private Optional<ParseState> processPosition(ParseState current)
