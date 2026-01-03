@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.operations;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -24,9 +25,8 @@ public final class GlobPattern
 
 	public static GlobPattern of(String glob)
 	{
-		return Optional.ofNullable(glob)
-					   .map(GlobPattern::new)
-					   .orElseThrow(() -> new NullPointerException("Missing glob pattern."));
+		Objects.requireNonNull(glob, () -> "Missing glob pattern.");
+		return new GlobPattern(glob);
 	}
 
 	public Pattern toRegexPattern()
@@ -99,10 +99,26 @@ public final class GlobPattern
 
 	private ParseState handleStar(ParseState current)
 	{
-		return Optional.of(current.position() + 1)
-					   .filter(item -> item < pattern.length() && pattern.charAt(item) == '*')
-					   .map(item -> current.append(".*").skip(1))
+		return Optional.of(countStars(current))
+					   .filter(item -> item > 1)
+					   .map(item -> handleStars(current, item))
 					   .orElseGet(() -> current.append("[^/]*"));
+	}
+
+	private ParseState handleStars(ParseState current, int count)
+	{
+		var position = current.position() + count;
+		return position == pattern.length()
+			|| position < pattern.length() && pattern.charAt(position) == '/'
+				? current.append(".*").skip(count + 1)
+				: current.append("[^/]*").skip(count - 1);
+	}
+
+	private int countStars(ParseState current)
+	{
+		return (int) IntStream.range(current.position(), pattern.length())
+							  .takeWhile(i -> pattern.charAt(i) == '*')
+							  .count();
 	}
 
 	private ParseState handleBracket(ParseState current)
