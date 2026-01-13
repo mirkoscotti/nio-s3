@@ -10,6 +10,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
+ * Same matching rules as in <a href="https://rapidtoolset.com/it/tool/glob-pattern-tester"/>
+ *
  * @author mirko.scotti
  * @version Dec 30, 2025
  */
@@ -29,23 +31,17 @@ public final class GlobPattern
 		return new GlobPattern(glob);
 	}
 
-	public Pattern toRegexPattern()
+	public String toRegex()
 	{
-		return Pattern.compile(toRegex());
-	}
-
-	private String toRegex()
-	{
-		var regex = parseGlob(0).map(ParseState::regex).orElse("");
+		var current = Optional.of(new ParseState("", 0, 0, true));
+		var regex = Stream.iterate(current, this::parseGlob)
+						  .takeWhile(Optional::isPresent)
+						  .reduce((item1, item2) -> item2)
+						  .flatMap(Function.identity())
+						  .map(ParseState::regex)
+						  .map(this::appendPipe)
+						  .orElse("");
 		return "^%s$".formatted(regex);
-	}
-
-	private Optional<ParseState> parseGlob(int start)
-	{
-		return Stream.iterate(Optional.of(ParseState.initial(start)), this::parseGlob)
-					 .takeWhile(Optional::isPresent)
-					 .reduce((item1, item2) -> item2)
-					 .flatMap(Function.identity());
 	}
 
 	private Optional<ParseState> parseGlob(Optional<ParseState> current)
@@ -101,17 +97,9 @@ public final class GlobPattern
 	{
 		return Optional.of(countStars(current))
 					   .filter(item -> item > 1)
-					   .map(item -> handleStars(current, item))
-					   .orElseGet(() -> current.append("[^/]*"));
-	}
-
-	private ParseState handleStars(ParseState current, int count)
-	{
-		var position = current.position() + count;
-		return position == pattern.length()
-			|| position < pattern.length() && pattern.charAt(position) == '/'
-				? current.append(".*").skip(count + 1)
-				: current.append("[^/]*").skip(count - 1);
+					   .map(current::skip)
+					   .map(item -> item.appendStar(pattern.startsWith("*") ? ".*" : ".+"))
+					   .orElseGet(() -> current.appendStar("[^/]+/?"));
 	}
 
 	private int countStars(ParseState current)
@@ -212,13 +200,18 @@ public final class GlobPattern
 		return position > 0 && pattern.charAt(position - 1) == '\\' && !isEscaped(position - 1);
 	}
 
-	private static record ParseState(String regex, int position, int charactersToSkip)
+	private String appendPipe(String regex)
 	{
+		return pattern.isEmpty() || pattern.chars().allMatch(item -> item == '*')
+			? regex.concat("|")
+			: regex;
+	}
 
-		static ParseState initial(int position)
-		{
-			return new ParseState("", position, 0);
-		}
+	private static record ParseState(String regex,
+									 int position,
+									 int charactersToSkip,
+									 boolean mustMatchEmptyPath)
+	{
 
 		boolean shouldSkip()
 		{
@@ -227,12 +220,15 @@ public final class GlobPattern
 
 		ParseState skip(int count)
 		{
-			return new ParseState(regex, position, count);
+			return new ParseState(regex, position, count, mustMatchEmptyPath);
 		}
 
 		ParseState advance()
 		{
-			return new ParseState(regex, position + 1, Math.max(0, charactersToSkip - 1));
+			return new ParseState(regex,
+								  position + 1,
+								  Math.max(0, charactersToSkip - 1),
+								  mustMatchEmptyPath);
 		}
 
 		ParseState append(char character)
@@ -242,7 +238,18 @@ public final class GlobPattern
 
 		ParseState append(String fragment)
 		{
-			return new ParseState(regex + fragment, position, Math.max(0, charactersToSkip - 1));
+			return new ParseState(regex.concat(fragment),
+								  position,
+								  Math.max(0, charactersToSkip),
+								  false);
+		}
+
+		ParseState appendStar(String fragment)
+		{
+			return new ParseState(regex.concat(fragment),
+								  position,
+								  Math.max(0, charactersToSkip),
+								  mustMatchEmptyPath);
 		}
 	}
 
