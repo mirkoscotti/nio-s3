@@ -39,6 +39,7 @@ public final class GlobPattern
 						  .reduce((item1, item2) -> item2)
 						  .flatMap(Function.identity())
 						  .map(ParseState::regex)
+						  .map(item -> !item.isEmpty() ? item.concat("/?") : item)
 						  .map(this::appendPipe)
 						  .orElse("");
 		return "^%s$".formatted(regex);
@@ -128,7 +129,7 @@ public final class GlobPattern
 							.filter(Predicate.not(String::isEmpty))
 							.map(this::convertBracketExpression)
 							.orElse("\\[\\]");
-		return current.append(regex).skip(bracketPosition - globPosition);
+		return current.append(regex).skip(bracketPosition - globPosition + 1);
 	}
 
 	private String convertBracketExpression(String content)

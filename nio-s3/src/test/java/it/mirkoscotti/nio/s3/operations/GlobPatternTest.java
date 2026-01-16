@@ -27,33 +27,23 @@ import org.junit.jupiter.api.Test;
 class GlobPatternTest
 {
 
-	private static final FileSystem FILE_SYSTEM = Jimfs.newFileSystem(Configuration.unix());
+	private static final Randomizer RANDOMIZER = new Randomizer();
 
-	private static final String DOMAIN = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.";
+	private static final List<String> TEST_CASES = new ArrayList<>();
 
-	private static final Random RANDOM = ThreadLocalRandom.current();
-
-	private static final String EMPTY_PATH = "";
-
-	private static final String ROOT_PATH = "/";
-
-	private static final String STAR = "*";
-
-	private static final String DOUBLE_STAR = STAR.concat(STAR);
+	private static final String EMPTY = "";
 
 	private static final String DOT = ".";
 
+	private static final String SLASH = "/";
+
+	private static final String STAR = "*";
+
 	private static final String QUESTION_MARK = "?";
 
-	private static final String WILDCARD_PATTERN = "*.%s";
+	private static final String DOUBLE_STAR = STAR.concat(STAR);
 
-	private static final String DIRECTORY_PATTERN = "%s/".concat(WILDCARD_PATTERN);
-
-	private static final String FILE_PATTERN = "%s.%s";
-
-	private static final String MESSAGE = "Glob: %s, Path: %s -> Expected: %s";
-
-	private static final List<String> TEST_CASES = new ArrayList<>();
+	private static final String EXTENSION_PATTERN = "/*.%s";
 
 	@AfterAll
 	static void afterAll()
@@ -71,309 +61,356 @@ class GlobPatternTest
 	@Test
 	void emptyTest()
 	{
-		baseTestCases(new GlobRecord(EMPTY_PATH));
+		var globRecord = new GlobRecord(EMPTY);
+		globRecord.baseTestCases();
 	}
 
 	@Test
-	@DisplayName("*, **, ***[...]")
+	@DisplayName("*, **")
 	void starsTest()
 	{
-		Stream.of(STAR, DOUBLE_STAR, randomStars())
+		Stream.of(STAR, DOUBLE_STAR, RANDOMIZER.stars())
 			  .map(GlobRecord::new)
-			  .forEach(this::baseTestCases);
+			  .forEach(GlobRecord::baseTestCases);
 	}
 
 	@Test
-	@DisplayName("directory/*, directory/**, directory/***[...]")
+	@DisplayName("directory/*, directory/**")
 	void directoryTest()
 	{
-		var directory = randomDirectory();
+		var directory = RANDOMIZER.directory();
 		Stream.of(directory.concat(STAR), directory.concat(DOUBLE_STAR),
-				  directory.concat(randomStars()))
+				  directory.concat(RANDOMIZER.stars()))
 			  .map(GlobRecord::new)
-			  .forEach(item -> directoryTestCases(item, directory));
+			  .forEach(item -> item.baseDirectoryTestCases(directory));
 	}
 
 	@Test
-	@DisplayName("*.[extension], **.[extension], ***[...].[extension]")
+	@DisplayName("*.[extension], **.[extension]")
 	void extensionTest()
 	{
-		var extension = randomName();
+		var extension = RANDOMIZER.name();
 		Stream.of(String.join(DOT, STAR, extension), String.join(DOT, DOUBLE_STAR, extension),
-				  String.join(DOT, randomStars(), extension))
+				  String.join(DOT, RANDOMIZER.stars(), extension))
 			  .map(GlobRecord::new)
-			  .forEach(item -> extensionTestCases(item, extension));
+			  .forEach(item -> item.baseExtensionTestCases(extension));
 	}
 
 	@Test
-	@DisplayName("directory/*.[extension], directory/**.[extension], directory/***[...].[extension]")
+	@DisplayName("directory/*.[extension], directory/**.[extension]")
 	void directoryWithExtensionTest()
 	{
-		var directory = randomDirectory();
-		var extension = randomName();
+		var directory = RANDOMIZER.directory();
+		var extension = RANDOMIZER.name();
 		Stream.of(String.join(DOT, directory.concat(STAR), extension),
 				  String.join(DOT, directory.concat(DOUBLE_STAR), extension),
-				  String.join(DOT, directory.concat(randomStars()), extension))
+				  String.join(DOT, directory.concat(RANDOMIZER.stars()), extension))
 			  .map(GlobRecord::new)
-			  .forEach(item -> directoryAndExtensionTestCases(item, directory, extension));
+			  .forEach(item -> item.baseDirectoryAndExtensionTestCases(directory, extension));
 	}
 
 	@Test
-	@DisplayName("*/*.[extension], **/*.[extension], ***[...]/*.[extension]")
+	@DisplayName("*/*.[extension], **/*.[extension]")
 	void mixedStarsWithExtensionTest()
 	{
-		var extension = randomName();
-		Stream.of(DIRECTORY_PATTERN.formatted(STAR, extension),
-				  DIRECTORY_PATTERN.formatted(DOUBLE_STAR, extension),
-				  DIRECTORY_PATTERN.formatted(randomStars(), extension))
+		var extension = RANDOMIZER.name();
+		Stream.of(STAR.concat(EXTENSION_PATTERN).formatted(extension),
+				  DOUBLE_STAR.concat(EXTENSION_PATTERN).formatted(extension),
+				  RANDOMIZER.stars().concat(EXTENSION_PATTERN).formatted(extension))
 			  .map(GlobRecord::new)
-			  .forEach(item -> extensionTestCases(item, extension));
+			  .forEach(item -> item.baseExtensionTestCases(extension));
 	}
 
 	@Test
-	@DisplayName("directory/*/*.[extension], directory/**/*.[extension], directory/***[...]/*.[extension]")
+	@DisplayName("directory/*/*.[extension], directory/**/*.[extension]")
 	void mixedStarsUnderDirectoryWithExtensionTest()
 	{
-		var directory = randomDirectory();
-		var extension = randomName();
-		Stream.of(DIRECTORY_PATTERN.formatted(directory.concat(STAR), extension),
-				  DIRECTORY_PATTERN.formatted(directory.concat(DOUBLE_STAR), extension),
-				  DIRECTORY_PATTERN.formatted(directory.concat(randomStars()), extension))
+		var directory = RANDOMIZER.directory();
+		var extension = RANDOMIZER.name();
+		Stream.of(String.join(STAR, directory, EXTENSION_PATTERN).formatted(extension),
+				  String.join(DOUBLE_STAR, directory, EXTENSION_PATTERN).formatted(extension),
+				  String.join(RANDOMIZER.stars(), directory, EXTENSION_PATTERN)
+						.formatted(extension))
 			  .map(GlobRecord::new)
-			  .forEach(item -> extensionTestCases(item, extension));
+			  .forEach(item -> item.baseDirectoryAndExtensionTestCases(directory, extension));
 	}
 
 	@Test
-	@DisplayName("[file].*, [file].**, [file].***[...]")
+	@DisplayName("[file].*, [file].**")
 	void fileTest()
 	{
-		var fileName = randomName();
-		Stream.of(FILE_PATTERN.formatted(fileName, STAR),
-				  FILE_PATTERN.formatted(fileName, DOUBLE_STAR),
-				  FILE_PATTERN.formatted(fileName, randomStars()))
+		var fileName = RANDOMIZER.name();
+		Stream.of(String.join(DOT, fileName, STAR), String.join(DOT, fileName, DOUBLE_STAR),
+				  String.join(DOT, fileName, RANDOMIZER.stars()))
 			  .map(GlobRecord::new)
-			  .forEach(item -> fileTestCases(item, fileName));
+			  .forEach(item -> item.baseFileTestCases(fileName));
 	}
 
 	@Test
-	@DisplayName("?, [file].?, ?.[extension]")
+	@DisplayName("?, [file].?, ?.[extension], [file]?.[extension]")
 	void questionMarkTest()
 	{
-		var fileName = randomName();
-		var extension = randomName();
-		Stream.of(QUESTION_MARK, FILE_PATTERN.formatted(fileName, QUESTION_MARK),
-				  FILE_PATTERN.formatted(QUESTION_MARK, extension))
+		var fileName = RANDOMIZER.name();
+		var extension = RANDOMIZER.name();
+		Stream.of(QUESTION_MARK, String.join(DOT, fileName, QUESTION_MARK),
+				  String.join(DOT, QUESTION_MARK, extension),
+				  String.join(DOT, fileName.concat(QUESTION_MARK), extension))
 			  .map(GlobRecord::new)
-			  .forEach(item -> questionMarkTestCases(item, fileName, extension));
+			  .forEach(item -> item.baseFileAndExtensionTestCases(fileName, extension));
 	}
 
-	private void baseTestCases(GlobRecord globRecord)
+	@Test
+	@DisplayName("[0-9], [A-Z], [a-z], [0-9A-Za-z]")
+	void bracketsTest()
 	{
-		baseTestCases(globRecord.glob, globRecord.regex);
+		Stream.of("[0-9]", "[A-Z]", "[a-z]", "[0-9A-Za-z]")
+			  .map(GlobRecord::new)
+			  .forEach(GlobRecord::bracketsTestCases);
 	}
 
-	private void baseTestCases(String glob, String regex)
+	private static final class Randomizer
 	{
-		assertMatch(glob, regex, EMPTY_PATH);
-		assertMatch(glob, regex, ROOT_PATH);
-		assertMatch(glob, regex, randomCharacter());
-		assertMatch(glob, regex, randomDirectory());
-		assertMatch(glob, regex, randomName());
-		assertMatch(glob, regex, randomPath());
-		assertMatch(glob, regex, randomFile(1));
-		assertMatch(glob, regex, randomDirectory(2));
-		assertMatch(glob, regex, randomFile(2));
-	}
 
-	private void directoryTestCases(GlobRecord globRecord, String directory)
-	{
-		baseTestCases(globRecord);
-		directoryTestCases(globRecord.glob, globRecord.regex, directory);
-	}
+		private static final Random RANDOM = ThreadLocalRandom.current();
 
-	private void directoryTestCases(String glob, String regex, String directory)
-	{
-		assertMatch(glob, regex, directory);
-		assertMatch(glob, regex, randomFile(directory));
-		assertMatch(glob, regex, randomDirectory(directory));
-		assertMatch(glob, regex, randomPath(1, directory, true));
-	}
+		private static final String DOMAIN = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.";
 
-	private void extensionTestCases(GlobRecord globRecord, String extension)
-	{
-		baseTestCases(globRecord);
-		extensionTestCases(globRecord.glob, globRecord.regex, extension);
-	}
+		int length(int bound)
+		{
+			return RANDOM.nextInt(bound);
+		}
 
-	private void extensionTestCases(String glob, String regex, String extension)
-	{
-		assertMatch(glob, regex, String.join(DOT, randomName(), extension));
-		assertMatch(glob, regex, String.join(DOT, randomFile(1), extension));
-		assertMatch(glob, regex, String.join(DOT, randomFile(2), extension));
-	}
+		String character()
+		{
+			var domain = DOMAIN.replace(".", "");
+			var index = RANDOM.nextInt(domain.length());
+			return String.valueOf(domain.charAt(index));
+		}
 
-	private void directoryAndExtensionTestCases(GlobRecord globRecord,
-												String directory,
-												String extension)
-	{
-		baseTestCases(globRecord);
-		directoryTestCases(globRecord, directory);
-		extensionTestCases(globRecord, extension);
-		directoryAndExtensionTestCases(globRecord.glob, globRecord.regex, directory, extension);
-	}
+		String name()
+		{
+			return name(RANDOM.nextInt(1, 21));
+		}
 
-	private void directoryAndExtensionTestCases(String glob,
-												String regex,
-												String directory,
-												String extension)
-	{
-		assertMatch(glob, regex, String.join(DOT, randomFile(directory), extension));
-		assertMatch(glob, regex, String.join(DOT, randomPath(1, directory, true), extension));
-	}
+		String name(int length)
+		{
+			return RANDOM.ints(length, 0, DOMAIN.length())
+						 .mapToObj(DOMAIN::charAt)
+						 .map(String::valueOf)
+						 .collect(Collectors.collectingAndThen(Collectors.joining(),
+															   this::normalizeName));
+		}
 
-	private void fileTestCases(GlobRecord globRecord, String fileName)
-	{
-		baseTestCases(globRecord);
-		fileTestCases(globRecord.glob, globRecord.regex, fileName);
-	}
+		String file()
+		{
+			return String.join(DOT, name(), name(3));
+		}
 
-	private void fileTestCases(String glob, String regex, String fileName)
-	{
-		assertMatch(glob, regex, String.join(DOT, fileName, randomName()));
-		assertMatch(glob, regex, String.join(DOT, fileName, randomDirectory()));
-		assertMatch(glob, regex, String.join(DOT, fileName, randomFile(1)));
-		assertMatch(glob, regex,
-					String.join(DOT, randomDirectory().concat(fileName), randomName()));
-		assertMatch(glob, regex,
-					String.join(DOT, randomDirectory().concat(fileName), randomDirectory()));
-		assertMatch(glob, regex,
-					String.join(DOT, randomDirectory().concat(fileName), randomPath()));
-	}
+		String file(int depth)
+		{
+			return path(depth).concat(file());
+		}
 
-	private void questionMarkTestCases(GlobRecord globRecord, String fileName, String extension)
-	{
-		baseTestCases(globRecord);
-		questionMarkTestCases(globRecord.glob, globRecord.regex, fileName, extension);
-	}
+		String file(String extension)
+		{
+			return String.join(DOT, name(), extension);
+		}
 
-	private void questionMarkTestCases(String glob, String regex, String fileName, String extension)
-	{
-		assertMatch(glob, regex, String.join(DOT, fileName, randomCharacter()));
-		assertMatch(glob, regex, String.join(DOT, fileName, randomName()));
-		assertMatch(glob, regex, String.join(DOT, randomCharacter(), extension));
-		assertMatch(glob, regex, String.join(DOT, randomName(), extension));
-	}
+		String file(int depth, String extension)
+		{
+			return path(depth).concat(file(extension));
+		}
 
-	private void assertMatch(String glob, String regex, String path)
-	{
-		var expected = expectedMatch(glob, path);
-		var result = path.matches(regex);
-		TEST_CASES.add(MESSAGE.formatted(normalizeEmpty(glob), normalizeEmpty(path),
-										 expected ? "match" : "no match"));
-		Assertions.assertEquals(expected, result, () -> errorMessage(glob, regex, path, expected));
-	}
+		String directory()
+		{
+			return name().concat(SLASH);
+		}
 
-	private boolean expectedMatch(String glob, String path)
-	{
-		var expectedPath = FILE_SYSTEM.getPath(path);
-		return FILE_SYSTEM.getPathMatcher("glob:".concat(glob)).matches(expectedPath);
-	}
+		String directory(int length)
+		{
+			return name(length).concat(SLASH);
+		}
 
-	private String normalizeEmpty(String value)
-	{
-		return Optional.of(value).filter(Predicate.not(EMPTY_PATH::equals)).orElse("<empty>");
-	}
+		String path()
+		{
+			return path(RANDOM.nextInt(0, 4));
+		}
 
-	private String errorMessage(String glob, String regex, String path, boolean mustMatch)
-	{
-		var response = mustMatch
-			? "Expected to match but does not"
-			: "Expected not to match but does";
-		return """
-			%s
-			Original glob: %s
-			Generated regex: %s
-			Candidate path: %s
-			""".formatted(response, glob, regex, path);
-	}
-
-	private String randomCharacter()
-	{
-		var domain = DOMAIN.replace(".", "");
-		var index = RANDOM.nextInt(domain.length());
-		return String.valueOf(domain.charAt(index));
-	}
-
-	private String randomName()
-	{
-		var length = RANDOM.nextInt(1, 21);
-		return RANDOM.ints(length, 0, DOMAIN.length())
-					 .mapToObj(DOMAIN::charAt)
-					 .map(String::valueOf)
-					 .collect(Collectors.collectingAndThen(Collectors.joining(),
-														   this::normalizeName));
-	}
-
-	private String randomFile(int depth)
-	{
-		return randomPath(depth, EMPTY_PATH, true);
-	}
-
-	private String randomFile(String prefix)
-	{
-		return randomPath(0, prefix, true);
-	}
-
-	private String randomDirectory()
-	{
-		return randomName().concat(ROOT_PATH);
-	}
-
-	private String randomDirectory(int depth)
-	{
-		return randomPath(depth, EMPTY_PATH, false);
-	}
-
-	private String randomDirectory(String prefix)
-	{
-		return randomPath(0, prefix, false);
-	}
-
-	private String randomPath()
-	{
-		return randomPath(RANDOM.nextInt(1, 6), EMPTY_PATH, RANDOM.nextBoolean());
-	}
-
-	private String randomPath(int depth, String prefix, boolean withFile)
-	{
-		var path = IntStream.range(Math.min(0, Math.min(depth, 5) + 1), depth)
-							.mapToObj(i -> randomDirectory())
+		String path(int depth)
+		{
+			return IntStream.range(0, Math.max(2, depth))
+							.mapToObj(i -> directory())
 							.collect(Collectors.joining());
-		return prefix.concat(path).concat(withFile ? randomName() : EMPTY_PATH);
-	}
+		}
 
-	private static String randomStars()
-	{
-		return IntStream.rangeClosed(1, 3 + RANDOM.nextInt(7))
-						.mapToObj(i -> "*")
-						.collect(Collectors.joining());
-	}
+		String extension(String name)
+		{
+			return extension(name, 3);
+		}
 
-	private String normalizeName(String name)
-	{
-		var string = name.replaceAll("\\.{2,}", DOT);
-		var result = string.endsWith(DOT)
-			? string.substring(0, string.length() - 1).concat(randomCharacter())
-			: string;
-		return result.isEmpty() ? randomCharacter() : result;
+		String extension(String name, int length)
+		{
+			return String.join(DOT, name, name(length));
+		}
+
+		private String stars()
+		{
+			return IntStream.rangeClosed(1, 3 + RANDOMIZER.length(7))
+							.mapToObj(i -> "*")
+							.collect(Collectors.joining());
+		}
+
+		private String normalizeName(String name)
+		{
+			var string = name.replaceAll("\\.{2,}", DOT);
+			var result = string.endsWith(DOT)
+				? string.substring(0, string.length() - 1).concat(character())
+				: string;
+			return result.isEmpty() ? character() : result;
+		}
 	}
 
 	private static record GlobRecord(String glob, String regex)
 	{
 
+		private static final FileSystem FILE_SYSTEM = Jimfs.newFileSystem(Configuration.unix());
+
+		private static final String MESSAGE = "Glob: %s, Path: %s -> Expected: %s";
+
 		GlobRecord(String glob)
 		{
 			this(glob, GlobPattern.of(glob).toRegex());
+		}
+
+		void baseTestCases()
+		{
+			assertMatch(EMPTY);
+			assertMatch(SLASH);
+			assertMatch(RANDOMIZER.character());
+			assertMatch(RANDOMIZER.name());
+			assertMatch(RANDOMIZER.file());
+			assertMatch(RANDOMIZER.directory());
+			assertMatch(RANDOMIZER.directory(1));
+			assertMatch(RANDOMIZER.path());
+		}
+
+		void baseDirectoryTestCases(String directory)
+		{
+			baseTestCases();
+			directoryTestCases(directory);
+		}
+
+		void baseExtensionTestCases(String extension)
+		{
+			baseTestCases();
+			extensionTestCases(extension);
+		}
+
+		void baseDirectoryAndExtensionTestCases(String directory, String extension)
+		{
+			baseTestCases();
+			directoryTestCases(directory);
+			extensionTestCases(extension);
+			directoryAndExtensionTestCases(directory, extension);
+		}
+
+		void baseFileTestCases(String fileName)
+		{
+			baseTestCases();
+			fileTestCases(fileName);
+		}
+
+		void baseFileAndExtensionTestCases(String fileName, String extension)
+		{
+			baseTestCases();
+			extensionTestCases(extension);
+			fileTestCases(fileName);
+			fileAndExtensionTestCases(fileName, extension);
+		}
+
+		void bracketsTestCases()
+		{
+			baseTestCases();
+		}
+
+		private void directoryTestCases(String directory)
+		{
+			assertMatch(directory);
+			assertMatch(directory.concat(RANDOMIZER.character()));
+			assertMatch(directory.concat(RANDOMIZER.name()));
+			assertMatch(directory.concat(RANDOMIZER.file()));
+			assertMatch(directory.concat(RANDOMIZER.directory(1)));
+			assertMatch(directory.concat(RANDOMIZER.directory()));
+			assertMatch(directory.concat(RANDOMIZER.path()));
+			assertMatch(directory.concat(RANDOMIZER.file(1)));
+		}
+
+		private void extensionTestCases(String extension)
+		{
+			assertMatch(RANDOMIZER.file(extension));
+			assertMatch(RANDOMIZER.file(1, extension));
+			assertMatch(RANDOMIZER.file(2, extension));
+		}
+
+		private void directoryAndExtensionTestCases(String directory, String extension)
+		{
+			assertMatch(directory.concat(RANDOMIZER.file(extension)));
+			assertMatch(directory.concat(RANDOMIZER.file(1, extension)));
+			assertMatch(directory.concat(RANDOMIZER.file(2, extension)));
+		}
+
+		private void fileTestCases(String fileName)
+		{
+			assertMatch(RANDOMIZER.extension(fileName));
+			assertMatch(RANDOMIZER.extension(fileName, 1));
+			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.extension(fileName)));
+			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.extension(fileName, 1)));
+			assertMatch(RANDOMIZER.path().concat(RANDOMIZER.extension(fileName)));
+			assertMatch(RANDOMIZER.path().concat(RANDOMIZER.extension(fileName, 1)));
+		}
+
+		private void fileAndExtensionTestCases(String fileName, String extension)
+		{
+			assertMatch(RANDOMIZER.file(RANDOMIZER.character()));
+			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.file(RANDOMIZER.character())));
+			assertMatch(RANDOMIZER.extension(fileName, 1));
+			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.extension(fileName, 1)));
+			assertMatch(RANDOMIZER.file(extension));
+			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.file(extension)));
+		}
+
+		private void assertMatch(String path)
+		{
+			var expected = expectedMatch(glob, path);
+			var result = path.matches(regex);
+			TEST_CASES.add(MESSAGE.formatted(normalizeEmpty(glob), normalizeEmpty(path),
+											 expected ? "match" : "no match"));
+			Assertions.assertEquals(expected, result,
+									() -> errorMessage(glob, regex, path, expected));
+		}
+
+		private boolean expectedMatch(String glob, String path)
+		{
+			var expectedPath = FILE_SYSTEM.getPath(path);
+			return FILE_SYSTEM.getPathMatcher("glob:".concat(glob)).matches(expectedPath);
+		}
+
+		private String normalizeEmpty(String value)
+		{
+			return Optional.of(value).filter(Predicate.not(EMPTY::equals)).orElse("<empty>");
+		}
+
+		private String errorMessage(String glob, String regex, String path, boolean mustMatch)
+		{
+			var response = mustMatch
+				? "Expected to match but does not"
+				: "Expected not to match but does";
+			return """
+				%s
+				Original glob: %s
+				Generated regex: %s
+				Candidate path: %s
+				""".formatted(response, glob, regex, path);
 		}
 	}
 
