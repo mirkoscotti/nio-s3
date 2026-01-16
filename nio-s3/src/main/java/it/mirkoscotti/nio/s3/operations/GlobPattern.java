@@ -33,16 +33,20 @@ public final class GlobPattern
 
 	public String toRegex()
 	{
-		var current = Optional.of(new ParseState("", 0, 0, true));
-		var regex = Stream.iterate(current, this::parseGlob)
-						  .takeWhile(Optional::isPresent)
-						  .reduce((item1, item2) -> item2)
-						  .flatMap(Function.identity())
-						  .map(ParseState::regex)
-						  .map(item -> !item.isEmpty() ? item.concat("/?") : item)
-						  .map(this::appendPipe)
-						  .orElse("");
+		var regex = toInternalRegex().map(item -> !item.isEmpty() ? item.concat("/?") : item)
+									 .map(this::appendPipe)
+									 .orElse("");
 		return "^%s$".formatted(regex);
+	}
+
+	private Optional<String> toInternalRegex()
+	{
+		var current = Optional.of(new ParseState("", 0, 0, true));
+		return Stream.iterate(current, this::parseGlob)
+					 .takeWhile(Optional::isPresent)
+					 .reduce((item1, item2) -> item2)
+					 .flatMap(Function.identity())
+					 .map(ParseState::regex);
 	}
 
 	private Optional<ParseState> parseGlob(Optional<ParseState> current)
@@ -100,7 +104,7 @@ public final class GlobPattern
 					   .filter(item -> item > 1)
 					   .map(current::skip)
 					   .map(item -> item.appendStar(pattern.startsWith("*") ? ".*" : ".+"))
-					   .orElseGet(() -> current.appendStar("[^/]+/?"));
+					   .orElseGet(() -> current.appendStar("[^/]+"));
 	}
 
 	private int countStars(ParseState current)
@@ -162,10 +166,9 @@ public final class GlobPattern
 						.reduce(new BraceSearchState(Optional.empty(), 1, false),
 								(item1, item2) -> item1.found()
 									? item1
-									: item1.process(pattern.charAt(item2)),
+									: item1.process(pattern.charAt(item2), item2),
 								(item1, item2) -> item2)
 						.result()
-						.map(depth -> position + depth)
 						.map(item -> processClosingBrace(current, position, item))
 						.orElseGet(() -> current.append("\\{"));
 	}
@@ -174,14 +177,15 @@ public final class GlobPattern
 	{
 		String content = pattern.substring(globPosition + 1, bracePosition);
 		String regex = convertBraceExpression(content);
-		return current.append(regex).skip(bracePosition - globPosition);
+		return current.append(regex).skip(bracePosition - globPosition + 1);
 	}
 
 	private String convertBraceExpression(String content)
 	{
 		var split = splitBrace(content).stream()
 									   .map(GlobPattern::new)
-									   .map(GlobPattern::toRegex)
+									   .map(GlobPattern::toInternalRegex)
+									   .map(item -> item.orElse(""))
 									   .reduce((item1, item2) -> String.join("|", item1, item2))
 									   .orElse("");
 		return "(?:%s)".formatted(split);
@@ -257,11 +261,11 @@ public final class GlobPattern
 	private record BraceSearchState(Optional<Integer> foundAt, int depth, boolean escaped)
 	{
 
-		BraceSearchState process(char character)
+		BraceSearchState process(char character, int position)
 		{
 			return escaped
 				? new BraceSearchState(foundAt, depth, false)
-				: processNotEscaped(character);
+				: processNotEscaped(character, position);
 		}
 
 		boolean found()
@@ -274,14 +278,14 @@ public final class GlobPattern
 			return foundAt;
 		}
 
-		private BraceSearchState processNotEscaped(char character)
+		private BraceSearchState processNotEscaped(char character, int position)
 		{
 			return switch (character)
 			{
 				case '\\' -> new BraceSearchState(foundAt, depth, true);
 				case '{' -> new BraceSearchState(foundAt, depth + 1, false);
 				case '}' -> depth == 1
-					? new BraceSearchState(Optional.of(depth), 0, false)
+					? new BraceSearchState(Optional.of(position), 0, false)
 					: new BraceSearchState(foundAt, depth - 1, false);
 				default -> this;
 			};

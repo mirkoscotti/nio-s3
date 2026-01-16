@@ -168,6 +168,17 @@ class GlobPatternTest
 			  .forEach(GlobRecord::bracketsTestCases);
 	}
 
+	@Test
+	@DisplayName("*.{extension1, extension2}")
+	void bracesTest()
+	{
+		var extension1 = RANDOMIZER.name();
+		var extension2 = RANDOMIZER.name();
+		Stream.of("*.{%s,%s}".formatted(extension1, extension2))
+			  .map(GlobRecord::new)
+			  .forEach(item -> item.bracesTestCases(extension1, extension2));
+	}
+
 	private static final class Randomizer
 	{
 
@@ -331,6 +342,13 @@ class GlobPatternTest
 		void bracketsTestCases()
 		{
 			baseTestCases();
+		}
+
+		void bracesTestCases(String extension1, String extension2)
+		{
+			baseTestCases();
+			extensionTestCases(extension1);
+			extensionTestCases(extension2);
 		}
 
 		private void directoryTestCases(String directory)
