@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -44,6 +45,8 @@ class GlobPatternTest
 	private static final String DOUBLE_STAR = STAR.concat(STAR);
 
 	private static final String EXTENSION_PATTERN = "/*.%s";
+
+	private static final String BRACES_PATTERN = "{%s, %s}";
 
 	@AfterAll
 	static void afterAll()
@@ -160,10 +163,10 @@ class GlobPatternTest
 	}
 
 	@Test
-	@DisplayName("[0-9], [A-Z], [a-z], [0-9A-Za-z]")
+	@DisplayName("[0-9], [A-Z], [a-z], [0-9A-Za-z], [\\^\\]]")
 	void bracketsTest()
 	{
-		Stream.of("[0-9]", "[A-Z]", "[a-z]", "[0-9A-Za-z]")
+		Stream.of("[0-9]", "[A-Z]", "[a-z]", "[0-9A-Za-z]", "[\\^\\]]")
 			  .map(GlobRecord::new)
 			  .forEach(GlobRecord::bracketsTestCases);
 	}
@@ -174,14 +177,30 @@ class GlobPatternTest
 	{
 		var extension1 = RANDOMIZER.name();
 		var extension2 = RANDOMIZER.name();
-		Stream.of("*.{%s,%s}".formatted(extension1, extension2))
+		var extension3 = RANDOMIZER.name();
+		var pattern = "*.".concat(BRACES_PATTERN);
+		Stream.of(pattern.formatted(extension1, extension2), pattern.formatted(extension1, "\\{"))
 			  .map(GlobRecord::new)
-			  .forEach(item -> item.bracesTestCases(extension1, extension2));
+			  .forEach(item -> item.bracesTestCases(extension1, extension2, extension3));
+
 	}
 
 	@Test
-	@DisplayName("*.\\, *.(, *.), *.$, *.+, *.^, *.|")
-	void specialCharactersTest()
+	@DisplayName("*.{extension1, {extension2, extension3}}")
+	void nestedBracesTest()
+	{
+		var extension1 = RANDOMIZER.name();
+		var extension2 = RANDOMIZER.name();
+		var extension3 = RANDOMIZER.name();
+		var starPattern = "*.".concat(BRACES_PATTERN);
+		var nestedBraces = BRACES_PATTERN.formatted(extension2, extension3);
+		var globPattern = GlobPattern.of(starPattern.formatted(extension1, nestedBraces));
+		Assertions.assertThrows(PatternSyntaxException.class, globPattern::toRegex);
+	}
+
+	@Test
+	@DisplayName("*.\\, *.(, *.), *.$, *.+, *.^")
+	void starWithSpecialCharactersTest()
 	{
 		Stream.of("*.%s".formatted("\\\\"), "*.%s".formatted("("), "*.%s".formatted(")"),
 				  "*.%s".formatted("$"), "*.%s".formatted("+"), "*.%s".formatted("^"))
@@ -318,6 +337,7 @@ class GlobPatternTest
 			assertMatch("+".concat(RANDOMIZER.name()));
 			assertMatch("$".concat(RANDOMIZER.name()));
 			assertMatch("^".concat(RANDOMIZER.name()));
+			assertMatch("]".concat(RANDOMIZER.name()));
 		}
 
 		void baseDirectoryTestCases(String directory)
@@ -359,11 +379,10 @@ class GlobPatternTest
 			baseTestCases();
 		}
 
-		void bracesTestCases(String extension1, String extension2)
+		void bracesTestCases(String... extensions)
 		{
 			baseTestCases();
-			extensionTestCases(extension1);
-			extensionTestCases(extension2);
+			Stream.of(extensions).forEach(this::extensionTestCases);
 		}
 
 		private void directoryTestCases(String directory)

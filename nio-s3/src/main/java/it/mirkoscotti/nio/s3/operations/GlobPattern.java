@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -162,10 +163,9 @@ public final class GlobPattern
 		var position = current.position();
 		return IntStream.range(position + 1, pattern.length())
 						.boxed()
-						.reduce(new BraceSearchState(Optional.empty(), 1, false),
-								(item1, item2) -> item1.found()
-									? item1
-									: item1.process(pattern.charAt(item2), item2),
+						.reduce(new BraceSearchState(Optional.empty(), false),
+								(item1,
+								 item2) -> item1.found() ? item1 : item1.process(pattern, item2),
 								(item1, item2) -> item2)
 						.result()
 						.map(item -> processClosingBrace(current, position, item))
@@ -194,7 +194,7 @@ public final class GlobPattern
 	{
 		return IntStream.range(0, content.length())
 						.boxed()
-						.reduce(new BraceSplitState(List.of(""), 0, false),
+						.reduce(new BraceSplitState(List.of(""), false),
 								(state, i) -> state.process(content.charAt(i)), (s1, s2) -> s2)
 						.alternatives();
 	}
@@ -257,14 +257,14 @@ public final class GlobPattern
 		}
 	}
 
-	private record BraceSearchState(Optional<Integer> foundAt, int depth, boolean escaped)
+	private record BraceSearchState(Optional<Integer> foundAt, boolean escaped)
 	{
 
-		BraceSearchState process(char character, int position)
+		BraceSearchState process(String pattern, int position)
 		{
 			return escaped
-				? new BraceSearchState(foundAt, depth, false)
-				: processNotEscaped(character, position);
+				? new BraceSearchState(foundAt, false)
+				: processNotEscaped(pattern, position);
 		}
 
 		boolean found()
@@ -277,21 +277,21 @@ public final class GlobPattern
 			return foundAt;
 		}
 
-		private BraceSearchState processNotEscaped(char character, int position)
+		private BraceSearchState processNotEscaped(String pattern, int position)
 		{
-			return switch (character)
+			return switch (pattern.charAt(position))
 			{
-				case '\\' -> new BraceSearchState(foundAt, depth, true);
-				case '{' -> new BraceSearchState(foundAt, depth + 1, false);
-				case '}' -> depth == 1
-					? new BraceSearchState(Optional.of(position), 0, false)
-					: new BraceSearchState(foundAt, depth - 1, false);
+				case '\\' -> new BraceSearchState(foundAt, true);
+				case '{' -> throw new PatternSyntaxException("Nested braces are not allowed in glob patterns.",
+															 pattern,
+															 position);
+				case '}' -> new BraceSearchState(Optional.of(position), false);
 				default -> this;
 			};
 		}
 	}
 
-	private record BraceSplitState(List<String> alternatives, int depth, boolean escaped)
+	private record BraceSplitState(List<String> alternatives, boolean escaped)
 	{
 
 		BraceSplitState process(char character)
@@ -301,44 +301,30 @@ public final class GlobPattern
 				: processNotEscaped(character);
 		}
 
+		private BraceSplitState processNotEscaped(char character)
+		{
+			return switch (character)
+			{
+				case '\\' -> new BraceSplitState(alternatives, true);
+				case ',' -> addAlternative();
+				default -> appendToLast(String.valueOf(character), false);
+			};
+		}
+
 		private BraceSplitState appendToLast(String s, boolean escaped)
 		{
 			var newList = alternatives.subList(0, alternatives.size() - 1);
 			var last = alternatives.get(alternatives.size() - 1) + s;
 			var result = new java.util.ArrayList<>(newList);
 			result.add(last);
-			return new BraceSplitState(List.copyOf(result), depth, escaped);
+			return new BraceSplitState(List.copyOf(result), escaped);
 		}
 
 		private BraceSplitState addAlternative()
 		{
 			var result = new java.util.ArrayList<>(alternatives);
 			result.add("");
-			return new BraceSplitState(List.copyOf(result), depth, false);
-		}
-
-		private BraceSplitState incrementDepth()
-		{
-			return new BraceSplitState(alternatives, depth + 1, false);
-		}
-
-		private BraceSplitState decrementDepth()
-		{
-			return new BraceSplitState(alternatives, depth - 1, false);
-		}
-
-		private BraceSplitState processNotEscaped(char character)
-		{
-			return switch (character)
-			{
-				case '\\' -> new BraceSplitState(alternatives, depth, true);
-				case '{' -> appendToLast(String.valueOf(character), false).incrementDepth();
-				case '}' -> appendToLast(String.valueOf(character), false).decrementDepth();
-				case ',' -> depth == 0
-					? addAlternative()
-					: appendToLast(String.valueOf(character), false);
-				default -> appendToLast(String.valueOf(character), false);
-			};
+			return new BraceSplitState(List.copyOf(result), false);
 		}
 	}
 }
