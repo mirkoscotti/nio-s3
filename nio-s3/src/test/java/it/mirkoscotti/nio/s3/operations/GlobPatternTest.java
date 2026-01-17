@@ -179,6 +179,16 @@ class GlobPatternTest
 			  .forEach(item -> item.bracesTestCases(extension1, extension2));
 	}
 
+	@Test
+	@DisplayName("*.\\, *.(, *.), *.$, *.+, *.^, *.|")
+	void specialCharactersTest()
+	{
+		Stream.of("*.%s".formatted("\\\\"), "*.%s".formatted("("), "*.%s".formatted(")"),
+				  "*.%s".formatted("$"), "*.%s".formatted("+"), "*.%s".formatted("^"))
+			  .map(GlobRecord::new)
+			  .forEach(GlobRecord::baseTestCases);
+	}
+
 	private static final class Randomizer
 	{
 
@@ -303,6 +313,11 @@ class GlobPatternTest
 			assertMatch(RANDOMIZER.directory());
 			assertMatch(RANDOMIZER.directory(1));
 			assertMatch(RANDOMIZER.path());
+			assertMatch("(".concat(RANDOMIZER.name()));
+			assertMatch(")".concat(RANDOMIZER.name()));
+			assertMatch("+".concat(RANDOMIZER.name()));
+			assertMatch("$".concat(RANDOMIZER.name()));
+			assertMatch("^".concat(RANDOMIZER.name()));
 		}
 
 		void baseDirectoryTestCases(String directory)
@@ -431,60 +446,4 @@ class GlobPatternTest
 				""".formatted(response, glob, regex, path);
 		}
 	}
-
-	// --------- SONO ARRIVATO QUA ----------
-
-	//
-	// @Test
-	// @DisplayName("file?.txt")
-	// void questionMarkWildcardTest()
-	// {
-	// var pattern = GlobPattern.of(QUESTION_MARK_WILDCARD).toRegexPattern();
-	// Assertions.assertTrue(pattern.matcher(FILE).matches());
-	// Assertions.assertFalse(pattern.matcher(OTHER_TEXT_FILE).matches());
-	// Assertions.assertFalse(pattern.matcher(DIRECTORY.concat(FILE)).matches());
-	// }
-	//
-	// @Test
-	// @DisplayName("directory/fil?.txt")
-	// void questionMarkWildcardUnderDirectoryTest()
-	// {
-	// var glob = DIRECTORY.concat(QUESTION_MARK_WILDCARD);
-	// var pattern = GlobPattern.of(glob).toRegexPattern();
-	// Assertions.assertFalse(pattern.matcher(FILE).matches());
-	// Assertions.assertTrue(pattern.matcher(DIRECTORY.concat(FILE)).matches());
-	// Assertions.assertFalse(pattern.matcher(DIRECTORY.concat(OTHER_TEXT_FILE)).matches());
-	// Assertions.assertFalse(pattern.matcher(SUB_DIRECTORY.concat(FILE)).matches());
-	// }
-	//
-	// @Test
-	// @DisplayName("**/fil?.txt")
-	// void doubleStarAndQuestionMarkWildcardTest()
-	// {
-	// var glob = DOUBLE_STAR_DIRECTORY.concat(QUESTION_MARK_WILDCARD);
-	// var pattern = GlobPattern.of(glob).toRegexPattern();
-	// Assertions.assertTrue(pattern.matcher(FILE).matches());
-	// Assertions.assertFalse(pattern.matcher(OTHER_TEXT_FILE).matches());
-	// var path = SUB_DIRECTORY.concat(FILE);
-	// Assertions.assertTrue(pattern.matcher(path).matches());
-	// Assertions.assertTrue(pattern.matcher(DIRECTORY.concat(path)).matches());
-	// path = SUB_DIRECTORY.concat(OTHER_TEXT_FILE);
-	// Assertions.assertFalse(pattern.matcher(path).matches());
-	// Assertions.assertFalse(pattern.matcher(DIRECTORY.concat(path)).matches());
-	// }
-	//
-	// @Test
-	// @DisplayName("directory/**/fil?.txt")
-	// void doubleStarAndQuestionMarkWildcardUnderDirectoryTest()
-	// {
-	// var glob = DIRECTORY.concat(DOUBLE_STAR_DIRECTORY).concat(QUESTION_MARK_WILDCARD);
-	// var pattern = GlobPattern.of(glob).toRegexPattern();
-	// Assertions.assertFalse(pattern.matcher(FILE).matches());
-	// var path = SUB_DIRECTORY.concat(FILE);
-	// Assertions.assertFalse(pattern.matcher(path).matches());
-	// path = DIRECTORY.concat(path);
-	// Assertions.assertTrue(pattern.matcher(path).matches());
-	// path = DIRECTORY.concat(SUB_DIRECTORY).concat(OTHER_TEXT_FILE);
-	// Assertions.assertFalse(pattern.matcher(path).matches());
-	// }
 }

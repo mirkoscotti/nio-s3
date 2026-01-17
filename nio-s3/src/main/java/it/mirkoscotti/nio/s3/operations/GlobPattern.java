@@ -79,7 +79,6 @@ public final class GlobPattern
 			case '(' -> current.append("\\(");
 			case ')' -> current.append("\\)");
 			case '+' -> current.append("\\+");
-			case '|' -> current.append("\\|");
 			case '^' -> current.append("\\^");
 			case '$' -> current.append("\\$");
 			default -> current.append(character);
