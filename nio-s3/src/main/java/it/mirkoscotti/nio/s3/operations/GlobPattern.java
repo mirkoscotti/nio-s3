@@ -34,9 +34,7 @@ public final class GlobPattern
 
 	public String toRegex()
 	{
-		var regex = toInternalRegex().map(item -> !item.isEmpty() ? item.concat("/?") : item)
-									 .map(this::appendPipe)
-									 .orElse("");
+		var regex = toInternalRegex().map(this::appendSlash).map(this::appendPipe).orElse("");
 		return "^%s$".formatted(regex);
 	}
 
@@ -118,44 +116,13 @@ public final class GlobPattern
 	{
 		var position = current.position();
 		return IntStream.range(position + 1, pattern.length())
-						.filter(i -> !isEscaped(i) && pattern.charAt(i) == ']')
+						.filter(i -> pattern.charAt(i) == ']')
 						.boxed()
 						.findFirst()
 						.map(item -> processClosingBracket(current, position, item))
-						.orElseGet(() -> current.append("\\["));
-	}
-
-	private ParseState processClosingBracket(ParseState current,
-											 int globPosition,
-											 int bracketPosition)
-	{
-		var regex = Optional.of(pattern.substring(globPosition + 1, bracketPosition))
-							.filter(Predicate.not(String::isEmpty))
-							.map(this::convertBracketExpression)
-							.orElse("\\[\\]");
-		return current.append(regex).skip(bracketPosition - globPosition + 1);
-	}
-
-	private String convertBracketExpression(String content)
-	{
-		var negated = content.charAt(0) == '!' || content.charAt(0) == '^';
-		var inner = negated ? content.substring(1) : content;
-		var escaped = IntStream.range(0, inner.length())
-							   .mapToObj(i -> escapeBracket(inner, i))
-							   .reduce("", String::concat);
-		return "[%s%s]".formatted(negated ? "^" : "", escaped);
-	}
-
-	private String escapeBracket(String content, int i)
-	{
-		char c = content.charAt(i);
-		return switch (c)
-		{
-			case '\\' -> i + 1 < content.length() ? "\\" + content.charAt(i + 1) : "\\\\";
-			case ']' -> "\\]";
-			case '^' -> i == 0 ? "\\^" : String.valueOf(c);
-			default -> String.valueOf(c);
-		};
+						.orElseThrow(() -> new PatternSyntaxException("Malformed brackets.",
+																	  pattern,
+																	  position));
 	}
 
 	private ParseState handleBrace(ParseState current)
@@ -165,11 +132,34 @@ public final class GlobPattern
 						.boxed()
 						.reduce(new BraceSearchState(Optional.empty(), false),
 								(item1,
-								 item2) -> item1.found() ? item1 : item1.process(pattern, item2),
+								 item2) -> Optional.of(item1)
+												   .filter(Predicate.not(item -> item.found()))
+												   .map(item -> item.process(pattern, item2))
+												   .orElse(item1),
 								(item1, item2) -> item2)
 						.result()
 						.map(item -> processClosingBrace(current, position, item))
 						.orElseGet(() -> current.append("\\{"));
+	}
+
+	private ParseState processClosingBracket(ParseState current,
+											 int globPosition,
+											 int bracketPosition)
+	{
+		var regex = Optional.of(pattern.substring(globPosition + 1, bracketPosition))
+							.filter(Predicate.not(String::isEmpty))
+							.map(this::convertBracketExpression)
+							.orElseThrow(() -> new PatternSyntaxException("Empty brackets.",
+																		  pattern,
+																		  bracketPosition));
+		return current.append(regex).skip(bracketPosition - globPosition + 1);
+	}
+
+	private String convertBracketExpression(String content)
+	{
+		var negated = content.charAt(0) == '!';
+		var escaped = (negated ? content.substring(1) : content).replace("\\", "\\\\");
+		return "[[^/]&&[%s%s]]".formatted(negated ? "^" : "", escaped);
 	}
 
 	private ParseState processClosingBrace(ParseState current, int globPosition, int bracePosition)
@@ -195,20 +185,22 @@ public final class GlobPattern
 		return IntStream.range(0, content.length())
 						.boxed()
 						.reduce(new BraceSplitState(List.of(""), false),
-								(state, i) -> state.process(content.charAt(i)), (s1, s2) -> s2)
+								(item1, item2) -> item1.process(content.charAt(item2)),
+								(item1, item2) -> item2)
 						.alternatives();
 	}
 
-	private boolean isEscaped(int position)
+	private String appendSlash(String regex)
 	{
-		return position > 0 && pattern.charAt(position - 1) == '\\' && !isEscaped(position - 1);
+		var mustNotAppendOptionalSlash = regex.isEmpty();
+		return mustNotAppendOptionalSlash ? regex : regex.concat("/?");
 	}
 
 	private String appendPipe(String regex)
 	{
-		return pattern.isEmpty() || pattern.chars().allMatch(item -> item == '*')
-			? regex.concat("|")
-			: regex;
+		var mustAppendOptionalPipe = pattern.isEmpty()
+			|| pattern.chars().allMatch(item -> item == '*');
+		return mustAppendOptionalPipe ? regex.concat("|") : regex;
 	}
 
 	private static record ParseState(String regex,

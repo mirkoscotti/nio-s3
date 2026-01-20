@@ -172,6 +172,25 @@ class GlobPatternTest
 	}
 
 	@Test
+	@DisplayName("[!0-9], [!A-Z], [!a-z], [!0-9A-Za-z], [!\\^\\]]")
+	void bracketsNegatedTest()
+	{
+		Stream.of("[!0-9]", "[!A-Z]", "[!a-z]", "[!0-9A-Za-z]", "[!\\^\\]]")
+			  .map(GlobRecord::new)
+			  .forEach(GlobRecord::bracketsTestCases);
+	}
+
+	@Test
+	@DisplayName("[0-9, []")
+	void malformedBracketsTest()
+	{
+		Stream.of("[0-9", "[]")
+			  .map(GlobPattern::of)
+			  .forEach(item -> Assertions.assertThrows(PatternSyntaxException.class,
+													   item::toRegex));
+	}
+
+	@Test
 	@DisplayName("*.{extension1, extension2}")
 	void bracesTest()
 	{
@@ -182,7 +201,6 @@ class GlobPatternTest
 		Stream.of(pattern.formatted(extension1, extension2), pattern.formatted(extension1, "\\{"))
 			  .map(GlobRecord::new)
 			  .forEach(item -> item.bracesTestCases(extension1, extension2, extension3));
-
 	}
 
 	@Test
