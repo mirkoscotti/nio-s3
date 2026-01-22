@@ -44,7 +44,9 @@ class GlobPatternTest
 
 	private static final String DOUBLE_STAR = STAR.concat(STAR);
 
-	private static final String EXTENSION_PATTERN = "/*.%s";
+	private static final String EXTENSION_PATTERN = "*.%s";
+
+	private static final String SLASH_EXTENSION_PATTERN = "/".concat(EXTENSION_PATTERN);
 
 	private static final String BRACES_PATTERN = "{%s, %s}";
 
@@ -117,9 +119,9 @@ class GlobPatternTest
 	void mixedStarsWithExtensionTest()
 	{
 		var extension = RANDOMIZER.name();
-		Stream.of(STAR.concat(EXTENSION_PATTERN).formatted(extension),
-				  DOUBLE_STAR.concat(EXTENSION_PATTERN).formatted(extension),
-				  RANDOMIZER.stars().concat(EXTENSION_PATTERN).formatted(extension))
+		Stream.of(STAR.concat(SLASH_EXTENSION_PATTERN).formatted(extension),
+				  DOUBLE_STAR.concat(SLASH_EXTENSION_PATTERN).formatted(extension),
+				  RANDOMIZER.stars().concat(SLASH_EXTENSION_PATTERN).formatted(extension))
 			  .map(GlobRecord::new)
 			  .forEach(item -> item.baseExtensionTestCases(extension));
 	}
@@ -130,9 +132,9 @@ class GlobPatternTest
 	{
 		var directory = RANDOMIZER.directory();
 		var extension = RANDOMIZER.name();
-		Stream.of(String.join(STAR, directory, EXTENSION_PATTERN).formatted(extension),
-				  String.join(DOUBLE_STAR, directory, EXTENSION_PATTERN).formatted(extension),
-				  String.join(RANDOMIZER.stars(), directory, EXTENSION_PATTERN)
+		Stream.of(String.join(STAR, directory, SLASH_EXTENSION_PATTERN).formatted(extension),
+				  String.join(DOUBLE_STAR, directory, SLASH_EXTENSION_PATTERN).formatted(extension),
+				  String.join(RANDOMIZER.stars(), directory, SLASH_EXTENSION_PATTERN)
 						.formatted(extension))
 			  .map(GlobRecord::new)
 			  .forEach(item -> item.baseDirectoryAndExtensionTestCases(directory, extension));
@@ -191,14 +193,15 @@ class GlobPatternTest
 	}
 
 	@Test
-	@DisplayName("*.{extension1, extension2}")
+	@DisplayName("*.{extension1, extension2}, *.{extension, \\{}")
 	void bracesTest()
 	{
 		var extension1 = RANDOMIZER.name();
 		var extension2 = RANDOMIZER.name();
 		var extension3 = RANDOMIZER.name();
 		var pattern = "*.".concat(BRACES_PATTERN);
-		Stream.of(pattern.formatted(extension1, extension2), pattern.formatted(extension1, "\\{"))
+		Stream.of(/* pattern.formatted(extension1, extension2), */pattern.formatted(extension1,
+																					"\\{"))
 			  .map(GlobRecord::new)
 			  .forEach(item -> item.bracesTestCases(extension1, extension2, extension3));
 	}
@@ -217,13 +220,33 @@ class GlobPatternTest
 	}
 
 	@Test
-	@DisplayName("*.\\, *.(, *.), *.$, *.+, *.^")
+	@DisplayName("{0-9, {}")
+	void malformedBracesTest()
+	{
+		Stream.of("*.{0-9", "*.{}")
+			  .map(GlobPattern::of)
+			  .forEach(item -> Assertions.assertThrows(PatternSyntaxException.class,
+													   item::toRegex));
+	}
+
+	@Test
+	@DisplayName("*.\\\\, *.(, *.), *.$, *.+, *.^")
 	void starWithSpecialCharactersTest()
 	{
-		Stream.of("*.%s".formatted("\\\\"), "*.%s".formatted("("), "*.%s".formatted(")"),
-				  "*.%s".formatted("$"), "*.%s".formatted("+"), "*.%s".formatted("^"))
+		Stream.of(EXTENSION_PATTERN.formatted("\\\\"), EXTENSION_PATTERN.formatted("("),
+				  EXTENSION_PATTERN.formatted(")"), EXTENSION_PATTERN.formatted("$"),
+				  EXTENSION_PATTERN.formatted("+"), EXTENSION_PATTERN.formatted("^"))
 			  .map(GlobRecord::new)
-			  .forEach(GlobRecord::baseTestCases);
+			  .forEach(GlobRecord::specialCharactersTestCases);
+	}
+
+	@Test
+	@DisplayName("*.\\")
+	void malformedSlashTest()
+	{
+		var globRecord = new GlobRecord(EXTENSION_PATTERN.formatted("\\"));
+		Assertions.assertThrows(PatternSyntaxException.class,
+								globRecord::specialCharactersTestCases);
 	}
 
 	private static final class Randomizer
@@ -447,6 +470,12 @@ class GlobPatternTest
 			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.extension(fileName, 1)));
 			assertMatch(RANDOMIZER.file(extension));
 			assertMatch(RANDOMIZER.directory().concat(RANDOMIZER.file(extension)));
+		}
+
+		private void specialCharactersTestCases()
+		{
+			baseTestCases();
+			assertMatch(RANDOMIZER.file("\\"));
 		}
 
 		private void assertMatch(String path)

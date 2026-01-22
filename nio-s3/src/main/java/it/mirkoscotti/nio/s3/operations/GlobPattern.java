@@ -92,7 +92,7 @@ public final class GlobPattern
 					   .map(String::valueOf)
 					   .map(Pattern::quote)
 					   .map(current::append)
-					   .map(item -> item.skip(1))
+					   .map(item -> item.skip(2))
 					   .orElseGet(() -> current.append("\\\\"));
 	}
 
@@ -130,16 +130,13 @@ public final class GlobPattern
 		var position = current.position();
 		return IntStream.range(position + 1, pattern.length())
 						.boxed()
-						.reduce(new BraceSearchState(Optional.empty(), false),
-								(item1,
-								 item2) -> Optional.of(item1)
-												   .filter(Predicate.not(item -> item.found()))
-												   .map(item -> item.process(pattern, item2))
-												   .orElse(item1),
+						.reduce(new BraceSearchState(Optional.empty(), false), this::processBrace,
 								(item1, item2) -> item2)
 						.result()
 						.map(item -> processClosingBrace(current, position, item))
-						.orElseGet(() -> current.append("\\{"));
+						.orElseThrow(() -> new PatternSyntaxException("Malformed braces.",
+																	  pattern,
+																	  position));
 	}
 
 	private ParseState processClosingBracket(ParseState current,
@@ -162,10 +159,23 @@ public final class GlobPattern
 		return "[[^/]&&[%s%s]]".formatted(negated ? "^" : "", escaped);
 	}
 
+	private BraceSearchState processBrace(BraceSearchState state, int position)
+	{
+		return Optional.of(state)
+					   .filter(Predicate.not(item -> item.found()))
+					   .map(item -> item.process(pattern, position))
+					   .orElse(state);
+	}
+
 	private ParseState processClosingBrace(ParseState current, int globPosition, int bracePosition)
 	{
-		String content = pattern.substring(globPosition + 1, bracePosition);
-		String regex = convertBraceExpression(content);
+		var content = pattern.substring(globPosition + 1, bracePosition);
+		var regex = Optional.of(content)
+							.filter(Predicate.not(String::isEmpty))
+							.map(this::convertBraceExpression)
+							.orElseThrow(() -> new PatternSyntaxException("Empty braces.",
+																		  pattern,
+																		  bracePosition));
 		return current.append(regex).skip(bracePosition - globPosition + 1);
 	}
 
@@ -255,7 +265,7 @@ public final class GlobPattern
 		BraceSearchState process(String pattern, int position)
 		{
 			return escaped
-				? new BraceSearchState(foundAt, false)
+				? new BraceSearchState(foundAt, pattern.charAt(position) == '\\')
 				: processNotEscaped(pattern, position);
 		}
 
@@ -271,7 +281,8 @@ public final class GlobPattern
 
 		private BraceSearchState processNotEscaped(String pattern, int position)
 		{
-			return switch (pattern.charAt(position))
+			var character = pattern.charAt(position);
+			return switch (character)
 			{
 				case '\\' -> new BraceSearchState(foundAt, true);
 				case '{' -> throw new PatternSyntaxException("Nested braces are not allowed in glob patterns.",
@@ -289,7 +300,7 @@ public final class GlobPattern
 		BraceSplitState process(char character)
 		{
 			return escaped
-				? appendToLast(String.valueOf(character), false)
+				? appendToLast(String.valueOf(character), character == '\\')
 				: processNotEscaped(character);
 		}
 
@@ -297,7 +308,7 @@ public final class GlobPattern
 		{
 			return switch (character)
 			{
-				case '\\' -> new BraceSplitState(alternatives, true);
+				case '\\' -> appendToLast("\\", true);
 				case ',' -> addAlternative();
 				default -> appendToLast(String.valueOf(character), false);
 			};
