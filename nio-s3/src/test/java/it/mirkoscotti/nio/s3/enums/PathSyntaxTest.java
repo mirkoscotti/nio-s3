@@ -37,4 +37,13 @@ class PathSyntaxTest
 		var pattern = PathSyntax.REGEX.pattern(REGEX);
 		Assertions.assertEquals(REGEX, pattern.toString());
 	}
+
+	@Test
+	void ofTest()
+	{
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> PathSyntax.of("pattern"));
+		Assertions.assertDoesNotThrow(() -> PathSyntax.of("glob"));
+		Assertions.assertDoesNotThrow(() -> PathSyntax.of("regex"));
+	}
 }
