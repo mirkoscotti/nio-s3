@@ -3,6 +3,7 @@ package it.mirkoscotti.nio.s3.operations;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -128,10 +129,10 @@ public final class GlobPattern
 	private ParseState handleBrace(ParseState current)
 	{
 		var position = current.position();
-		return IntStream.range(position + 1, pattern.length())
-						.boxed()
-						.reduce(new BraceSearchState(Optional.empty(), false), this::processBrace,
-								(item1, item2) -> item2)
+		var reference = new AtomicReference<>(new BraceSearchState(Optional.empty(), false));
+		IntStream.range(position + 1, pattern.length())
+				 .forEach(i -> reference.set(processBrace(reference.get(), i)));
+		return reference.get()
 						.result()
 						.map(item -> processClosingBrace(current, position, item))
 						.orElseThrow(() -> new PatternSyntaxException("Malformed braces.",
@@ -192,12 +193,10 @@ public final class GlobPattern
 
 	private List<String> splitBrace(String content)
 	{
-		return IntStream.range(0, content.length())
-						.boxed()
-						.reduce(new BraceSplitState(List.of(""), false),
-								(item1, item2) -> item1.process(content.charAt(item2)),
-								(item1, item2) -> item2)
-						.alternatives();
+		var reference = new AtomicReference<>(new BraceSplitState(List.of(""), false));
+		IntStream.range(0, content.length())
+				 .forEach(i -> reference.set(reference.get().process(content.charAt(i))));
+		return reference.get().alternatives();
 	}
 
 	private String appendSlash(String regex)

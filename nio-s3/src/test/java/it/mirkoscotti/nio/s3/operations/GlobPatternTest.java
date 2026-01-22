@@ -200,8 +200,7 @@ class GlobPatternTest
 		var extension2 = RANDOMIZER.name();
 		var extension3 = RANDOMIZER.name();
 		var pattern = "*.".concat(BRACES_PATTERN);
-		Stream.of(/* pattern.formatted(extension1, extension2), */pattern.formatted(extension1,
-																					"\\{"))
+		Stream.of(pattern.formatted(extension1, extension2), pattern.formatted(extension1, "\\{"))
 			  .map(GlobRecord::new)
 			  .forEach(item -> item.bracesTestCases(extension1, extension2, extension3));
 	}
@@ -220,7 +219,7 @@ class GlobPatternTest
 	}
 
 	@Test
-	@DisplayName("{0-9, {}")
+	@DisplayName("*.{0-9, *.{}")
 	void malformedBracesTest()
 	{
 		Stream.of("*.{0-9", "*.{}")
