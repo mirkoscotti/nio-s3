@@ -264,7 +264,7 @@ public final class GlobPattern
 		BraceSearchState process(String pattern, int position)
 		{
 			return escaped
-				? new BraceSearchState(foundAt, pattern.charAt(position) == '\\')
+				? new BraceSearchState(foundAt, false)
 				: processNotEscaped(pattern, position);
 		}
 
@@ -299,7 +299,7 @@ public final class GlobPattern
 		BraceSplitState process(char character)
 		{
 			return escaped
-				? appendToLast(String.valueOf(character), character == '\\')
+				? appendToLast(String.valueOf(character), false)
 				: processNotEscaped(character);
 		}
 
