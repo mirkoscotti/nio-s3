@@ -6,9 +6,9 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.junit.jupiter.api.Assertions;
@@ -44,7 +44,9 @@ class BucketDirectoryStreamIT
 
 	private static final String OTHER_SUB_DIRECTORY = OTHER_DIRECTORY.concat(SUB_DIRECTORY);
 
-	private static final String FILE_PATTERN = "file-%d.txt";
+	private static final String TEXT_PATTERN = "file-%d.txt";
+
+	private static final String PDF_PATTERN = "file-%d.pdf";
 
 	private static final int FILES_COUNT = 5;
 
@@ -69,35 +71,23 @@ class BucketDirectoryStreamIT
 		CONTAINER.createObject(TEST_BUCKET, TARGET_SUB_DIRECTORY);
 		CONTAINER.createObject(TEST_BUCKET, OTHER_SUB_DIRECTORY);
 		// Create files in local directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map(baseDirectory::resolve)
-				 .forEach(item -> JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(item)));
+		createFilesInLocalDirectory(TEXT_PATTERN);
+		createFilesInLocalDirectory(PDF_PATTERN);
 		// Copy files to remote root directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map("/"::concat)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, item));
+		copyFilesToRemoteDirectory(TEXT_PATTERN, "");
+		copyFilesToRemoteDirectory(PDF_PATTERN, "");
 		// Copy file to remote target directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map(TARGET_DIRECTORY::concat)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, item));
+		copyFilesToRemoteDirectory(TEXT_PATTERN, TARGET_DIRECTORY);
+		copyFilesToRemoteDirectory(PDF_PATTERN, TARGET_DIRECTORY);
 		// Copy file to remote target sub-directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map(TARGET_SUB_DIRECTORY::concat)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, item));
+		copyFilesToRemoteDirectory(TEXT_PATTERN, TARGET_SUB_DIRECTORY);
+		copyFilesToRemoteDirectory(PDF_PATTERN, TARGET_SUB_DIRECTORY);
 		// Copy file to remote other directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map(OTHER_DIRECTORY::concat)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, item));
+		copyFilesToRemoteDirectory(TEXT_PATTERN, OTHER_DIRECTORY);
+		copyFilesToRemoteDirectory(PDF_PATTERN, OTHER_DIRECTORY);
 		// Copy file to remote other sub-directory
-		IntStream.rangeClosed(1, FILES_COUNT)
-				 .mapToObj(FILE_PATTERN::formatted)
-				 .map(OTHER_SUB_DIRECTORY::concat)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, item));
+		copyFilesToRemoteDirectory(TEXT_PATTERN, OTHER_SUB_DIRECTORY);
+		copyFilesToRemoteDirectory(PDF_PATTERN, OTHER_SUB_DIRECTORY);
 		var properties = ContainersHelper.standardProperties(CONTAINER);
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 	}
@@ -109,35 +99,76 @@ class BucketDirectoryStreamIT
 		var other = fileSystem.getPath(OTHER_DIRECTORY);
 		try (var stream = Files.newDirectoryStream(target))
 		{
-			var spliterator = Spliterators.spliteratorUnknownSize(stream.iterator(),
-																  Spliterator.ORDERED);
-			var list = StreamSupport.stream(spliterator, false).toList();
+			var list = StreamSupport.stream(stream.spliterator(), false).toList();
 			Assertions.assertFalse(list.contains(target));
+			assertSelected(TEXT_PATTERN, target, list);
+			assertSelected(PDF_PATTERN, target, list);
+			assertNotSelected(TEXT_PATTERN, other, list);
+			assertNotSelected(PDF_PATTERN, other, list);
 			var subDirectory = target.resolve(SUB_DIRECTORY);
 			Assertions.assertTrue(list.contains(subDirectory));
-			IntStream.rangeClosed(1, FILES_COUNT)
-					 .mapToObj(FILE_PATTERN::formatted)
-					 .map(target::resolve)
-					 .forEach(item -> Assertions.assertTrue(list.contains(item)));
-			IntStream.rangeClosed(1, FILES_COUNT)
-					 .mapToObj(FILE_PATTERN::formatted)
-					 .map(subDirectory::resolve)
-					 .forEach(item -> Assertions.assertFalse(list.contains(item)));
+			assertNotSelected(TEXT_PATTERN, subDirectory, list);
+			assertNotSelected(PDF_PATTERN, subDirectory, list);
 			Assertions.assertFalse(list.contains(other));
 			subDirectory = other.resolve(SUB_DIRECTORY);
 			Assertions.assertFalse(list.contains(subDirectory));
-			IntStream.rangeClosed(1, FILES_COUNT)
-					 .mapToObj(FILE_PATTERN::formatted)
-					 .map(other::resolve)
-					 .forEach(item -> Assertions.assertFalse(list.contains(item)));
-			IntStream.rangeClosed(1, FILES_COUNT)
-					 .mapToObj(FILE_PATTERN::formatted)
-					 .map(subDirectory::resolve)
-					 .forEach(item -> Assertions.assertFalse(list.contains(item)));
+			assertNotSelected(TEXT_PATTERN, subDirectory, list);
+			assertNotSelected(PDF_PATTERN, subDirectory, list);
 		}
 		catch (IOException x)
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	@Test
+	void filteredDirectoryStreamTest()
+	{
+		var target = fileSystem.getPath(TARGET_DIRECTORY);
+		try (var stream = Files.newDirectoryStream(target, "*.txt"))
+		{
+			var list = StreamSupport.stream(stream.spliterator(), false).toList();
+			Assertions.assertFalse(list.contains(target));
+			assertSelected(TEXT_PATTERN, target, list);
+			assertNotSelected(PDF_PATTERN, target, list);
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	private static void createFilesInLocalDirectory(String pattern)
+	{
+		IntStream.rangeClosed(1, FILES_COUNT)
+				 .mapToObj(pattern::formatted)
+				 .map(baseDirectory::resolve)
+				 .forEach(item -> JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(item)));
+	}
+
+	private static void copyFilesToRemoteDirectory(String pattern, String directory)
+	{
+		IntStream.rangeClosed(1, FILES_COUNT)
+				 .mapToObj(pattern::formatted)
+				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, directory.concat(item),
+														 baseDirectory.resolve(item)));
+	}
+
+	private void assertSelected(String pattern, Path directory, List<Path> list)
+	{
+		assertSelection(pattern, directory, list).forEach(Assertions::assertTrue);
+	}
+
+	private void assertNotSelected(String pattern, Path directory, List<Path> list)
+	{
+		assertSelection(pattern, directory, list).forEach(Assertions::assertFalse);
+	}
+
+	private Stream<Boolean> assertSelection(String pattern, Path directory, List<Path> list)
+	{
+		return IntStream.rangeClosed(1, FILES_COUNT)
+						.mapToObj(pattern::formatted)
+						.map(directory::resolve)
+						.map(list::contains);
 	}
 }
