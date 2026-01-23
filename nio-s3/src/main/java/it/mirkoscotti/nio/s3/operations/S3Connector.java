@@ -7,6 +7,7 @@ import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,6 +25,7 @@ import jakarta.json.bind.JsonbBuilder;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
@@ -160,6 +162,11 @@ public final class S3Connector
 					 // Excluding the given key
 					 .filter(Predicate.not(item -> item.getKey().equals(key)))
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+	}
+
+	public Iterator<String> scanDirectory(String bucketName, String prefix)
+	{
+		return new DirectoryIterator(client, bucketName, prefix);
 	}
 
 	public byte[] readObject(String bucketName, String key)

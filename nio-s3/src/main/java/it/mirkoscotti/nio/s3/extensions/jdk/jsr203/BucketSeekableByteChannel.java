@@ -28,9 +28,9 @@ class BucketSeekableByteChannel
 	implements SeekableByteChannel
 {
 
-	private final AwsFacade awsFacade;
-
 	private final BucketPath path;
+
+	private final AwsFacade awsFacade;
 
 	private final Optional<BucketReadableByteChannel> readableByteChannel;
 
@@ -40,14 +40,12 @@ class BucketSeekableByteChannel
 	 * @param connector
 	 * @param path
 	 */
-	BucketSeekableByteChannel(AwsFacade awsFacade,
-							  BucketPath path,
-							  Set<? extends OpenOption> openOptions)
+	BucketSeekableByteChannel(BucketPath path, Set<? extends OpenOption> openOptions)
 		throws IOException
 	{
-		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing connector.");
 		Objects.requireNonNull(path, () -> "Missing path.");
 		this.path = path;
+		awsFacade = path.getFileSystem().awsFacade();
 		ObjectFlag.readWriteCheck(openOptions);
 		readableByteChannel = createReadableByteChannel(openOptions);
 		writableByteChannel = createWritableByteChannel(openOptions);
@@ -143,8 +141,7 @@ class BucketSeekableByteChannel
 		var objectFlag = ObjectFlag.appendTruncateCheck(options);
 		try
 		{
-			var fileAttributes = Files.readAttributes(path,
-													  ObjectBasicFileAttributes.class,
+			var fileAttributes = Files.readAttributes(path, ObjectBasicFileAttributes.class,
 													  LinkOption.NOFOLLOW_LINKS);
 			ObjectFlag.creationWhenFileExistingCheck(options, path);
 			var bucketName = path.getFileSystem().bucketName();

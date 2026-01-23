@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.configuration;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
-
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
@@ -11,14 +7,16 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
+import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+
 /**
  * @author mirko.scotti
  * @version Mar 03, 2025
  */
 class UriDescriptor
 {
-
-	private static final String PATH_SEPARATOR = "/";
 
 	private final String bucketName;
 
@@ -93,7 +91,7 @@ class UriDescriptor
 	private String pathBucketName(URI uri)
 	{
 		return Optional.ofNullable(uri.getPath())
-					   .map(item -> item.split(PATH_SEPARATOR))
+					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
 					   .filter(item -> item.length > 1)
 					   .map(item -> item[1])
 					   .orElseGet(uri::getHost);

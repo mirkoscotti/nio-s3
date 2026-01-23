@@ -10,9 +10,11 @@ import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.enums.PathSyntax;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
@@ -106,8 +108,13 @@ class BucketFileSystem
 	@Override
 	public PathMatcher getPathMatcher(String syntaxAndPattern)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		Objects.requireNonNull(syntaxAndPattern, () -> "Missing Glob or regex.");
+		var array = Optional.of(syntaxAndPattern)
+							.map(item -> item.split(":"))
+							.filter(item -> item.length == 2)
+							.orElseThrow(() -> new IllegalArgumentException("Pattern must be in the form 'syntax:pattern'."));
+		var pattern = PathSyntax.of(array[0]).pattern(array[1]);
+		return item -> pattern.matcher(item.toString()).matches();
 	}
 
 	@Override
