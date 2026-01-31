@@ -83,7 +83,7 @@ class BucketFileSystem
 	@Override
 	public Iterable<Path> getRootDirectories()
 	{
-		return List.of(new BucketPath(this));
+		return List.<Path>of(new BucketPath(this));
 	}
 
 	@Override
@@ -100,7 +100,7 @@ class BucketFileSystem
 	}
 
 	@Override
-	public Path getPath(String first, String... more)
+	public BucketPath getPath(String first, String... more)
 	{
 		return new BucketPath(this, first, more);
 	}

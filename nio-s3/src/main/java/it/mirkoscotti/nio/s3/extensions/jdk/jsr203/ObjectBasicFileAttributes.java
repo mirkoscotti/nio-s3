@@ -64,7 +64,7 @@ public class ObjectBasicFileAttributes
 	}
 
 	/**
-	 * Buckets does not support symbolic links.
+	 * Buckets do not support symbolic links.
 	 */
 	@Override
 	public boolean isSymbolicLink()

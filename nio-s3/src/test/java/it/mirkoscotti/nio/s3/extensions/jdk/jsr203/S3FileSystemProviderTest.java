@@ -234,6 +234,14 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
+	void createDirectoryFromUnsupportedPathTest(@Mock Path path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(ProviderMismatchException.class,
+								() -> fileSystemProvider.createDirectory(path));
+	}
+
+	@Test
 	void isUnsupportedPathHiddenTest(@Mock Path path)
 	{
 		var fileSystemProvider = new S3FileSystemProvider();

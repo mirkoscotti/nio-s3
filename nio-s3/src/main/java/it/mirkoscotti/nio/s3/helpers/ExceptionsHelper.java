@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.helpers;
 
+import java.io.IOException;
 import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -43,5 +44,10 @@ public final class ExceptionsHelper
 			case RuntimeException exception -> throw exception;
 			default -> throw new IllegalStateException(throwable);
 		};
+	}
+
+	public static IOException toIoException(Throwable throwable)
+	{
+		return throwable instanceof IOException exception ? exception : new IOException(throwable);
 	}
 }

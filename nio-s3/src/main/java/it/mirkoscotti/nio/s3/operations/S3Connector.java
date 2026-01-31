@@ -193,6 +193,11 @@ public final class S3Connector
 				  .get();
 	}
 
+	public void writeObject(String bucketName, String key)
+	{
+		writeObject(bucketName, key, new byte[0]);
+	}
+
 	public void writeObject(String bucketName, String key, byte[] content)
 	{
 		Try.to(() -> client.putObject(item -> item.bucket(bucketName)

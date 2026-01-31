@@ -72,8 +72,7 @@ class BucketPathTest
 	@Test
 	void pathTooLongTest()
 	{
-		var path = Stream.iterate("/path/too/long",
-								  item -> item.length() <= 2048,
+		var path = Stream.iterate("/path/too/long", item -> item.length() <= 2048,
 								  item -> item.concat(item))
 						 .reduce((item1, item2) -> item2)
 						 .orElseThrow();
@@ -163,8 +162,9 @@ class BucketPathTest
 	void getParentTest()
 	{
 		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		Mockito.when(fileSystem.getRootDirectories()).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		var expected = ABSOLUTE_PATH.substring(1, ABSOLUTE_PATH.lastIndexOf('/'));
+		var expected = ABSOLUTE_PATH.substring(1, ABSOLUTE_PATH.lastIndexOf('/') + 1);
 		var parent = bucketPath.getParent();
 		var result = findValue("objectKey", parent).orElseGet(Assertions::fail);
 		Assertions.assertEquals(expected, result);
@@ -460,8 +460,8 @@ class BucketPathTest
 		var path = bucketPath.relativize(bucketPath);
 		var root = findValue("root", path);
 		Assertions.assertTrue(root.isEmpty());
-		var result = findValue("objectKey", path).orElseGet(Assertions::fail);
-		Assertions.assertTrue(result.toString().isEmpty());
+		var result = findValue("objectKey", path);
+		Assertions.assertTrue(result.isEmpty());
 	}
 
 	@Test
@@ -638,8 +638,7 @@ class BucketPathTest
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var kinds = new Kind[] {StandardWatchEventKinds.ENTRY_CREATE};
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
-													() -> bucketPath.register(watchService,
-																			  kinds,
+													() -> bucketPath.register(watchService, kinds,
 																			  modifier));
 			var suppressed = exception.getSuppressed();
 			Assertions.assertEquals(1, suppressed.length);
@@ -752,8 +751,8 @@ class BucketPathTest
 	@Test
 	void rootToString()
 	{
-		var bucketPath1 = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		Assertions.assertEquals("/", bucketPath1.getRoot().toString());
+		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
+		Assertions.assertTrue(bucketPath.getRoot().toString().isEmpty());
 	}
 
 	private Field findField(String fieldName)
