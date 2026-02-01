@@ -97,6 +97,11 @@ public class AwsFacade
 		return s3.get().readObject(bucketName, key, from, to);
 	}
 
+	public void writeObject(String bucketName, String key)
+	{
+		s3.get().writeObject(bucketName, key);
+	}
+
 	public void writeObject(String bucketName, String key, byte[] content)
 	{
 		s3.get().writeObject(bucketName, key, content);

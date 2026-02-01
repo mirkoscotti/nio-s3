@@ -7,6 +7,7 @@ import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
@@ -28,11 +29,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.enums.ObjectAccess;
+import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
@@ -181,8 +186,38 @@ public class S3FileSystemProvider
 	@Override
 	public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		if (dir instanceof BucketPath bucketPath)
+		{
+			var optional = Optional.of(bucketPath);
+			var fileSystem = optional.filter(Predicate.not(BucketPath::isRootDirectory))
+									 .orElseThrow(() -> new FileAlreadyExistsException(bucketPath.toString()))
+									 .getFileSystem();
+			var path = optional.map(BucketPath::toString)
+							   .filter(Predicate.not(item -> item.endsWith(BucketDescriptor.PATH_SEPARATOR)))
+							   .map(item -> item.concat(BucketDescriptor.PATH_SEPARATOR))
+							   .map(fileSystem::getPath)
+							   .map(BucketPath::toAbsolutePath)
+							   .orElse(bucketPath);
+			var reference = new AtomicReference<Exception>(new FileAlreadyExistsException(path.toString()));
+			Try.to(() -> readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS))
+			   .onCatch(item -> reference.set(null))
+			   .run();
+			var exception = Optional.ofNullable(reference.get())
+									.orElseGet(() -> checkIfPathExists(path));
+			if (exception != null)
+			{
+				throw exception instanceof IOException ioException
+					? ioException
+					: new IOException(exception);
+			}
+			fileSystem.awsFacade()
+					  .writeObject(fileSystem.getFileStores().iterator().next().name(),
+								   bucketPath.toString());
+		}
+		else
+		{
+			throw invalidPath(dir);
+		}
 	}
 
 	@Override
@@ -254,10 +289,11 @@ public class S3FileSystemProvider
 	{
 		if (path instanceof BucketPath bucketPath)
 		{
-			var list = List.<FileAttributeViewFactory<?>>of(new FileAttributeViewFactory<>(ObjectBasicFileAttributeView.class,
-																						   this::createObjectBasicFileAttributeView));
+			var factory = new FileAttributeViewFactory<>(ObjectBasicFileAttributeView.class,
+														 this::createBasicFileAttributeView);
 			@SuppressWarnings("unchecked")
-			var result = (V) list.stream()
+			var result = (V) List.<FileAttributeViewFactory<?>>of(factory)
+								 .stream()
 								 .filter(item -> item.fileAttributeViewType() == type)
 								 .map(item -> item.factory().apply(bucketPath))
 								 .findFirst()
@@ -316,13 +352,27 @@ public class S3FileSystemProvider
 		return result;
 	}
 
-	private ObjectBasicFileAttributeView createObjectBasicFileAttributeView(BucketPath bucketPath)
+	private ObjectBasicFileAttributeView createBasicFileAttributeView(BucketPath bucketPath)
 	{
 		var fileSystem = bucketPath.getFileSystem();
 		var awsFacade = fileSystem.awsFacade();
 		var bucketName = fileSystem.getFileStores().iterator().next().name();
 		var objectKey = bucketPath.toString();
 		return new ObjectBasicFileAttributeView(awsFacade, bucketName, objectKey);
+	}
+
+	private Exception checkIfPathExists(BucketPath path)
+	{
+		var reference = new AtomicReference<Exception>();
+		Stream.iterate(path.getParent(),
+					   Predicate.not(BucketPath::isRootDirectory)
+								.and(item -> reference.get() == null),
+					   BucketPath::getParent)
+			  .forEach(item -> Try.to(() -> readAttributes(item, BasicFileAttributes.class,
+														   LinkOption.NOFOLLOW_LINKS))
+								  .onCatch(reference::set)
+								  .run());
+		return reference.get();
 	}
 
 	private RuntimeException invalidPath(Path path)

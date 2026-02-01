@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketModifier;
@@ -77,7 +78,7 @@ public class BucketPath
 
 	private final BucketFileSystem fileSystem;
 
-	private final Path root;
+	private final BucketPath root;
 
 	private final String objectKey;
 
@@ -106,7 +107,9 @@ public class BucketPath
 						  : null;
 		var path = Stream.concat(Stream.of(first), Stream.ofNullable(more).flatMap(Stream::of))
 						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
-		objectKey = validatedPath(path);
+		objectKey = Optional.of(validatedPath(path))
+							.filter(Predicate.not(String::isEmpty))
+							.orElse(null);
 	}
 
 	BucketPath(BucketFileSystem fileSystem)
@@ -129,13 +132,13 @@ public class BucketPath
 	}
 
 	@Override
-	public Path getRoot()
+	public BucketPath getRoot()
 	{
 		return root;
 	}
 
 	@Override
-	public Path getFileName()
+	public BucketPath getFileName()
 	{
 		return Optional.ofNullable(objectKey)
 					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
@@ -148,18 +151,17 @@ public class BucketPath
 	}
 
 	@Override
-	public Path getParent()
+	public BucketPath getParent()
 	{
-		return Optional.ofNullable(objectKey)
-					   .map(item -> item.split(BucketDescriptor.PATH_SEPARATOR))
-					   .map(item -> Stream.of(item)
-										  .limit(item.length - 1l)
-										  .filter(Predicate.not(String::isBlank))
-										  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
-																	  BucketDescriptor.PATH_SEPARATOR,
-																	  "")))
-					   .map(fileSystem::getPath)
-					   .orElse(null);
+		var tokens = toString().split(BucketDescriptor.PATH_SEPARATOR);
+		var path = Stream.of(tokens)
+						 .limit(tokens.length - 1l)
+						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
+													 isAbsolute()
+														 ? BucketDescriptor.PATH_SEPARATOR
+														 : "",
+													 BucketDescriptor.PATH_SEPARATOR));
+		return fileSystem.getPath(path);
 	}
 
 	@Override
@@ -172,7 +174,7 @@ public class BucketPath
 	}
 
 	@Override
-	public Path getName(int index)
+	public BucketPath getName(int index)
 	{
 		if (index < 0)
 		{
@@ -244,7 +246,7 @@ public class BucketPath
 	}
 
 	@Override
-	public Path normalize()
+	public BucketPath normalize()
 	{
 		var stack = new ArrayDeque<String>();
 		Stream.of(elements())
@@ -257,8 +259,7 @@ public class BucketPath
 								 ? BucketDescriptor.PATH_SEPARATOR
 								 : "";
 		var result = stack.stream()
-						  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
-													  prefix,
+						  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR, prefix,
 													  suffix));
 		return fileSystem.getPath(result);
 	}
@@ -270,7 +271,7 @@ public class BucketPath
 	 *         one ends with path separator or not
 	 */
 	@Override
-	public Path resolve(Path other)
+	public BucketPath resolve(Path other)
 	{
 		var path = compliantPath(other);
 		return switch (path)
@@ -291,7 +292,7 @@ public class BucketPath
 	}
 
 	@Override
-	public Path relativize(Path other)
+	public BucketPath relativize(Path other)
 	{
 		var path = Optional.of(compliantPath(other))
 						   .filter(item -> isAbsolute() == item.isAbsolute())
@@ -323,7 +324,7 @@ public class BucketPath
 	 * Creates a new path attaching the object key to the root path of the file system.
 	 */
 	@Override
-	public Path toAbsolutePath()
+	public BucketPath toAbsolutePath()
 	{
 		return isAbsolute()
 			? this
@@ -331,7 +332,7 @@ public class BucketPath
 	}
 
 	@Override
-	public Path toRealPath(LinkOption... options) throws IOException
+	public BucketPath toRealPath(LinkOption... options) throws IOException
 	{
 		var path = toAbsolutePath().normalize();
 		return Optional.of(path)
@@ -357,8 +358,7 @@ public class BucketPath
 							  .map("Invalid event: %s"::formatted)
 							  .map(IllegalArgumentException::new)
 							  .collect(() -> new UnsupportedOperationException("Unsupported events."),
-									   Throwable::addSuppressed,
-									   Throwable::addSuppressed);
+									   Throwable::addSuppressed, Throwable::addSuppressed);
 		if (exception.getSuppressed().length > 0)
 		{
 			throw exception;
@@ -369,8 +369,7 @@ public class BucketPath
 						  .map("Invalid modifier: %s"::formatted)
 						  .map(IllegalArgumentException::new)
 						  .collect(() -> new UnsupportedOperationException("Only %s's items are supported.".formatted(BucketModifier.class.getName())),
-								   Throwable::addSuppressed,
-								   Throwable::addSuppressed);
+								   Throwable::addSuppressed, Throwable::addSuppressed);
 		if (exception.getSuppressed().length > 0)
 		{
 			throw exception;
@@ -422,7 +421,15 @@ public class BucketPath
 	@Override
 	public String toString()
 	{
-		return Optional.ofNullable(objectKey).orElseGet(() -> BucketDescriptor.PATH_SEPARATOR);
+		return isRootDirectory()
+			? BucketDescriptor.PATH_SEPARATOR
+			: Optional.ofNullable(objectKey).orElse("");
+	}
+
+	boolean isRootDirectory()
+	{
+		var spliterator = getFileSystem().getRootDirectories().spliterator();
+		return StreamSupport.stream(spliterator, false).anyMatch(this::equals);
 	}
 
 	/*
