@@ -28,6 +28,8 @@ class S3FileSystemProviderIT
 
 	private static final String TEST_BUCKET = "test-bucket";
 
+	private static final String TEST_PATH = "a/b/";
+
 	private static final URI TEST_URI = URI.create("s3://".concat(TEST_BUCKET));
 
 	private static FileSystem fileSystem;
@@ -70,8 +72,16 @@ class S3FileSystemProviderIT
 	@Test
 	void createDirectoryWhenParentDoesNotExistTest()
 	{
-		var path = "a/b";
-		var directory = fileSystem.getPath(path);
+		var directory = fileSystem.getPath(TEST_PATH);
 		Assertions.assertThrows(NoSuchFileException.class, () -> Files.createDirectory(directory));
+	}
+
+	@Test
+	void createDirectoryTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, "a/");
+		var directory = fileSystem.getPath(TEST_PATH);
+		JunitHelper.tryCall(() -> Files.createDirectories(directory));
+		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_PATH));
 	}
 }

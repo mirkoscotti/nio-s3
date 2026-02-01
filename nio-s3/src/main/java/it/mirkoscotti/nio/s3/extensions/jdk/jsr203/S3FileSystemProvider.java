@@ -214,7 +214,10 @@ public class S3FileSystemProvider
 					  .writeObject(fileSystem.getFileStores().iterator().next().name(),
 								   bucketPath.toString());
 		}
-		throw invalidPath(dir);
+		else
+		{
+			throw invalidPath(dir);
+		}
 	}
 
 	@Override

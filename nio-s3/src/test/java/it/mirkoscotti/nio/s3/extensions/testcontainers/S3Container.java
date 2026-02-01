@@ -42,7 +42,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.12.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.13.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -225,8 +225,7 @@ public class S3Container
 		{
 			var output = execInContainer("sh", "-c", command);
 			var message = "Failed to retrieve arn of user %s: %s.";
-			Assertions.assertEquals(0,
-									output.getExitCode(),
+			Assertions.assertEquals(0, output.getExitCode(),
 									message.formatted(user, output.getStderr()));
 			result = output.getStdout().trim();
 		}
@@ -491,10 +490,8 @@ public class S3Container
 			var output = execInContainer(command.split(" "));
 			var message = "Failed to read object %s in bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
-			copyFileFromContainer(path,
-								  item -> Files.copy(item,
-													 file,
-													 StandardCopyOption.REPLACE_EXISTING));
+			copyFileFromContainer(path, item -> Files.copy(item, file,
+														   StandardCopyOption.REPLACE_EXISTING));
 		}
 		catch (InterruptedException x)
 		{

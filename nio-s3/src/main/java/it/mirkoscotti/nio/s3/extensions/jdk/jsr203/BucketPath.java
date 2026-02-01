@@ -153,14 +153,15 @@ public class BucketPath
 	@Override
 	public BucketPath getParent()
 	{
-		var path = Optional.ofNullable(root)
-						   .map(BucketPath::toString)
-						   .orElse("")
-						   .concat(toString());
-		var index = path.lastIndexOf(BucketDescriptor.PATH_SEPARATOR) + 1;
-		return fileSystem.getPath(index < 0
-			? BucketDescriptor.PATH_SEPARATOR
-			: path.substring(0, index));
+		var tokens = toString().split(BucketDescriptor.PATH_SEPARATOR);
+		var path = Stream.of(tokens)
+						 .limit(tokens.length - 1l)
+						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
+													 isAbsolute()
+														 ? BucketDescriptor.PATH_SEPARATOR
+														 : "",
+													 BucketDescriptor.PATH_SEPARATOR));
+		return fileSystem.getPath(path);
 	}
 
 	@Override
