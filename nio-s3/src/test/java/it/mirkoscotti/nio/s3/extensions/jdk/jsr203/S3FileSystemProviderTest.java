@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
@@ -34,6 +35,7 @@ import it.mirkoscotti.nio.s3.records.BucketRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * @author mirko.scotti
@@ -239,6 +241,25 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertThrows(ProviderMismatchException.class,
 								() -> fileSystemProvider.createDirectory(path));
+	}
+
+	@Test
+	void unpredictedExceptionWhileCreatingDirectoryTest(@Mock BucketFileSystem fileSystem,
+														@Mock BucketFileStore fileStore,
+														@Mock AwsFacade awsFacade)
+	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(path.getParent()).thenReturn(path);
+		Mockito.when(path.isRootDirectory()).thenReturn(false);
+		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		Mockito.when(fileStore.name()).thenReturn("test-bucket");
+		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
+			   .thenThrow(S3Exception.class);
+		var fileSystemProvider = new S3FileSystemProvider();
+		var exception = Assertions.assertThrows(IOException.class,
+												() -> fileSystemProvider.createDirectory(path));
+		Assertions.assertInstanceOf(S3Exception.class, exception.getCause());
 	}
 
 	@Test
