@@ -1,11 +1,11 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
@@ -518,10 +518,10 @@ public class BucketPath
 		return new IllegalArgumentException(message);
 	}
 
-	private FileNotFoundException fileNotFoundInBucket(Path path)
+	private NoSuchFileException fileNotFoundInBucket(Path path)
 	{
 		var bucketName = fileSystem.getFileStores().iterator().next().name();
 		var message = "Object %s not found in bucket %s".formatted(path, bucketName);
-		return new FileNotFoundException(message);
+		return new NoSuchFileException(message);
 	}
 }

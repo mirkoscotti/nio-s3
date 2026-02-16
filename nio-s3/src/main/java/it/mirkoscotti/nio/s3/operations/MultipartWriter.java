@@ -60,7 +60,7 @@ public final class MultipartWriter
 	 */
 	public MultipartWriter(OperationRecord operationRecord)
 	{
-		Objects.requireNonNull(operationRecord, () -> "Missing operation specifications.");
+		Objects.requireNonNull(operationRecord, () -> "Missing writer specifications.");
 		client = Objects.requireNonNull(operationRecord.client(), () -> "Missing client.");
 		bucket = Objects.requireNonNull(operationRecord.bucket(), () -> "Missing bucket.");
 		key = Objects.requireNonNull(operationRecord.key(), () -> "Missing key.");

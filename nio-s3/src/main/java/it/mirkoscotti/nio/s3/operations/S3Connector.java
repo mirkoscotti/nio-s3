@@ -164,6 +164,20 @@ public final class S3Connector
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 	}
 
+	public boolean isNotEmptyDirectory(String bucketName, String key)
+	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
+		var prefix = key.endsWith(separator) ? key : key.concat(separator);
+		return Try.to(() -> client.listObjectsV2(item -> item.bucket(bucketName)
+															 .prefix(prefix)
+															 .maxKeys(2))
+								  .thenApply(item -> item.contents().size() == 2)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .get();
+	}
+
 	public Iterator<String> scanDirectory(String bucketName, String prefix)
 	{
 		return new DirectoryIterator(client, bucketName, prefix);
@@ -210,10 +224,31 @@ public final class S3Connector
 		   .run();
 	}
 
+	public void deleteObject(String bucketName, String key)
+	{
+		Try.to(() -> client.deleteObject(item -> item.bucket(bucketName).key(key))
+						   .exceptionally(ExceptionsHelper::sneakyThrow)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(ExceptionsHelper::sneakyThrow)
+		   .run();
+	}
+
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
 		var operationRecord = new OperationRecord(client, bucketName, key);
 		return new MultipartWriter(operationRecord);
+	}
+
+	public FileTransfer fileTransfer(String bucketName, String key)
+	{
+		return new FileTransfer(client, bucketName, key);
+	}
+
+	public void receiveFile(String bucketName, String key, FileTransfer fileTransfer)
+		throws IOException
+	{
+		var operationRecord = new OperationRecord(client, bucketName, key);
+		fileTransfer.transfer(operationRecord);
 	}
 
 	private void configureBucket(BucketDescriptor bucketDescriptor, Builder builder)
