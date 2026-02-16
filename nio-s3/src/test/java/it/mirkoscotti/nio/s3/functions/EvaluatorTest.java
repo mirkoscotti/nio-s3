@@ -2,30 +2,192 @@ package it.mirkoscotti.nio.s3.functions;
 
 import java.io.IOException;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti
  * @version Feb 13, 2026
  */
+@ExtendWith(MockitoExtension.class)
 class EvaluatorTest
 {
 
+	@Mock
+	private Expression expression;
+
+	@Mock
+	private Action action;
+
 	@Test
-	void thenExecuteTest() throws IOException
+	void thenTest(@Mock Action elseAction)
 	{
-		var age = 18;
-		Evaluator.when(() -> age < 18).then(() -> System.out.println("Minorenne"));
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(true);
+			Evaluator.when(expression).then(action).elseExecute(elseAction);
+			Mockito.verify(action, Mockito.atLeastOnce()).execute();
+			Mockito.verify(elseAction, Mockito.never()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 
 	@Test
-	void otherwiseTest() throws IOException
+	void elseTest(@Mock Action elseAction)
 	{
-		var age = 18;
-		Evaluator.when(null)
-				 .then(() -> System.out.println("Minorenne"))
-				 .elseIf(() -> age < 60)
-				 .then(() -> System.out.println("Maggiorenne"))
-				 .elseExecute(() -> System.out.println("Vecchio"));
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Evaluator.when(expression).then(action).elseExecute(elseAction);
+			Mockito.verify(action, Mockito.never()).execute();
+			Mockito.verify(elseAction, Mockito.atLeastOnce()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void elseIfTrueTest(@Mock Expression elseIf, @Mock Action elseIfAction, @Mock Action elseAction)
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Mockito.when(elseIf.evaluate()).thenReturn(true);
+			Evaluator.when(expression)
+					 .then(action)
+					 .elseIf(elseIf)
+					 .then(elseIfAction)
+					 .elseExecute(elseAction);
+			Mockito.verify(action, Mockito.never()).execute();
+			Mockito.verify(elseIfAction, Mockito.atLeastOnce()).execute();
+			Mockito.verify(elseAction, Mockito.never()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void elseIfFalseTest(@Mock Expression elseIf,
+						 @Mock Action elseIfAction,
+						 @Mock Action elseAction)
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Mockito.when(elseIf.evaluate()).thenReturn(false);
+			Evaluator.when(expression)
+					 .then(action)
+					 .elseIf(elseIf)
+					 .then(elseIfAction)
+					 .elseExecute(elseAction);
+			Mockito.verify(action, Mockito.never()).execute();
+			Mockito.verify(elseIfAction, Mockito.never()).execute();
+			Mockito.verify(elseAction, Mockito.atLeastOnce()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void errorOnEvaluatorTest()
+	{
+		JunitHelper.tryCall(() -> Mockito.when(expression.evaluate()).thenThrow(IOException.class));
+		var evaluator = Evaluator.when(expression);
+		Assertions.assertThrows(IOException.class, () -> evaluator.thenExecute(action));
+	}
+
+	@Test
+	void errorOnHandlerTest()
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(true);
+			Mockito.doThrow(IOException.class).when(action).execute();
+			var evaluator = Evaluator.when(expression);
+			Assertions.assertThrows(IOException.class, () -> evaluator.thenExecute(action));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void thenExecuteTrueTest()
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(true);
+			Evaluator.when(expression).thenExecute(action);
+			Mockito.verify(action, Mockito.atLeastOnce()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void thenHandleFalseTest()
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Evaluator.when(expression).thenExecute(action);
+			Mockito.verify(action, Mockito.never()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void elseIfExecuteTrueTest(@Mock Expression elseIf, @Mock Action elseIfAction)
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Mockito.when(elseIf.evaluate()).thenReturn(true);
+			Evaluator.when(expression).then(action).elseIf(elseIf).thenExecute(elseIfAction);
+			Mockito.verify(action, Mockito.never()).execute();
+			Mockito.verify(elseIfAction, Mockito.atLeastOnce()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void elseIfExecuteFalseTest(@Mock Expression elseIf, @Mock Action elseIfAction)
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(false);
+			Mockito.when(elseIf.evaluate()).thenReturn(false);
+			Evaluator.when(expression).then(action).elseIf(elseIf).thenExecute(elseIfAction);
+			Mockito.verify(action, Mockito.never()).execute();
+			Mockito.verify(elseIfAction, Mockito.never()).execute();
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 }
