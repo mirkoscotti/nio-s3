@@ -7,7 +7,6 @@ import java.util.function.Consumer;
 
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
@@ -37,13 +36,13 @@ public final class FileTransfer
 		this.key = Objects.requireNonNull(key, () -> "Missing key.");
 	}
 
-	public void transfer(OperationRecord target) throws IOException
+	public void transfer(S3AsyncClient client, String bucket, String key) throws IOException
 	{
-		Objects.requireNonNull(target, () -> "Missing target file specifications.");
-		Case.of(target)
-			.when(item -> bucket.equals(item.bucket()))
-			.then(item -> copy(item.key()))
-			.otherwise(this::copy);
+		Objects.requireNonNull(key, () -> "Missing target file specifications.");
+		Case.of(key)
+			.when(item -> this.bucket.equals(bucket))
+			.then(this::copy)
+			.otherwise(item -> copy(client, bucket, key));
 	}
 
 	private void copy(String target) throws IOException
@@ -71,15 +70,16 @@ public final class FileTransfer
 		}
 	}
 
-	private void copy(OperationRecord target) throws IOException
+	private void copy(S3AsyncClient client, String bucket, String key) throws IOException
 	{
-		try (var transferManager = S3TransferManager.builder().s3Client(target.client()).build())
+		try (var transferManager = S3TransferManager.builder().s3Client(client).build())
 		{
-			var publisher = client.getObject(item -> item.bucket(bucket).key(key),
-											 AsyncResponseTransformer.toPublisher())
-								  .get(30, TimeUnit.SECONDS);
-			Consumer<PutObjectRequest.Builder> putObjectRequest = item -> item.bucket(target.bucket())
-																			  .key(target.key());
+			var publisher = this.client.getObject(item -> item.bucket(this.bucket).key(this.key),
+												  AsyncResponseTransformer.toPublisher())
+									   .get(30, TimeUnit.SECONDS);
+			Consumer<PutObjectRequest.Builder> putObjectRequest = item -> item.bucket(bucket)
+																			  .key(key)
+																			  .checksumAlgorithm(ChecksumAlgorithm.SHA256);
 			transferManager.upload(item -> item.putObjectRequest(putObjectRequest)
 											   .requestBody(AsyncRequestBody.fromPublisher(publisher)))
 						   .completionFuture()

@@ -247,8 +247,7 @@ public final class S3Connector
 	public void receiveFile(String bucketName, String key, FileTransfer fileTransfer)
 		throws IOException
 	{
-		var operationRecord = new OperationRecord(client, bucketName, key);
-		fileTransfer.transfer(operationRecord);
+		fileTransfer.transfer(client, bucketName, key);
 	}
 
 	private void configureBucket(BucketDescriptor bucketDescriptor, Builder builder)
