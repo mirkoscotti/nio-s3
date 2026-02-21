@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
@@ -38,7 +37,6 @@ public final class FileTransfer
 
 	public void transfer(S3AsyncClient client, String bucket, String key) throws IOException
 	{
-		Objects.requireNonNull(key, () -> "Missing target file specifications.");
 		Case.of(key)
 			.when(item -> this.bucket.equals(bucket))
 			.then(this::copy)
@@ -56,7 +54,6 @@ public final class FileTransfer
 		{
 			transferManager.copy(item -> item.copyObjectRequest(requestBuilder))
 						   .completionFuture()
-						   .exceptionally(ExceptionsHelper::sneakyThrow)
 						   .get(30, TimeUnit.MINUTES);
 		}
 		catch (InterruptedException x)
