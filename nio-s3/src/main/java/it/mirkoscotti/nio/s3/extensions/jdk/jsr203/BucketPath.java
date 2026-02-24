@@ -100,13 +100,16 @@ public class BucketPath
 	 */
 	BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
-		root = Objects.requireNonNull(first, MISSING_PATH)
-					  .startsWith(BucketDescriptor.PATH_SEPARATOR)
-						  ? new BucketPath(fileSystem)
-						  : null;
-		var path = Stream.concat(Stream.of(first), Stream.ofNullable(more).flatMap(Stream::of))
-						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
+		root = Objects.requireNonNull(first, MISSING_PATH).startsWith(separator)
+			? new BucketPath(fileSystem)
+			: null;
+		var appendable = Stream.ofNullable(more)
+							   .flatMap(Stream::of)
+							   .collect(Collectors.joining(separator));
+		separator = first.endsWith(separator) || appendable.isEmpty() ? "" : separator;
+		var path = String.join(separator, first, appendable);
 		objectKey = Optional.of(validatedPath(path))
 							.filter(Predicate.not(String::isEmpty))
 							.orElse(null);
