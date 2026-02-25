@@ -6,6 +6,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -260,6 +261,55 @@ class S3FileSystemProviderTest
 		var exception = Assertions.assertThrows(IOException.class,
 												() -> fileSystemProvider.createDirectory(path));
 		Assertions.assertInstanceOf(S3Exception.class, exception.getCause());
+	}
+
+	@Test
+	void isSameFileAsNullTest(@Mock BucketPath path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(NullPointerException.class,
+								() -> fileSystemProvider.isSameFile(path, null));
+	}
+
+	@Test
+	void isNotSameFileTest(@Mock BucketPath path1, @Mock BucketPath path2, @Mock BucketPath path3)
+	{
+		try
+		{
+			Mockito.when(path1.toRealPath(Mockito.any(LinkOption[].class))).thenReturn(path2);
+			Mockito.when(path2.toAbsolutePath()).thenReturn(path3);
+			var fileSystemProvider = new S3FileSystemProvider();
+			Assertions.assertFalse(JunitHelper.tryCall(() -> fileSystemProvider.isSameFile(path1,
+																						   path2)));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void isSameFileEqualsTest(@Mock BucketPath path)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertTrue(JunitHelper.tryCall(() -> fileSystemProvider.isSameFile(path, path)));
+	}
+
+	@Test
+	void isRelativeFileSameAsAbsoluteTest(@Mock BucketPath path1, @Mock BucketPath path2)
+	{
+		try
+		{
+			Mockito.when(path1.toRealPath(Mockito.any(LinkOption[].class))).thenReturn(path2);
+			Mockito.when(path2.toAbsolutePath()).thenReturn(path2);
+			var fileSystemProvider = new S3FileSystemProvider();
+			Assertions.assertTrue(JunitHelper.tryCall(() -> fileSystemProvider.isSameFile(path1,
+																						  path2)));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 
 	@Test
