@@ -42,16 +42,6 @@ public class Try<T>
 		return this;
 	}
 
-	public <E extends Exception> Try<T> onCatch(Class<E> exceptionType,
-												Consumer<? super E> catchBlock)
-	{
-		return onCatch(item -> Optional.ofNullable(item)
-									   .filter(exceptionType::isInstance)
-									   .map(exceptionType::cast)
-									   .ifPresentOrElse(catchBlock::accept,
-														() -> ExceptionsHelper.sneakyThrow(item)));
-	}
-
 	public Try<T> onFinally(Callable<Void> finallyBlock)
 	{
 		this.finallyBlock = Objects.requireNonNull(finallyBlock, () -> "Missing finally block.");

@@ -45,18 +45,6 @@ public class Evaluator
 		}
 	}
 
-	public <E extends Exception> void elseThrow(Supplier<E> supplier) throws IOException
-	{
-		var reference = new AtomicReference<IOException>();
-		evaluate(reference).ifPresentOrElse(item -> execute(item, reference),
-											() -> reference.set(new IOException(supplier.get())));
-		var exception = reference.get();
-		if (exception != null)
-		{
-			throw exception;
-		}
-	}
-
 	private Evaluator addBlock(Expression when, Action then)
 	{
 		blocks.put(when, then);

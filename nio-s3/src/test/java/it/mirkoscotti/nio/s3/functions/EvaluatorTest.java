@@ -145,7 +145,7 @@ class EvaluatorTest
 	}
 
 	@Test
-	void thenHandleFalseTest()
+	void thenExecuteFalseTest()
 	{
 		try
 		{
@@ -160,7 +160,24 @@ class EvaluatorTest
 	}
 
 	@Test
-	void elseIfExecuteTrueTest(@Mock Expression elseWhen, @Mock Action elseIfAction)
+	void thenThrowTest(@Mock Exception exception)
+	{
+		try
+		{
+			Mockito.when(expression.evaluate()).thenReturn(true);
+			var evaluator = Evaluator.when(expression);
+			var result = Assertions.assertThrows(IOException.class,
+												 () -> evaluator.thenThrow(() -> exception));
+			Assertions.assertEquals(exception, result.getCause());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void elseWhenExecuteTrueTest(@Mock Expression elseWhen, @Mock Action elseIfAction)
 	{
 		try
 		{
@@ -177,7 +194,7 @@ class EvaluatorTest
 	}
 
 	@Test
-	void elseIfExecuteFalseTest(@Mock Expression elseWhen, @Mock Action elseWhenAction)
+	void elseWhenExecuteFalseTest(@Mock Expression elseWhen, @Mock Action elseWhenAction)
 	{
 		try
 		{
