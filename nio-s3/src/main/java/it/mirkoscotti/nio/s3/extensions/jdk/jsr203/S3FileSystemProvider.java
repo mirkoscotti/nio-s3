@@ -255,8 +255,7 @@ public class S3FileSystemProvider
 		var source = validatePath(path);
 		var target = Objects.requireNonNull(path2, () -> "Missing target path.");
 		return source.equals(path2)
-			|| source.toRealPath(LinkOption.NOFOLLOW_LINKS)
-					 .equals(target.toRealPath(LinkOption.NOFOLLOW_LINKS));
+			|| source.toRealPath(LinkOption.NOFOLLOW_LINKS).equals(target.toAbsolutePath());
 	}
 
 	@Override
@@ -373,9 +372,11 @@ public class S3FileSystemProvider
 	private void executeCopy(Path source, Path target, CopyOption... options) throws IOException
 	{
 		var sourcePath = validatePath(source).toRealPath(LinkOption.NOFOLLOW_LINKS);
-		Evaluator.when(() -> CopyFlag.IS_REPLACEABLE.matches(Set.of(options)))
-				 .thenExecute(() -> delete(target));
 		var targetPath = validatePath(target);
+		Evaluator.when(() -> CopyFlag.IS_REPLACEABLE.matches(Set.of(options)))
+				 .then(() -> Files.deleteIfExists(targetPath))
+				 .elseWhen(() -> Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS))
+				 .thenThrow(() -> new FileAlreadyExistsException(targetPath.toString()));
 		CopyFile.from(sourcePath).to(targetPath);
 	}
 

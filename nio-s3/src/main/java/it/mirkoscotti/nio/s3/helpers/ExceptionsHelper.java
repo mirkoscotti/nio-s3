@@ -34,9 +34,9 @@ public final class ExceptionsHelper
 		};
 	}
 
-	public static IOException unwrapIoException(Exception exception)
+	public static IOException throwIoException(Exception exception) throws IOException
 	{
-		return exception instanceof IOException ioException
+		throw exception instanceof IOException ioException
 			? ioException
 			: new IOException(exception);
 	}

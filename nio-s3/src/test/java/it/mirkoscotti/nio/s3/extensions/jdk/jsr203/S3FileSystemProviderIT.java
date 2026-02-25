@@ -8,16 +8,20 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.CleanupMode;
+import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
@@ -34,9 +38,16 @@ class S3FileSystemProviderIT
 
 	private static final String A_B = A.concat("b/");
 
-	private static final String TEST_FILE = "file.txt";
+	private static final String A_C = A.concat("c/");
+
+	private static final String SOURCE_FILE = "source.txt";
 
 	private static final URI TEST_URI = URI.create("s3://".concat(TEST_BUCKET));
+
+	@TempDir(cleanup = CleanupMode.ALWAYS)
+	private static Path baseDirectory;
+
+	private static Path sourceFile;
 
 	private static FileSystem fileSystem;
 
@@ -48,6 +59,7 @@ class S3FileSystemProviderIT
 	static void beforeAll()
 	{
 		var properties = ContainersHelper.standardProperties(CONTAINER);
+		sourceFile = JunitHelper.tryCall(() -> createSourceFile(SOURCE_FILE, 1024));
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 	}
 
@@ -66,7 +78,7 @@ class S3FileSystemProviderIT
 	}
 
 	@Test
-	void createAlreadyExistingDirectoryTest()
+	void createExistingDirectoryTest()
 	{
 		var path = "a/";
 		CONTAINER.createObject(TEST_BUCKET, path);
@@ -122,17 +134,54 @@ class S3FileSystemProviderIT
 	void deleteFileTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, A);
-		CONTAINER.createObject(TEST_BUCKET, A.concat(TEST_FILE));
-		var file = fileSystem.getPath(A, TEST_FILE);
+		CONTAINER.createObject(TEST_BUCKET, A.concat(SOURCE_FILE));
+		var file = fileSystem.getPath(A, SOURCE_FILE);
 		try
 		{
 			Files.delete(file);
-			Assertions.assertFalse(CONTAINER.objectExists(TEST_BUCKET, TEST_FILE));
+			Assertions.assertFalse(CONTAINER.objectExists(TEST_BUCKET, SOURCE_FILE));
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A));
 		}
 		catch (IOException x)
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	@Test
+	void copyDirectoryTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, A);
+		CONTAINER.createObject(TEST_BUCKET, A_B);
+		var source = fileSystem.getPath(A_B);
+		var target = fileSystem.getPath(A_C);
+		try
+		{
+			Files.copy(source, target);
+			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_B));
+			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_C));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void copyExistingDirectoryTest()
+	{
+		CONTAINER.createObject(TEST_BUCKET, A);
+		CONTAINER.createObject(TEST_BUCKET, A_B);
+		CONTAINER.createObject(TEST_BUCKET, A_C);
+		var source = fileSystem.getPath(A_B);
+		var target = fileSystem.getPath(A_C);
+		Assertions.assertThrows(FileAlreadyExistsException.class, () -> Files.copy(source, target));
+	}
+
+	private static Path createSourceFile(String fileName, long size) throws IOException
+	{
+		var result = baseDirectory.resolve(fileName);
+		IoHelper.createNotEmptyFile(result, size);
+		return result;
 	}
 }

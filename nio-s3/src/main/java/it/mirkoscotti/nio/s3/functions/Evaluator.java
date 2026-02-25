@@ -3,9 +3,11 @@ package it.mirkoscotti.nio.s3.functions;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * @author mirko.scotti
@@ -26,7 +28,7 @@ public class Evaluator
 		return new When(expression);
 	}
 
-	public When elseIf(Expression expression)
+	public When elseWhen(Expression expression)
 	{
 		return new When(this, expression);
 	}
@@ -34,13 +36,20 @@ public class Evaluator
 	public void elseExecute(Action action) throws IOException
 	{
 		var reference = new AtomicReference<IOException>();
-		blocks.entrySet()
-			  .stream()
-			  .filter(item -> matches(item.getKey(), reference))
-			  .filter(item -> Objects.isNull(reference.get()))
-			  .findFirst()
-			  .ifPresentOrElse(item -> execute(item.getValue(), reference),
-							   () -> tryExecute(action, reference));
+		evaluate(reference).ifPresentOrElse(item -> execute(item, reference),
+											() -> tryExecute(action, reference));
+		var exception = reference.get();
+		if (exception != null)
+		{
+			throw exception;
+		}
+	}
+
+	public <E extends Exception> void elseThrow(Supplier<E> supplier) throws IOException
+	{
+		var reference = new AtomicReference<IOException>();
+		evaluate(reference).ifPresentOrElse(item -> execute(item, reference),
+											() -> reference.set(new IOException(supplier.get())));
 		var exception = reference.get();
 		if (exception != null)
 		{
@@ -57,6 +66,16 @@ public class Evaluator
 	private void run() throws IOException
 	{
 		elseExecute(Action.DO_NOTHING);
+	}
+
+	private Optional<Action> evaluate(AtomicReference<IOException> reference)
+	{
+		return blocks.entrySet()
+					 .stream()
+					 .filter(item -> matches(item.getKey(), reference))
+					 .filter(item -> Objects.isNull(reference.get()))
+					 .findFirst()
+					 .map(Entry::getValue);
 	}
 
 	private boolean matches(Expression expression, AtomicReference<IOException> reference)
@@ -118,6 +137,11 @@ public class Evaluator
 		public void thenExecute(Action action) throws IOException
 		{
 			then(action).run();
+		}
+
+		public void thenThrow(Supplier<? extends Exception> supplier) throws IOException
+		{
+			then(Action.throwing(supplier.get())).run();
 		}
 	}
 }
