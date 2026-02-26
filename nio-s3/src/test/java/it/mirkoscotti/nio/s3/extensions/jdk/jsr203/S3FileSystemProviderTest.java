@@ -449,6 +449,14 @@ class S3FileSystemProviderTest
 		}
 	}
 
+	@Test
+	void setAttributeTest(@Mock Path path, @Mock Object object)
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(UnsupportedOperationException.class,
+								() -> fileSystemProvider.setAttribute(path, "attribute", object));
+	}
+
 	private void initializeBucketDescriptor(BucketDescriptor bucketDescriptor, Context context)
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);

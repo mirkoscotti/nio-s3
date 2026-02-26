@@ -332,8 +332,7 @@ public class S3FileSystemProvider
 	public void setAttribute(Path path, String attribute, Object value, LinkOption... options)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException("Metadata cannot be modified once an object has been created.");
 	}
 
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
