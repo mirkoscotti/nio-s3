@@ -45,6 +45,21 @@ class CaseTest<T>
 	}
 
 	@Test
+	void otherwiseWhenNullTest(@Mock Handler<T> otherwise)
+	{
+		try
+		{
+			Case.of(object).when(null).then(handler).otherwise(otherwise);
+			Mockito.verify(handler, Mockito.never()).handle(Mockito.any());
+			Mockito.verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
 	void otherwiseTest(@Mock Handler<T> otherwise)
 	{
 		try

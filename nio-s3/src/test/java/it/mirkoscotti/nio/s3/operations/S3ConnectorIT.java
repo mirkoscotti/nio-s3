@@ -7,6 +7,7 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,7 @@ import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
@@ -61,6 +63,15 @@ class S3ConnectorIT
 
 	@TempDir(cleanup = CleanupMode.ALWAYS)
 	private static Path baseDirectory;
+
+	private static Path file;
+
+	@BeforeAll
+	static void beforeAll()
+	{
+		file = baseDirectory.resolve(TEST_OBJECT);
+		JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(file));
+	}
 
 	@AfterEach
 	void afterEach()
@@ -168,8 +179,6 @@ class S3ConnectorIT
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
-		var file = baseDirectory.resolve(TEST_OBJECT);
-		Try.call(() -> IoHelper.createNotEmptyFile(file)).getOrThrow(IllegalStateException::new);
 		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
 		var map = createConnector().listObjects(BUCKET_NAME, DIRECTORY);
 		Assertions.assertTrue(map.containsKey(OBJECT));
@@ -194,6 +203,25 @@ class S3ConnectorIT
 				 .mapToObj(DIRECTORY.concat("test-%d.txt")::formatted)
 				 .map(map::containsKey)
 				 .forEach(Assertions::assertTrue);
+	}
+
+	@Test
+	void isEmptyDirectoryTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
+		var connector = createConnector();
+		Assertions.assertFalse(connector.isNotEmptyDirectory(BUCKET_NAME, DIRECTORY));
+	}
+
+	@Test
+	void isNotEmptyDirectoryTest()
+	{
+		CONTAINER.createBucket(BUCKET_NAME);
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
+		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
+		var connector = createConnector();
+		Assertions.assertTrue(connector.isNotEmptyDirectory(BUCKET_NAME, DIRECTORY));
 	}
 
 	private S3Connector createConnector()
