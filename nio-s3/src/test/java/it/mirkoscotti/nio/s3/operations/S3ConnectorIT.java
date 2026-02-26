@@ -211,14 +211,14 @@ class S3ConnectorIT
 		CONTAINER.createBucket(BUCKET_NAME);
 		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
 		var connector = createConnector();
-		Assertions.assertFalse(connector.isNotEmptyDirectory(BUCKET_NAME, DIRECTORY));
+		Assertions.assertFalse(connector.isNotEmptyDirectory(BUCKET_NAME, PREFIX));
 	}
 
 	@Test
 	void isNotEmptyDirectoryTest()
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
-		CONTAINER.createObject(BUCKET_NAME, DIRECTORY.concat("/"));
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY.concat(TEST_OBJECT));
 		CONTAINER.createObject(BUCKET_NAME, OBJECT, file);
 		var connector = createConnector();
 		Assertions.assertTrue(connector.isNotEmptyDirectory(BUCKET_NAME, DIRECTORY));
