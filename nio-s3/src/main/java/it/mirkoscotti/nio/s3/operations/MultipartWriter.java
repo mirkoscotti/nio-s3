@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -58,12 +57,11 @@ public final class MultipartWriter
 	/**
 	 * @param client
 	 */
-	public MultipartWriter(OperationRecord operationRecord)
+	public MultipartWriter(S3AsyncClient client, String bucket, String key)
 	{
-		Objects.requireNonNull(operationRecord, () -> "Missing writer specifications.");
-		client = Objects.requireNonNull(operationRecord.client(), () -> "Missing client.");
-		bucket = Objects.requireNonNull(operationRecord.bucket(), () -> "Missing bucket.");
-		key = Objects.requireNonNull(operationRecord.key(), () -> "Missing key.");
+		this.client = Objects.requireNonNull(client, () -> "Missing client.");
+		this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket.");
+		this.key = Objects.requireNonNull(key, () -> "Missing key.");
 		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::sneakyThrow).get();
 	}
 
@@ -100,9 +98,7 @@ public final class MultipartWriter
 	}
 
 	private String createUploadId()
-		throws TimeoutException,
-			ExecutionException,
-			InterruptedException
+		throws TimeoutException, ExecutionException, InterruptedException
 	{
 		return client.createMultipartUpload(this::createMultipartRequest)
 					 .thenApply(CreateMultipartUploadResponse::uploadId)
@@ -110,9 +106,7 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(byte[] buffer)
-		throws TimeoutException,
-			ExecutionException,
-			InterruptedException
+		throws TimeoutException, ExecutionException, InterruptedException
 	{
 		var part = partNumber.incrementAndGet();
 		var result = client.uploadPart(item -> createUploadRequest(item, part),
@@ -128,9 +122,7 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(long size)
-		throws TimeoutException,
-			ExecutionException,
-			InterruptedException
+		throws TimeoutException, ExecutionException, InterruptedException
 	{
 		var result = client.uploadPartCopy(this::createUploadCopyRequest)
 						   .thenApply(this::createCompletedPart)
@@ -140,9 +132,7 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(long from, long to)
-		throws TimeoutException,
-			ExecutionException,
-			InterruptedException
+		throws TimeoutException, ExecutionException, InterruptedException
 	{
 		return client.uploadPartCopy(item -> createUploadCopyRequest(item, from, to))
 					 .thenApply(this::createCompletedPart)

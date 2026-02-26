@@ -1,10 +1,5 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +15,10 @@ import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.regions.Region;
@@ -70,8 +69,7 @@ class MultipartWriterIT
 	@Test
 	void multipartUploadWithoutPartsTest()
 	{
-		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
-		try (var writer = new MultipartWriter(operationRecord))
+		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			var uploadId = JunitHelper.findFieldValueByName(writer, "uploadId", String.class);
 			Assertions.assertNotNull(uploadId);
@@ -82,8 +80,7 @@ class MultipartWriterIT
 	void multipartSingleUploadTest()
 	{
 		var test = "test";
-		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
-		try (var writer = new MultipartWriter(operationRecord))
+		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
 		}
@@ -101,8 +98,7 @@ class MultipartWriterIT
 		var part = Stream.generate(() -> test)
 						 .limit(5 * 1024 * 1024 / test.length())
 						 .collect(Collectors.joining());
-		var operationRecord = new OperationRecord(client, TEST_BUCKET, TEST_KEY);
-		try (var writer = new MultipartWriter(operationRecord))
+		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			writer.write(part.getBytes(StandardCharsets.UTF_8));
 			writer.write(test.getBytes(StandardCharsets.UTF_8));

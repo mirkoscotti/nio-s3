@@ -29,7 +29,6 @@ import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -235,8 +234,7 @@ public final class S3Connector
 
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
-		var operationRecord = new OperationRecord(client, bucketName, key);
-		return new MultipartWriter(operationRecord);
+		return new MultipartWriter(client, bucketName, key);
 	}
 
 	public FileTransfer fileTransfer(String bucketName, String key)
