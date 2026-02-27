@@ -20,4 +20,9 @@ public interface Condition<T>
 		var result = (Condition<T>) FALSE;
 		return result;
 	}
+
+	public static <T> Condition<T> not(Condition<T> condition)
+	{
+		return item -> !condition.isSatisfied(item);
+	}
 }

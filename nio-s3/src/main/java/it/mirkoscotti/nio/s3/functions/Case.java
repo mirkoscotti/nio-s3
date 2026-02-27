@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * @author mirko.scotti
@@ -115,6 +116,11 @@ public class Case<T>
 		public void thenHandle(Handler<T> handler) throws IOException
 		{
 			then(handler).run();
+		}
+
+		public void thenThrow(Supplier<? extends Exception> supplier) throws IOException
+		{
+			then(Handler.throwing(supplier.get())).run();
 		}
 	}
 }

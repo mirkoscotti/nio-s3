@@ -1,6 +1,8 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
@@ -35,15 +37,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.enums.CopyFlag;
 import it.mirkoscotti.nio.s3.enums.ObjectAccess;
+import it.mirkoscotti.nio.s3.functions.Case;
+import it.mirkoscotti.nio.s3.functions.Condition;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Expression;
 import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.FileTransfer;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
@@ -204,12 +210,9 @@ public class S3FileSystemProvider
 		   .run();
 		var exception = Optional.ofNullable(reference.get())
 								.orElseGet(() -> checkIfPathExists(path));
-		if (exception != null)
-		{
-			throw exception instanceof IOException ioException
-				? ioException
-				: new IOException(exception);
-		}
+		Case.of(exception)
+			.when(Condition.not(Objects::isNull))
+			.thenHandle(ExceptionsHelper::throwIoException);
 		fileSystem.awsFacade()
 				  .writeObject(fileSystem.getFileStores().iterator().next().name(),
 							   bucketPath.toString());
@@ -226,12 +229,9 @@ public class S3FileSystemProvider
 		var awsFacade = fileSystem.awsFacade();
 		var bucketName = getFileStore(realPath).name();
 		var key = realPath.toString();
-		var attributes = readAttributes(realPath, BasicFileAttributes.class,
-										LinkOption.NOFOLLOW_LINKS);
-		if (attributes.isDirectory() && awsFacade.isNotEmptyDirectory(bucketName, key))
-		{
-			throw new DirectoryNotEmptyException(key);
-		}
+		Case.of(readAttributes(realPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS))
+			.when(item -> item.isDirectory() && awsFacade.isNotEmptyDirectory(bucketName, key))
+			.thenThrow(() -> new DirectoryNotEmptyException(key));
 		awsFacade.deleteObject(bucketName, key);
 	}
 
@@ -324,15 +324,52 @@ public class S3FileSystemProvider
 	public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		var list = Optional.ofNullable(attributes)
+						   .map(item -> item.split(":"))
+						   .filter(item -> item.length < 3)
+						   .stream()
+						   .flatMap(Stream::of)
+						   .map(String::trim)
+						   .filter(Predicate.not(String::isBlank))
+						   .toList();
+		record View(String name, String attributes)
+		{
+
+		}
+		var view = switch (list.size())
+		{
+			case 1 -> new View(ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW, attributes);
+			case 2 -> new View(list.get(0), list.get(1));
+			default -> throw new IllegalArgumentException("Malformed attributes. Expected format: [view-name:]a1,a2,...");
+		};
+		var basicFileAttributes = switch (view.name())
+		{
+			case ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW -> readAttributes(path,
+																						  ObjectBasicFileAttributes.class,
+																						  options);
+			default -> new UnsupportedOperationException("Unsupported file attributes view: %s".formatted(view.name));
+		};
+		var excludedMethods = Set.of(Stream.of(Object.class.getMethods())
+										   .map(Method::getName)
+										   .toArray(String[]::new));
+		var reference = new AtomicReference<Exception>();
+		var result = Stream.of(basicFileAttributes.getClass().getMethods())
+						   .filter(Predicate.<Method>not(item -> excludedMethods.contains(item.getName()))
+											.and(item -> Modifier.isPublic(item.getModifiers())))
+						   .collect(Collectors.toMap(Method::getName,
+													 item -> Try.to(() -> item.invoke(basicFileAttributes))
+																.onCatch(reference::set)
+																.get()));
+		var exception = reference.get();
+		Case.of(exception).when(Objects::nonNull).thenHandle(ExceptionsHelper::throwIoException);
+		return result;
 	}
 
 	@Override
 	public void setAttribute(Path path, String attribute, Object value, LinkOption... options)
 		throws IOException
 	{
-		throw new UnsupportedOperationException("Metadata cannot be modified once an object has been created.");
+		throw new UnsupportedOperationException("Metadata of an S3 object cannot be modified once it has been created.");
 	}
 
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
