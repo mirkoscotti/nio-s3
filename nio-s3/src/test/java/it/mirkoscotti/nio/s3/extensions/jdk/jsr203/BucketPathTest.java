@@ -1,11 +1,11 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
@@ -535,7 +535,7 @@ class BucketPathTest
 		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
-		Assertions.assertThrows(FileNotFoundException.class, bucketPath::toRealPath);
+		Assertions.assertThrows(NoSuchFileException.class, bucketPath::toRealPath);
 	}
 
 	@Test

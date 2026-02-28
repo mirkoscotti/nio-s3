@@ -1,11 +1,11 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
@@ -100,13 +100,16 @@ public class BucketPath
 	 */
 	BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
 		this.fileSystem = Objects.requireNonNull(fileSystem, () -> "Missing file system.");
-		root = Objects.requireNonNull(first, MISSING_PATH)
-					  .startsWith(BucketDescriptor.PATH_SEPARATOR)
-						  ? new BucketPath(fileSystem)
-						  : null;
-		var path = Stream.concat(Stream.of(first), Stream.ofNullable(more).flatMap(Stream::of))
-						 .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
+		root = Objects.requireNonNull(first, MISSING_PATH).startsWith(separator)
+			? new BucketPath(fileSystem)
+			: null;
+		var appendable = Stream.ofNullable(more)
+							   .flatMap(Stream::of)
+							   .collect(Collectors.joining(separator));
+		separator = first.endsWith(separator) || appendable.isEmpty() ? "" : separator;
+		var path = String.join(separator, first, appendable);
 		objectKey = Optional.of(validatedPath(path))
 							.filter(Predicate.not(String::isEmpty))
 							.orElse(null);
@@ -518,10 +521,10 @@ public class BucketPath
 		return new IllegalArgumentException(message);
 	}
 
-	private FileNotFoundException fileNotFoundInBucket(Path path)
+	private NoSuchFileException fileNotFoundInBucket(Path path)
 	{
 		var bucketName = fileSystem.getFileStores().iterator().next().name();
 		var message = "Object %s not found in bucket %s".formatted(path, bucketName);
-		return new FileNotFoundException(message);
+		return new NoSuchFileException(message);
 	}
 }

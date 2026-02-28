@@ -1,10 +1,13 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileAlreadyExistsException;
@@ -13,6 +16,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -24,21 +28,31 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.enums.CopyFlag;
 import it.mirkoscotti.nio.s3.enums.ObjectAccess;
+import it.mirkoscotti.nio.s3.functions.Case;
+import it.mirkoscotti.nio.s3.functions.Condition;
+import it.mirkoscotti.nio.s3.functions.Evaluator;
+import it.mirkoscotti.nio.s3.functions.Expression;
 import it.mirkoscotti.nio.s3.functions.Try;
+import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import it.mirkoscotti.nio.s3.operations.FileTransfer;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
@@ -165,121 +179,109 @@ public class S3FileSystemProvider
 											  FileAttribute<?>... attrs)
 		throws IOException
 	{
-		if (path instanceof BucketPath bucketPath)
-		{
-			return new BucketSeekableByteChannel(bucketPath, options);
-		}
-		throw invalidPath(path);
+		var bucketPath = validatePath(path);
+		return new BucketSeekableByteChannel(bucketPath, options);
 	}
 
 	@Override
 	public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter)
 		throws IOException
 	{
-		if (dir instanceof BucketPath bucketPath)
-		{
-			return new BucketDirectoryStream(bucketPath, filter);
-		}
-		throw invalidPath(dir);
+		var bucketPath = validatePath(dir);
+		return new BucketDirectoryStream(bucketPath, filter);
 	}
 
 	@Override
 	public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException
 	{
-		if (dir instanceof BucketPath bucketPath)
-		{
-			var optional = Optional.of(bucketPath);
-			var fileSystem = optional.filter(Predicate.not(BucketPath::isRootDirectory))
-									 .orElseThrow(() -> new FileAlreadyExistsException(bucketPath.toString()))
-									 .getFileSystem();
-			var path = optional.map(BucketPath::toString)
-							   .filter(Predicate.not(item -> item.endsWith(BucketDescriptor.PATH_SEPARATOR)))
-							   .map(item -> item.concat(BucketDescriptor.PATH_SEPARATOR))
-							   .map(fileSystem::getPath)
-							   .map(BucketPath::toAbsolutePath)
-							   .orElse(bucketPath);
-			var reference = new AtomicReference<Exception>(new FileAlreadyExistsException(path.toString()));
-			Try.to(() -> readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS))
-			   .onCatch(item -> reference.set(null))
-			   .run();
-			var exception = Optional.ofNullable(reference.get())
-									.orElseGet(() -> checkIfPathExists(path));
-			if (exception != null)
-			{
-				throw exception instanceof IOException ioException
-					? ioException
-					: new IOException(exception);
-			}
-			fileSystem.awsFacade()
-					  .writeObject(fileSystem.getFileStores().iterator().next().name(),
-								   bucketPath.toString());
-		}
-		else
-		{
-			throw invalidPath(dir);
-		}
+		var bucketPath = validatePath(dir);
+		var optional = Optional.of(bucketPath);
+		var fileSystem = optional.filter(Predicate.not(BucketPath::isRootDirectory))
+								 .orElseThrow(() -> new FileAlreadyExistsException(bucketPath.toString()))
+								 .getFileSystem();
+		var path = optional.map(BucketPath::toString)
+						   .filter(Predicate.not(item -> item.endsWith(BucketDescriptor.PATH_SEPARATOR)))
+						   .map(item -> item.concat(BucketDescriptor.PATH_SEPARATOR))
+						   .map(fileSystem::getPath)
+						   .map(BucketPath::toAbsolutePath)
+						   .orElse(bucketPath);
+		var reference = new AtomicReference<Exception>(new FileAlreadyExistsException(path.toString()));
+		Try.to(() -> readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS))
+		   .onCatch(item -> reference.set(null))
+		   .run();
+		var exception = Optional.ofNullable(reference.get())
+								.orElseGet(() -> checkIfPathExists(path));
+		Case.of(exception)
+			.when(Condition.not(Objects::isNull))
+			.thenHandle(ExceptionsHelper::throwIoException);
+		fileSystem.awsFacade()
+				  .writeObject(fileSystem.getFileStores().iterator().next().name(),
+							   bucketPath.toString());
 	}
 
 	@Override
 	public void delete(Path path) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		var realPath = Optional.of(validatePath(path))
+							   .filter(Predicate.not(BucketPath::isRootDirectory))
+							   .orElseThrow(() -> new UnsupportedOperationException("Root directory cannot be deleted."))
+							   .toRealPath(LinkOption.NOFOLLOW_LINKS);
+		var fileSystem = realPath.getFileSystem();
+		var awsFacade = fileSystem.awsFacade();
+		var bucketName = getFileStore(realPath).name();
+		var key = realPath.toString();
+		Case.of(readAttributes(realPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS))
+			.when(item -> item.isDirectory() && awsFacade.isNotEmptyDirectory(bucketName, key))
+			.thenThrow(() -> new DirectoryNotEmptyException(key));
+		awsFacade.deleteObject(bucketName, key);
 	}
 
 	@Override
 	public void copy(Path source, Path target, CopyOption... options) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		Evaluator.when(Expression.not(() -> Files.isSameFile(source, target)))
+				 .thenExecute(() -> executeCopy(source, target, options));
 	}
 
 	@Override
 	public void move(Path source, Path target, CopyOption... options) throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		copy(source, target, options);
+		delete(source);
 	}
 
 	@Override
 	public boolean isSameFile(Path path, Path path2) throws IOException
 	{
-		// TODO Auto-generated method stub
-		return false;
+		var source = validatePath(path);
+		var target = Objects.requireNonNull(path2, () -> "Missing target path.");
+		return source.equals(path2)
+			|| source.toRealPath(LinkOption.NOFOLLOW_LINKS).equals(target.toAbsolutePath());
 	}
 
 	@Override
 	public boolean isHidden(Path path) throws IOException
 	{
-		return Optional.ofNullable(path)
-					   .filter(BucketPath.class::isInstance)
-					   .map(item -> false)
-					   .orElseThrow(() -> invalidPath(path));
+		validatePath(path);
+		return false;
 	}
 
 	@Override
 	public FileStore getFileStore(Path path) throws IOException
 	{
-		if (path instanceof BucketPath bucketPath)
-		{
-			return bucketPath.getFileSystem().getFileStores().iterator().next();
-		}
-		throw invalidPath(path);
+		var bucketPath = validatePath(path);
+		return bucketPath.getFileSystem().getFileStores().iterator().next();
 	}
 
 	@Override
 	public void checkAccess(Path path, AccessMode... modes) throws IOException
 	{
-		if (path instanceof BucketPath bucketPath)
-		{
-			var fileSystem = bucketPath.getFileSystem();
-			var bucketName = fileSystem.getFileStores().iterator().next().name();
-			var objectKey = bucketPath.toString();
-			var awsFacade = fileSystem.awsFacade();
-			ObjectAccess.check(awsFacade, bucketName, objectKey, modes);
-			return;
-		}
-		throw invalidPath(path);
+		var bucketPath = validatePath(path);
+		var fileSystem = bucketPath.getFileSystem();
+		var bucketName = getFileStore(bucketPath).name();
+		var objectKey = bucketPath.toString();
+		var awsFacade = fileSystem.awsFacade();
+		ObjectAccess.check(awsFacade, bucketName, objectKey, modes);
 	}
 
 	@Override
@@ -287,20 +289,17 @@ public class S3FileSystemProvider
 																Class<V> type,
 																LinkOption... options)
 	{
-		if (path instanceof BucketPath bucketPath)
-		{
-			var factory = new FileAttributeViewFactory<>(ObjectBasicFileAttributeView.class,
-														 this::createBasicFileAttributeView);
-			@SuppressWarnings("unchecked")
-			var result = (V) List.<FileAttributeViewFactory<?>>of(factory)
-								 .stream()
-								 .filter(item -> item.fileAttributeViewType() == type)
-								 .map(item -> item.factory().apply(bucketPath))
-								 .findFirst()
-								 .orElse(null);
-			return result;
-		}
-		throw invalidPath(path);
+		var bucketPath = validatePath(path);
+		var factory = new FileAttributeViewFactory<>(ObjectBasicFileAttributeView.class,
+													 this::createBasicFileAttributeView);
+		@SuppressWarnings("unchecked")
+		var result = (V) List.<FileAttributeViewFactory<?>>of(factory)
+							 .stream()
+							 .filter(item -> item.fileAttributeViewType() == type)
+							 .map(item -> item.factory().apply(bucketPath))
+							 .findFirst()
+							 .orElse(null);
+		return result;
 	}
 
 	@Override
@@ -310,36 +309,75 @@ public class S3FileSystemProvider
 															LinkOption... options)
 		throws IOException
 	{
-		if (path instanceof BucketPath bucketPath)
-		{
-			var map = new HashMap<Class<? extends BasicFileAttributes>, Class<? extends BasicFileAttributeView>>();
-			map.put(BasicFileAttributes.class, ObjectBasicFileAttributeView.class);
-			map.put(ObjectBasicFileAttributes.class, ObjectBasicFileAttributeView.class);
-			var fileAttributeViewType = Optional.ofNullable(type)
-												.filter(map::containsKey)
-												.map(map::get)
-												.orElseThrow(() -> unexpectedFileAttributes(type));
-			var fileAttributeView = getFileAttributeView(bucketPath, fileAttributeViewType,
-														 options);
-			return (A) fileAttributeView.readAttributes();
-		}
-		throw invalidPath(path);
+		var bucketPath = validatePath(path);
+		var map = new HashMap<Class<? extends BasicFileAttributes>, Class<? extends BasicFileAttributeView>>();
+		map.put(BasicFileAttributes.class, ObjectBasicFileAttributeView.class);
+		map.put(ObjectBasicFileAttributes.class, ObjectBasicFileAttributeView.class);
+		var fileAttributeViewType = Optional.ofNullable(type)
+											.filter(map::containsKey)
+											.map(map::get)
+											.orElseThrow(() -> unexpectedFileAttributes(type));
+		var fileAttributeView = getFileAttributeView(bucketPath, fileAttributeViewType, options);
+		return (A) fileAttributeView.readAttributes();
 	}
 
 	@Override
 	public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		var list = Optional.ofNullable(attributes)
+						   .map(item -> item.split(":"))
+						   .stream()
+						   .flatMap(Stream::of)
+						   .map(String::trim)
+						   .filter(Predicate.not(String::isBlank))
+						   .toList();
+		var view = switch (list.size())
+		{
+			case 0 -> new View(ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW, "");
+			case 1 -> new View(ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW, attributes);
+			case 2 -> new View(list.get(0), list.get(1));
+			default -> throw new IllegalArgumentException("Malformed attributes. Expected format: [view-name:]a1,a2,...");
+		};
+		var basicFileAttributes = switch (view.name())
+		{
+			case ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW -> readAttributes(path,
+																						  ObjectBasicFileAttributes.class,
+																						  options);
+			default -> throw new UnsupportedOperationException("Unsupported file attributes view: %s".formatted(view.name));
+		};
+		var excludedMethods = Stream.of(Object.class.getDeclaredMethods())
+									.map(Method::getName)
+									.collect(Collectors.toSet());
+		var methods = Stream.of(basicFileAttributes.getClass().getDeclaredMethods())
+							.filter(Predicate.<Method>not(item -> excludedMethods.contains(item.getName())))
+							.filter(item -> Modifier.isPublic(item.getModifiers()))
+							.filter(Predicate.not(Method::isBridge))
+							.collect(Collectors.toSet());
+		var includedMethods = new HashSet<>();
+		includedMethods.addAll(view.attributes.equals("*")
+			? methods.stream().map(Method::getName).toList()
+			: Stream.of(view.attributes.split(","))
+					.filter(Predicate.not(String::isEmpty))
+					.toList());
+		var reference = new AtomicReference<Exception>();
+		var result = methods.stream()
+							.filter(item -> includedMethods.contains(item.getName()))
+							.collect(Collectors.toMap(Method::getName,
+													  item -> Try.to(() -> item.invoke(basicFileAttributes))
+																 .onCatch(reference::set)
+																 .get()));
+		Case.of(reference.get())
+			.when(Objects::nonNull)
+			.thenHandle(ExceptionsHelper::throwIoException);
+		return result;
 	}
 
 	@Override
 	public void setAttribute(Path path, String attribute, Object value, LinkOption... options)
 		throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException("Metadata of an S3 object cannot be modified once it has been created.");
 	}
 
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
@@ -356,7 +394,7 @@ public class S3FileSystemProvider
 	{
 		var fileSystem = bucketPath.getFileSystem();
 		var awsFacade = fileSystem.awsFacade();
-		var bucketName = fileSystem.getFileStores().iterator().next().name();
+		var bucketName = Try.to(() -> getFileStore(bucketPath)).get().name();
 		var objectKey = bucketPath.toString();
 		return new ObjectBasicFileAttributeView(awsFacade, bucketName, objectKey);
 	}
@@ -375,11 +413,26 @@ public class S3FileSystemProvider
 		return reference.get();
 	}
 
-	private RuntimeException invalidPath(Path path)
+	private void executeCopy(Path source, Path target, CopyOption... options) throws IOException
 	{
-		return Optional.ofNullable(path)
-					   .map(this::unsupportedPath)
-					   .orElseGet(() -> new NullPointerException("Missing path"));
+		var sourcePath = validatePath(source).toRealPath(LinkOption.NOFOLLOW_LINKS);
+		var targetPath = validatePath(target);
+		Evaluator.when(() -> CopyFlag.IS_REPLACEABLE.matches(Set.of(options)))
+				 .then(() -> Files.deleteIfExists(targetPath))
+				 .elseWhen(() -> Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS))
+				 .thenThrow(() -> new FileAlreadyExistsException(targetPath.toString()));
+		CopyFile.from(sourcePath).to(targetPath);
+	}
+
+	private BucketPath validatePath(Path path)
+	{
+		if (path instanceof BucketPath bucketPath)
+		{
+			return bucketPath;
+		}
+		throw Optional.ofNullable(path)
+					  .map(this::unsupportedPath)
+					  .orElseGet(() -> new NullPointerException("Missing path."));
 	}
 
 	private RuntimeException unsupportedPath(Path path)
@@ -398,8 +451,41 @@ public class S3FileSystemProvider
 		return new UnsupportedOperationException(attributesMessage);
 	}
 
+	private static final class CopyFile
+	{
+
+		private final FileTransfer fileTransfer;
+
+		public CopyFile(FileTransfer fileTransfer)
+		{
+			this.fileTransfer = fileTransfer;
+		}
+
+		public static CopyFile from(BucketPath path)
+		{
+			var fileSystem = path.getFileSystem();
+			var bucketName = fileSystem.bucketName();
+			var key = path.toString();
+			var fileTransfer = fileSystem.awsFacade().fileTransfer(bucketName, key);
+			return new CopyFile(fileTransfer);
+		}
+
+		public void to(BucketPath path) throws IOException
+		{
+			var fileSystem = path.getFileSystem();
+			var bucketName = fileSystem.bucketName();
+			var key = path.toString();
+			fileSystem.awsFacade().receiveFile(bucketName, key, fileTransfer);
+		}
+	}
+
 	private static record FileAttributeViewFactory<F extends FileAttributeView>(Class<F> fileAttributeViewType,
 																				Function<BucketPath, F> factory)
+	{
+
+	}
+
+	private static record View(String name, String attributes)
 	{
 
 	}

@@ -29,7 +29,6 @@ import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
-import it.mirkoscotti.nio.s3.records.OperationRecord;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -164,6 +163,20 @@ public final class S3Connector
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 	}
 
+	public boolean isNotEmptyDirectory(String bucketName, String key)
+	{
+		var separator = BucketDescriptor.PATH_SEPARATOR;
+		var prefix = key.endsWith(separator) ? key : key.concat(separator);
+		return Try.to(() -> client.listObjectsV2(item -> item.bucket(bucketName)
+															 .prefix(prefix)
+															 .maxKeys(2))
+								  .thenApply(item -> item.contents().size() == 2)
+								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .get(30, TimeUnit.SECONDS))
+				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .get();
+	}
+
 	public Iterator<String> scanDirectory(String bucketName, String prefix)
 	{
 		return new DirectoryIterator(client, bucketName, prefix);
@@ -210,10 +223,29 @@ public final class S3Connector
 		   .run();
 	}
 
+	public void deleteObject(String bucketName, String key)
+	{
+		Try.to(() -> client.deleteObject(item -> item.bucket(bucketName).key(key))
+						   .exceptionally(ExceptionsHelper::sneakyThrow)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(ExceptionsHelper::sneakyThrow)
+		   .run();
+	}
+
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
-		var operationRecord = new OperationRecord(client, bucketName, key);
-		return new MultipartWriter(operationRecord);
+		return new MultipartWriter(client, bucketName, key);
+	}
+
+	public FileTransfer fileTransfer(String bucketName, String key)
+	{
+		return new FileTransfer(client, bucketName, key);
+	}
+
+	public void receiveFile(String bucketName, String key, FileTransfer fileTransfer)
+		throws IOException
+	{
+		fileTransfer.transfer(client, bucketName, key);
 	}
 
 	private void configureBucket(BucketDescriptor bucketDescriptor, Builder builder)

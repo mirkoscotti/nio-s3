@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
@@ -82,6 +83,11 @@ public class AwsFacade
 		return s3.get().listObjects(bucketName, key, pageSize);
 	}
 
+	public boolean isNotEmptyDirectory(String bucketName, String key)
+	{
+		return s3.get().isNotEmptyDirectory(bucketName, key);
+	}
+
 	public Iterator<String> scanDirectory(String bucketName, String prefix)
 	{
 		return s3.get().scanDirectory(bucketName, prefix);
@@ -107,9 +113,25 @@ public class AwsFacade
 		s3.get().writeObject(bucketName, key, content);
 	}
 
+	public void deleteObject(String bucketName, String key)
+	{
+		s3.get().deleteObject(bucketName, key);
+	}
+
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
 		return s3.get().startMultipartUpload(bucketName, key);
+	}
+
+	public FileTransfer fileTransfer(String bucketName, String key)
+	{
+		return s3.get().fileTransfer(bucketName, key);
+	}
+
+	public void receiveFile(String bucketName, String key, FileTransfer fileTransfer)
+		throws IOException
+	{
+		s3.get().receiveFile(bucketName, key, fileTransfer);
 	}
 
 	private <T extends AwsConnectorBuilder<T, ?, C, ?>,

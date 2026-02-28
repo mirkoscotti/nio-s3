@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.helpers;
 
+import java.io.IOException;
 import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -31,6 +32,13 @@ public final class ExceptionsHelper
 			case NoSuchBucketException exception -> new FileSystemNotFoundException(exception.getMessage());
 			default -> toAwsServiceException(throwable);
 		};
+	}
+
+	public static IOException throwIoException(Exception exception) throws IOException
+	{
+		throw exception instanceof IOException ioException
+			? ioException
+			: new IOException(exception);
 	}
 
 	public static AwsServiceException toAwsServiceException(Throwable throwable)

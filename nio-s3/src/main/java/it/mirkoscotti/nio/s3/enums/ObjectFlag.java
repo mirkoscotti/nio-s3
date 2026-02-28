@@ -27,8 +27,7 @@ public enum ObjectFlag
 		public boolean matches(Set<? extends OpenOption> options)
 		{
 			return options == null
-				|| Stream.of(StandardOpenOption.READ,
-							 StandardOpenOption.WRITE,
+				|| Stream.of(StandardOpenOption.READ, StandardOpenOption.WRITE,
 							 StandardOpenOption.APPEND)
 						 .noneMatch(options::contains)
 				|| super.matches(options);
@@ -50,9 +49,6 @@ public enum ObjectFlag
 
 	private final Predicate<Set<? extends OpenOption>> predicate;
 
-	/**
-	 * @param predicate
-	 */
 	private ObjectFlag(Predicate<Set<? extends OpenOption>> predicate)
 	{
 		this.predicate = predicate;
