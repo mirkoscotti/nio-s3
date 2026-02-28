@@ -28,6 +28,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -326,18 +327,14 @@ public class S3FileSystemProvider
 	{
 		var list = Optional.ofNullable(attributes)
 						   .map(item -> item.split(":"))
-						   .filter(item -> item.length < 3)
 						   .stream()
 						   .flatMap(Stream::of)
 						   .map(String::trim)
 						   .filter(Predicate.not(String::isBlank))
 						   .toList();
-		record View(String name, String attributes)
-		{
-
-		}
 		var view = switch (list.size())
 		{
+			case 0 -> new View(ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW, "");
 			case 1 -> new View(ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW, attributes);
 			case 2 -> new View(list.get(0), list.get(1));
 			default -> throw new IllegalArgumentException("Malformed attributes. Expected format: [view-name:]a1,a2,...");
@@ -347,21 +344,32 @@ public class S3FileSystemProvider
 			case ObjectBasicFileAttributeView.BASIC_FILE_ATTRIBUTE_VIEW -> readAttributes(path,
 																						  ObjectBasicFileAttributes.class,
 																						  options);
-			default -> new UnsupportedOperationException("Unsupported file attributes view: %s".formatted(view.name));
+			default -> throw new UnsupportedOperationException("Unsupported file attributes view: %s".formatted(view.name));
 		};
-		var excludedMethods = Set.of(Stream.of(Object.class.getMethods())
-										   .map(Method::getName)
-										   .toArray(String[]::new));
+		var excludedMethods = Stream.of(Object.class.getDeclaredMethods())
+									.map(Method::getName)
+									.collect(Collectors.toSet());
+		var methods = Stream.of(basicFileAttributes.getClass().getDeclaredMethods())
+							.filter(Predicate.<Method>not(item -> excludedMethods.contains(item.getName())))
+							.filter(item -> Modifier.isPublic(item.getModifiers()))
+							.filter(Predicate.not(Method::isBridge))
+							.collect(Collectors.toSet());
+		var includedMethods = new HashSet<>();
+		includedMethods.addAll(view.attributes.equals("*")
+			? methods.stream().map(Method::getName).toList()
+			: Stream.of(view.attributes.split(","))
+					.filter(Predicate.not(String::isEmpty))
+					.toList());
 		var reference = new AtomicReference<Exception>();
-		var result = Stream.of(basicFileAttributes.getClass().getMethods())
-						   .filter(Predicate.<Method>not(item -> excludedMethods.contains(item.getName()))
-											.and(item -> Modifier.isPublic(item.getModifiers())))
-						   .collect(Collectors.toMap(Method::getName,
-													 item -> Try.to(() -> item.invoke(basicFileAttributes))
-																.onCatch(reference::set)
-																.get()));
-		var exception = reference.get();
-		Case.of(exception).when(Objects::nonNull).thenHandle(ExceptionsHelper::throwIoException);
+		var result = methods.stream()
+							.filter(item -> includedMethods.contains(item.getName()))
+							.collect(Collectors.toMap(Method::getName,
+													  item -> Try.to(() -> item.invoke(basicFileAttributes))
+																 .onCatch(reference::set)
+																 .get()));
+		Case.of(reference.get())
+			.when(Objects::nonNull)
+			.thenHandle(ExceptionsHelper::throwIoException);
 		return result;
 	}
 
@@ -473,6 +481,11 @@ public class S3FileSystemProvider
 
 	private static record FileAttributeViewFactory<F extends FileAttributeView>(Class<F> fileAttributeViewType,
 																				Function<BucketPath, F> factory)
+	{
+
+	}
+
+	private static record View(String name, String attributes)
 	{
 
 	}

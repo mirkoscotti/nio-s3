@@ -431,11 +431,11 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void readFileAttributesTest(@Mock BucketFileSystem fileSystem,
-								@Mock BucketFileStore fileStore,
-								@Mock AwsRecord awsRecord,
-								@Mock LazyReference<S3Connector> reference,
-								@Mock S3Connector connector)
+	void readAttributesByTypeTest(@Mock BucketFileSystem fileSystem,
+								  @Mock BucketFileStore fileStore,
+								  @Mock AwsRecord awsRecord,
+								  @Mock LazyReference<S3Connector> reference,
+								  @Mock S3Connector connector)
 	{
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
@@ -447,6 +447,14 @@ class S3FileSystemProviderTest
 			Assertions.assertDoesNotThrow(() -> fileSystemProvider.readAttributes(path,
 																				  ObjectBasicFileAttributes.class));
 		}
+	}
+
+	@Test
+	void readMalformedAttributesTest()
+	{
+		var fileSystemProvider = new S3FileSystemProvider();
+		Assertions.assertThrows(IllegalArgumentException.class,
+								() -> fileSystemProvider.readAttributes(path, "a:b:c"));
 	}
 
 	@Test

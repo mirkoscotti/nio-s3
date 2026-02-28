@@ -2,6 +2,7 @@ package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
@@ -11,9 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.Random;
+import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -290,11 +296,88 @@ class S3FileSystemProviderIT
 		}
 	}
 
+	@Test
+	void readEmptyAttributesTest()
+	{
+		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
+		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
+		var result = JunitHelper.tryCall(() -> Files.readAttributes(source, ""));
+		Assertions.assertTrue(result.isEmpty());
+	}
+
+	@Test
+	void readAllAttributesTest()
+	{
+		readAllAttributes("");
+	}
+
+	@Test
+	void readAllAttributesWithViewNameTest()
+	{
+		readAllAttributes("basic:");
+	}
+
+	@Test
+	void readAllAttributesFromUnsupportedViewTest()
+	{
+		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
+		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
+		JunitHelper.tryCall(() -> Assertions.assertThrows(UnsupportedOperationException.class,
+														  () -> Files.readAttributes(source,
+																					 "unsupported:*")));
+	}
+
+	@Test
+	void readFilteredAttributesTest()
+	{
+		readFilteredAttributes("");
+	}
+
+	@Test
+	void readFilteredAttributesWithViewNameTest()
+	{
+		readFilteredAttributes("basic:");
+	}
+
+	@Test
+	void readUnsupportedAttributesWithViewNameTest()
+	{
+		readFilteredAttributes("basic:");
+	}
+
 	private static Path createSourceFile(String fileName, long size) throws IOException
 	{
 		var result = baseDirectory.resolve(fileName);
 		IoHelper.createNotEmptyFile(result, size);
 		return result;
+	}
+
+	private void readAllAttributes(String viewName)
+	{
+		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
+		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
+		var result = JunitHelper.tryCall(() -> Files.readAttributes(source, viewName.concat("*")));
+		Stream.of(BasicFileAttributes.class.getDeclaredMethods())
+			  .forEach(item -> Assertions.assertTrue(result.containsKey(item.getName())));
+	}
+
+	private void readFilteredAttributes(String viewName)
+	{
+		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
+		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
+		var random = Random.from(RandomGenerator.getDefault());
+		var methods = BasicFileAttributes.class.getDeclaredMethods();
+		var list = Stream.of(methods)
+						 .filter(item -> random.nextBoolean())
+						 .map(Method::getName)
+						 .toList();
+		var attributes = viewName.concat(String.join(",", list.toArray(String[]::new)));
+		var result = JunitHelper.tryCall(() -> Files.readAttributes(source, attributes));
+		list.forEach(item -> Assertions.assertTrue(result.containsKey(item)));
+		Stream.of(methods)
+			  .map(Method::getName)
+			  .filter(Predicate.not(list::contains))
+			  .forEach(item -> Assertions.assertFalse(result.containsKey(item)));
 	}
 
 	private void assertChecksum(InputStream stream, int size, String result)
