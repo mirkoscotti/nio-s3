@@ -1,9 +1,5 @@
 package it.mirkoscotti.nio.s3.configuration;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
-
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +12,10 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
+import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.regions.Region;
 

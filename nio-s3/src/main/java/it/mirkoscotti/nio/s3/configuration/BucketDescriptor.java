@@ -1,12 +1,5 @@
 package it.mirkoscotti.nio.s3.configuration;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.AwsRecord;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
-
 import java.net.URI;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -17,6 +10,13 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
+import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
+import it.mirkoscotti.nio.s3.records.AwsRecord;
+import it.mirkoscotti.nio.s3.records.BucketRecord;
+import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.regions.Region;
 
