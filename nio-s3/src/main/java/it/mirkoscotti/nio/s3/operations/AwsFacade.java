@@ -134,6 +134,11 @@ public class AwsFacade
 		s3.get().receiveFile(bucketName, key, fileTransfer);
 	}
 
+	public AwsRecord awsRecord()
+	{
+		return awsRecord;
+	}
+
 	private <T extends AwsConnectorBuilder<T, ?, C, ?>,
 			 C extends AwsConnector> C createConnector(Supplier<T> builder)
 	{

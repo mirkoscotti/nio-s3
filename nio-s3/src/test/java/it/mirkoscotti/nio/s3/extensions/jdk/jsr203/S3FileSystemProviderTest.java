@@ -15,7 +15,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -60,10 +62,10 @@ class S3FileSystemProviderTest
 																													   BucketFileSystem.class);
 
 	@SuppressWarnings("unchecked")
-	private final Map<AwsRecord, AwsFacade> facadeCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
-																										Map.class,
-																										AwsRecord.class,
-																										AwsFacade.class);
+	private final Map<AwsRecord, AwsFacade> facadesCache = JunitHelper.findStaticFieldValueByGenericType(S3FileSystemProvider.class,
+																										 Map.class,
+																										 AwsRecord.class,
+																										 AwsFacade.class);
 
 	@Mock
 	private BucketRecord bucketKey;
@@ -78,7 +80,7 @@ class S3FileSystemProviderTest
 	void afterEach()
 	{
 		fileSystemsCache.clear();
-		facadeCache.clear();
+		facadesCache.clear();
 	}
 
 	@Test
@@ -112,7 +114,7 @@ class S3FileSystemProviderTest
 				JunitHelper.findStaticFieldValues(S3FileSystemProvider.class, Map.class)
 						   .forEach(item -> Assertions.assertEquals(1, item.size()));
 				Assertions.assertEquals(fileSystem, fileSystemsCache.values().iterator().next());
-				Assertions.assertEquals(awsFacade, facadeCache.values().iterator().next());
+				Assertions.assertEquals(awsFacade, facadesCache.values().iterator().next());
 				var fileSystemFacade = JunitHelper.findFieldValueByType(fileSystem,
 																		AwsFacade.class);
 				Assertions.assertEquals(awsFacade, fileSystemFacade);
@@ -168,7 +170,7 @@ class S3FileSystemProviderTest
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
 			fileSystemsCache.put(bucketKey, fileSystem);
-			facadeCache.put(connectorKey, awsFacade);
+			facadesCache.put(connectorKey, awsFacade);
 			var currentFileSystem = fileSystemProvider.getFileSystem(uri);
 			Assertions.assertEquals(fileSystem, currentFileSystem);
 		}
@@ -463,6 +465,55 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		Assertions.assertThrows(UnsupportedOperationException.class,
 								() -> fileSystemProvider.setAttribute(path, "attribute", object));
+	}
+
+	@Test
+	void closeFileSystemTest(@Mock AwsFacade awsFacade, @Mock AwsRecord awsRecord)
+	{
+		Mockito.when(awsFacade.awsRecord()).thenReturn(awsRecord);
+		Mockito.when(awsRecord.endpoint()).thenReturn(Optional.empty());
+		var fileSystemProvider = new S3FileSystemProvider();
+		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
+		{
+			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem);
+			facadesCache.put(awsRecord, awsFacade);
+			fileSystemProvider.closeFileSystem(fileSystem);
+			Assertions.assertTrue(fileSystemsCache.isEmpty());
+			Assertions.assertTrue(facadesCache.isEmpty());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void closeFileSystemWithoutRemovingFacadeTest(@Mock AwsFacade awsFacade,
+												  @Mock AwsRecord awsRecord)
+	{
+		Mockito.when(awsFacade.awsRecord()).thenReturn(awsRecord);
+		Mockito.when(awsRecord.endpoint()).thenReturn(Optional.empty());
+		var fileSystemProvider = new S3FileSystemProvider();
+		try (var fileSystem1 = Mockito.mock(BucketFileSystem.class);
+			 var fileSystem2 = Mockito.mock(BucketFileSystem.class))
+		{
+			var bucketName1 = "bucket";
+			Mockito.when(fileSystem1.bucketName()).thenReturn(bucketName1);
+			Stream.of(fileSystem1, fileSystem2)
+				  .forEach(item -> Mockito.when(item.awsFacade()).thenReturn(awsFacade));
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), bucketName1), fileSystem1);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem2);
+			facadesCache.put(awsRecord, awsFacade);
+			fileSystemProvider.closeFileSystem(fileSystem1);
+			Assertions.assertFalse(fileSystemsCache.containsValue(fileSystem1));
+			Assertions.assertTrue(fileSystemsCache.containsValue(fileSystem2));
+			Assertions.assertTrue(facadesCache.containsKey(awsRecord));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 
 	private void initializeBucketDescriptor(BucketDescriptor bucketDescriptor, Context context)

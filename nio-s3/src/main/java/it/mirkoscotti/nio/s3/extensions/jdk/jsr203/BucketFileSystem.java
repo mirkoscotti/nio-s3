@@ -55,8 +55,7 @@ class BucketFileSystem
 	@Override
 	public void close() throws IOException
 	{
-		// TODO Auto-generated method stub
-
+		fileSystemProvider.closeFileSystem(this);
 	}
 
 	@Override
