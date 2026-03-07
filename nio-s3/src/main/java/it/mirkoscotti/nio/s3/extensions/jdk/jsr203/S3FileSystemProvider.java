@@ -397,6 +397,13 @@ public class S3FileSystemProvider
 						  .ifPresentOrElse(item -> {}, () -> FACADES_CACHE.remove(awsRecord));
 	}
 
+	boolean isFileSystemOpen(BucketFileSystem fileSystem)
+	{
+		var awsRecord = fileSystem.awsFacade().awsRecord();
+		var bucketRecord = new BucketRecord(awsRecord.endpoint(), fileSystem.bucketName());
+		return FILE_SYSTEMS_CACHE.containsKey(bucketRecord);
+	}
+
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
 	{
 		var facadeKey = bucketDescriptor.connectorKey();

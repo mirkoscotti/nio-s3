@@ -18,6 +18,7 @@ import it.mirkoscotti.nio.s3.enums.PathSyntax;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import it.mirkoscotti.nio.s3.operations.ResourcesRegistry;
 
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
@@ -29,6 +30,8 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
 class BucketFileSystem
 	extends FileSystem
 {
+
+	private final ResourcesRegistry resourcesRegistry = new ResourcesRegistry();
 
 	private final AwsFacade awsFacade;
 
@@ -44,6 +47,7 @@ class BucketFileSystem
 		this.fileSystemProvider = fileSystemProvider;
 		var bucketName = ensureBucketExists(bucketDescriptor);
 		fileStore = new BucketFileStore(awsFacade, bucketName);
+		resourcesRegistry.registerResource(awsFacade);
 	}
 
 	@Override
@@ -55,28 +59,26 @@ class BucketFileSystem
 	@Override
 	public void close() throws IOException
 	{
+		resourcesRegistry.close();
 		fileSystemProvider.closeFileSystem(this);
 	}
 
 	@Override
 	public boolean isOpen()
 	{
-		// TODO Auto-generated method stub
-		return false;
+		return fileSystemProvider.isFileSystemOpen(this);
 	}
 
 	@Override
 	public boolean isReadOnly()
 	{
-		// TODO Auto-generated method stub
-		return false;
+		return fileStore.isReadOnly();
 	}
 
 	@Override
 	public String getSeparator()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return BucketDescriptor.PATH_SEPARATOR;
 	}
 
 	@Override
@@ -94,8 +96,7 @@ class BucketFileSystem
 	@Override
 	public Set<String> supportedFileAttributeViews()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return Set.of("basic");
 	}
 
 	@Override
@@ -119,8 +120,7 @@ class BucketFileSystem
 	@Override
 	public UserPrincipalLookupService getUserPrincipalLookupService()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("S3 is not a POSIX file system. Thus user/group do not make sense.");
 	}
 
 	@Override

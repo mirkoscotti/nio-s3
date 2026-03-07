@@ -516,6 +516,42 @@ class S3FileSystemProviderTest
 		}
 	}
 
+	@Test
+	void isFileSystemOpenTest(@Mock AwsFacade awsFacade, @Mock AwsRecord awsRecord)
+	{
+		Mockito.when(awsFacade.awsRecord()).thenReturn(awsRecord);
+		Mockito.when(awsRecord.endpoint()).thenReturn(Optional.empty());
+		var fileSystemProvider = new S3FileSystemProvider();
+		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
+		{
+			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem);
+			facadesCache.put(awsRecord, awsFacade);
+			Assertions.assertTrue(fileSystemProvider.isFileSystemOpen(fileSystem));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void isFileSystemClosedTest(@Mock AwsFacade awsFacade, @Mock AwsRecord awsRecord)
+	{
+		Mockito.when(awsFacade.awsRecord()).thenReturn(awsRecord);
+		Mockito.when(awsRecord.endpoint()).thenReturn(Optional.empty());
+		var fileSystemProvider = new S3FileSystemProvider();
+		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
+		{
+			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+			Assertions.assertFalse(fileSystemProvider.isFileSystemOpen(fileSystem));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
 	private void initializeBucketDescriptor(BucketDescriptor bucketDescriptor, Context context)
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);

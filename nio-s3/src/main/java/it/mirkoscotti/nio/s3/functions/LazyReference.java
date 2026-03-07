@@ -33,4 +33,9 @@ public class LazyReference<T>
 	{
 		return new LazyReference<>(initializer);
 	}
+
+	public boolean isPresent()
+	{
+		return value != null;
+	}
 }
