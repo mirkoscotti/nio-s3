@@ -204,8 +204,9 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void newByteChannelTest()
+	void newByteChannelTest(@Mock BucketFileSystem fileSystem)
 	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		try (var mock = Mockito.mockConstruction(BucketSeekableByteChannel.class))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();
@@ -226,8 +227,10 @@ class S3FileSystemProviderTest
 	}
 
 	@Test
-	void newDirectoryStreamTest(@Mock Filter<? super Path> filter)
+	void newDirectoryStreamTest(@Mock BucketFileSystem fileSystem,
+								@Mock Filter<? super Path> filter)
 	{
+		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
 		try (var mock = Mockito.mockConstruction(BucketDirectoryStream.class))
 		{
 			var fileSystemProvider = new S3FileSystemProvider();

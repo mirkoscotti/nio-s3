@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -108,6 +109,40 @@ class BucketFileSystemTest
 	}
 
 	@Test
+	void isFileSystemOpen()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Mockito.when(fileSystemProvider.isFileSystemOpen(Mockito.any(BucketFileSystem.class)))
+			   .thenReturn(true);
+		doWithFileSystem(item -> Assertions.assertTrue(item.isOpen()));
+	}
+
+	@Test
+	void isReadOnlyTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		try (var mock = Mockito.mockConstruction(BucketFileStore.class, this::readOnlyFileStore);
+			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
+		{
+			Assertions.assertTrue(fileSystem.isReadOnly());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void getSeparatorTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		doWithFileSystem(item -> Assertions.assertEquals("/", item.getSeparator()));
+	}
+
+	@Test
 	void getRootDirectoriesTest()
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
@@ -148,6 +183,14 @@ class BucketFileSystemTest
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	@Test
+	void supportedFileAttributeViewsTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		doWithFileSystem(this::supportedFileAttributeViewsTest);
 	}
 
 	@Test
@@ -193,6 +236,15 @@ class BucketFileSystemTest
 		{
 			Assertions.fail(x);
 		}
+	}
+
+	@Test
+	void getUserPrincipalLookupServiceTest()
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		doWithFileSystem(item -> Assertions.assertThrows(UnsupportedOperationException.class,
+														 item::getUserPrincipalLookupService));
 	}
 
 	@Test
@@ -355,12 +407,24 @@ class BucketFileSystemTest
 		doWithFileSystem(item -> Assertions.assertEquals(awsFacade, item.awsFacade()));
 	}
 
+	private void readOnlyFileStore(BucketFileStore fileStore, Context context)
+	{
+		Mockito.when(fileStore.isReadOnly()).thenReturn(true);
+	}
+
 	private void getRootDirectoriesTest(BucketFileSystem fileSystem)
 	{
 		var paths = fileSystem.getRootDirectories();
 		var list = StreamSupport.stream(paths.spliterator(), false).toList();
 		Assertions.assertEquals(1, list.size());
 		Assertions.assertEquals("/", list.get(0).toString());
+	}
+
+	private void supportedFileAttributeViewsTest(BucketFileSystem fileSystem)
+	{
+		var set = fileSystem.supportedFileAttributeViews();
+		Assertions.assertEquals(1, set.size());
+		Assertions.assertEquals("basic", set.iterator().next());
 	}
 
 	private void equalsToNullTest(BucketFileSystem fileSystem)

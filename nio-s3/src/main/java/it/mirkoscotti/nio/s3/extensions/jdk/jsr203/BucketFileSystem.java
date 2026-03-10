@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
@@ -126,7 +127,9 @@ class BucketFileSystem
 	@Override
 	public WatchService newWatchService() throws IOException
 	{
-		return new DirectoryWatchService(awsFacade);
+		var result = new DirectoryWatchService(awsFacade);
+		resourcesRegistry.registerResource(result);
+		return result;
 	}
 
 	@Override
@@ -141,6 +144,16 @@ class BucketFileSystem
 		return obj instanceof BucketFileSystem other
 			&& Objects.equals(fileSystemProvider, other.fileSystemProvider)
 			&& Objects.equals(fileStore, other.fileStore);
+	}
+
+	void registerResource(Closeable closeable)
+	{
+		resourcesRegistry.registerResource(closeable);
+	}
+
+	void unregisterResource(Closeable closeable)
+	{
+		resourcesRegistry.unregisterResource(closeable);
 	}
 
 	String bucketName()

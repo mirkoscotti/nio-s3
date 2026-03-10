@@ -73,6 +73,7 @@ class BucketSeekableByteChannel
 				default -> throw new IllegalStateException(exception);
 			}
 		}
+		path.getFileSystem().unregisterResource(this);
 	}
 
 	@Override

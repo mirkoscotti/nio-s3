@@ -181,7 +181,9 @@ public class S3FileSystemProvider
 		throws IOException
 	{
 		var bucketPath = validatePath(path);
-		return new BucketSeekableByteChannel(bucketPath, options);
+		var result = new BucketSeekableByteChannel(bucketPath, options);
+		bucketPath.getFileSystem().registerResource(result);
+		return result;
 	}
 
 	@Override
@@ -189,7 +191,9 @@ public class S3FileSystemProvider
 		throws IOException
 	{
 		var bucketPath = validatePath(dir);
-		return new BucketDirectoryStream(bucketPath, filter);
+		var result = new BucketDirectoryStream(bucketPath, filter);
+		bucketPath.getFileSystem().registerResource(result);
+		return result;
 	}
 
 	@Override

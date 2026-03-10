@@ -2,13 +2,11 @@ package it.mirkoscotti.nio.s3.operations;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Condition;
@@ -23,19 +21,15 @@ public class ResourcesRegistry
 	implements Closeable
 {
 
-	private final List<Closeable> resources = new ArrayList<>();
-
-	private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+	private final List<AtomicReference<Closeable>> resources = new CopyOnWriteArrayList<>();
 
 	@Override
 	public void close() throws IOException
 	{
 		var reference = new AtomicReference<Exception>();
 		resources.stream()
-				 .filter(item -> reference.get() != null)
-				 .forEach(item -> Try.to(() -> unregisterResource(item))
-									 .onCatch(reference::set)
-									 .run());
+				 .filter(item -> reference.get() == null)
+				 .forEach(item -> Try.to(() -> close(item)).onCatch(reference::set).run());
 		Case.of(reference.get())
 			.when(Condition.not(Objects::isNull))
 			.thenHandle(ExceptionsHelper::throwIoException);
@@ -43,31 +37,20 @@ public class ResourcesRegistry
 
 	public Void registerResource(Closeable resource)
 	{
-		var lock = readWriteLock.writeLock();
-		lock.lock();
-		try
-		{
-			Optional.ofNullable(resource).ifPresent(resources::add);
-			return null;
-		}
-		finally
-		{
-			lock.unlock();
-		}
+		Optional.ofNullable(resource).map(AtomicReference::new).ifPresent(resources::add);
+		return null;
 	}
 
-	public Void unregisterResource(Closeable resource) throws IOException
+	public Void unregisterResource(Closeable resource)
 	{
-		var lock = readWriteLock.writeLock();
-		lock.lock();
-		try
-		{
-			Case.of(resource).when(resources::remove).thenHandle(Closeable::close);
-			return null;
-		}
-		finally
-		{
-			lock.unlock();
-		}
+		resources.removeIf(item -> item.compareAndSet(resource, null));
+		return null;
 	}
+
+	private Void close(AtomicReference<Closeable> closeable) throws IOException
+	{
+		Case.of(closeable.getAndSet(null)).when(Objects::nonNull).thenHandle(Closeable::close);
+		return null;
+	}
+
 }
