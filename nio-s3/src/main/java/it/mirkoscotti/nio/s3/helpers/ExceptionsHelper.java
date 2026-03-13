@@ -34,7 +34,7 @@ public final class ExceptionsHelper
 		};
 	}
 
-	public static IOException throwIoException(Exception exception) throws IOException
+	public static <T> T throwIoException(Exception exception) throws IOException
 	{
 		throw exception instanceof IOException ioException
 			? ioException

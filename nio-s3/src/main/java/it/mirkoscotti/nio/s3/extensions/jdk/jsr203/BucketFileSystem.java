@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.PathSyntax;
@@ -31,6 +32,8 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
 class BucketFileSystem
 	extends FileSystem
 {
+
+	private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
 	private final ResourcesRegistry resourcesRegistry = new ResourcesRegistry();
 
@@ -60,8 +63,10 @@ class BucketFileSystem
 	@Override
 	public void close() throws IOException
 	{
+		isClosing.compareAndSet(false, true);
 		resourcesRegistry.close();
 		fileSystemProvider.closeFileSystem(this);
+		isClosing.compareAndSet(true, false);
 	}
 
 	@Override
@@ -154,6 +159,11 @@ class BucketFileSystem
 	void unregisterResource(Closeable closeable)
 	{
 		resourcesRegistry.unregisterResource(closeable);
+	}
+
+	boolean isClosing()
+	{
+		return isClosing.get();
 	}
 
 	String bucketName()

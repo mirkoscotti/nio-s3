@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,6 +75,10 @@ class MultipartWriterIT
 			var uploadId = JunitHelper.findFieldValueByName(writer, "uploadId", String.class);
 			Assertions.assertNotNull(uploadId);
 		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 
 	@Test
@@ -83,6 +88,10 @@ class MultipartWriterIT
 		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
 		}
 		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
 		var output = baseDirectory.resolve(TEST_FILE);
@@ -102,6 +111,10 @@ class MultipartWriterIT
 		{
 			writer.write(part.getBytes(StandardCharsets.UTF_8));
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
 		}
 		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
 		var output = baseDirectory.resolve(TEST_FILE);

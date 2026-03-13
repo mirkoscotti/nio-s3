@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
@@ -43,7 +44,8 @@ class BucketWritableByteChannelTest
 	@Test
 	void isOpenTest()
 	{
-		var writableByteChannel = new BucketWritableByteChannel(awsFacade, path);
+		var writableByteChannel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
+																						  path));
 		try (var channel = writableByteChannel)
 		{
 			Assertions.assertTrue(channel.isOpen());

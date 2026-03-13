@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.operations;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.ArrayList;
@@ -10,9 +11,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import it.mirkoscotti.nio.s3.functions.Case;
+import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
 
@@ -54,6 +58,8 @@ public final class MultipartWriter
 
 	private final String uploadId;
 
+	private boolean mustAbort = false;
+
 	/**
 	 * @param client
 	 */
@@ -66,9 +72,11 @@ public final class MultipartWriter
 	}
 
 	@Override
-	public void close()
+	public void close() throws IOException
 	{
-		Try.to(this::completeUpload).onCatch(this::cancelUpload).run();
+		Evaluator.when(() -> mustAbort)
+				 .then(this::cancelUpload)
+				 .elseExecute(() -> Try.to(this::completeUpload).onCatch(this::cancelUpload).run());
 	}
 
 	public void write(byte[] buffer)
@@ -95,6 +103,11 @@ public final class MultipartWriter
 	public long bytesWritten()
 	{
 		return bytesWritten.stream().collect(Collectors.summingLong(Long::longValue));
+	}
+
+	public void mustAbort()
+	{
+		mustAbort = true;
 	}
 
 	private String createUploadId()
@@ -172,9 +185,16 @@ public final class MultipartWriter
 		}
 	}
 
-	private Void cancelUpload() throws TimeoutException, ExecutionException, InterruptedException
+	private Void cancelUpload() throws IOException
 	{
-		client.abortMultipartUpload(this::createAbortMultipartRequest).get(30, TimeUnit.SECONDS);
+		var reference = new AtomicReference<Exception>();
+		Try.to(() -> client.abortMultipartUpload(this::createAbortMultipartRequest)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(reference::set)
+		   .run();
+		Case.of(reference.get())
+			.when(Objects::nonNull)
+			.thenHandle(ExceptionsHelper::throwIoException);
 		return null;
 	}
 
