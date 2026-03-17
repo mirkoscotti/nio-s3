@@ -5,13 +5,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.platform.commons.function.Try;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -56,20 +54,14 @@ class BucketPathIT
 	void registerTest()
 	{
 		var pattern = "s3://%s:%s@test-bucket.s3.%s.localstack.cloud:%d/directory/";
-		var uri = pattern.formatted(CONTAINER.getAccessKey(),
-									CONTAINER.getSecretKey(),
-									CONTAINER.getHost(),
-									CONTAINER.getFirstMappedPort());
+		var uri = pattern.formatted(CONTAINER.getAccessKey(), CONTAINER.getSecretKey(),
+									CONTAINER.getHost(), CONTAINER.getFirstMappedPort());
 		var path = Paths.get(URI.create(uri));
-		var watchService = Try.call(() -> path.getFileSystem().newWatchService())
-							  .toOptional()
-							  .orElseGet(Assertions::fail);
-		var watchKey = Try.call(() -> path.register(watchService,
-													StandardWatchEventKinds.ENTRY_CREATE,
-													StandardWatchEventKinds.ENTRY_MODIFY,
-													StandardWatchEventKinds.ENTRY_DELETE))
-						  .toOptional()
-						  .orElseGet(Assertions::fail);
+		var watchService = JunitHelper.tryCall(() -> path.getFileSystem().newWatchService());
+		var watchKey = JunitHelper.tryCall(() -> path.register(watchService,
+															   StandardWatchEventKinds.ENTRY_CREATE,
+															   StandardWatchEventKinds.ENTRY_MODIFY,
+															   StandardWatchEventKinds.ENTRY_DELETE));
 		System.out.println();
 	}
 }
