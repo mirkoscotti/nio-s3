@@ -18,21 +18,43 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
  * @author mirko.scotti
  * @version Mar 10, 2026
  */
+@SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
 class ResourcesRegistryTest
 {
 
+	@Mock
+	private Closeable closeable;
+
 	@Test
-	@SuppressWarnings("unchecked")
-	void closeFailedTest(@Mock Closeable closeable)
+	void closeTest()
 	{
 		var registry = new ResourcesRegistry();
 		try
 		{
-			Mockito.doThrow(IOException.class).when(closeable).close();
 			var list = JunitHelper.findFieldValueByType(registry, List.class);
 			list.add(new AtomicReference<>(closeable));
+			registry.close();
+			Mockito.verify(closeable, Mockito.atLeastOnce()).close();
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void closeFailedTest(@Mock Closeable otherCloseable)
+	{
+		var registry = new ResourcesRegistry();
+		try
+		{
+			Mockito.doThrow(IOException.class).when(otherCloseable).close();
+			var list = JunitHelper.findFieldValueByType(registry, List.class);
+			list.add(new AtomicReference<>(otherCloseable));
+			list.add(new AtomicReference<>(closeable));
 			Assertions.assertThrows(IOException.class, registry::close);
+			Mockito.verify(closeable, Mockito.never()).close();
 		}
 		catch (Exception x)
 		{
