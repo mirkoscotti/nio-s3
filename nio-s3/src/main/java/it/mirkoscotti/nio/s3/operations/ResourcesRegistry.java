@@ -37,7 +37,9 @@ public class ResourcesRegistry
 
 	public Void registerResource(Closeable resource)
 	{
-		Optional.ofNullable(resource).map(AtomicReference::new).ifPresent(resources::add);
+		Optional.ofNullable(resource)
+				.map(AtomicReference::new)
+				.ifPresent(item -> resources.add(0, item));
 		return null;
 	}
 
