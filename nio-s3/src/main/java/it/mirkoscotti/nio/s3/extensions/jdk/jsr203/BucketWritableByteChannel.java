@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -127,7 +126,7 @@ class BucketWritableByteChannel
 		var reference = new AtomicReference<IOException>();
 		var position = input.position();
 		Stream.iterate(input, UnaryOperator.identity())
-			  .takeWhile(item -> item.hasRemaining() && Objects.isNull(reference.get()))
+			  .takeWhile(item -> item.hasRemaining() && reference.get() == null)
 			  .forEach(item -> writeRemaining(item, reference));
 		var exception = reference.get();
 		Case.of(exception).whenNotNull().thenThrow(() -> exception);
@@ -190,7 +189,7 @@ class BucketWritableByteChannel
 		if (buffer.hasRemaining())
 		{
 			startMultipartUpload();
-			Case.of(multipartWriter).whenNotNull().thenHandle(item -> item.write(array));
+			multipartWriter.write(array);
 		}
 		else
 		{

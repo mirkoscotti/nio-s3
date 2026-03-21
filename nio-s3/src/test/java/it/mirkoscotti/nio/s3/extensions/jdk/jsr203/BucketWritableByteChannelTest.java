@@ -5,6 +5,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import it.mirkoscotti.nio.s3.operations.MultipartWriter;
 
 /**
  * @author mirko.scotti
@@ -25,14 +27,16 @@ import it.mirkoscotti.nio.s3.operations.AwsFacade;
 class BucketWritableByteChannelTest
 {
 
+	private static final int MULTIPART_THRESHOLD = 10 * 1024 * 1024;
+
 	@Mock
 	private AwsFacade awsFacade;
 
 	@Mock
-	private BucketPath path;
+	private BucketFileSystem fileSystem;
 
 	@Mock
-	private BucketFileSystem fileSystem;
+	private BucketPath path;
 
 	@BeforeEach
 	void beforeEach()
@@ -55,5 +59,38 @@ class BucketWritableByteChannelTest
 			Assertions.fail(x);
 		}
 		Assertions.assertFalse(writableByteChannel.isOpen());
+	}
+
+	@Test
+	void ioExceptionWhileWritingTest(@Mock MultipartWriter writer)
+	{
+		var buffer = ByteBuffer.wrap(new byte[MULTIPART_THRESHOLD + 1]);
+		Mockito.when(awsFacade.startMultipartUpload(Mockito.anyString(), Mockito.anyString()))
+			   .thenReturn(writer);
+		try (var channel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
+																				   path)))
+		{
+			Mockito.doThrow(IOException.class).doNothing().when(writer).write(Mockito.any());
+			Assertions.assertThrows(IOException.class, () -> channel.write(buffer));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	void writeThresholdBufferTest()
+	{
+		var buffer = ByteBuffer.wrap(new byte[MULTIPART_THRESHOLD]);
+		try (var channel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
+																				   path)))
+		{
+			Assertions.assertEquals(MULTIPART_THRESHOLD, channel.write(buffer));
+		}
+		catch (IOException x)
+		{
+			Assertions.fail(x);
+		}
 	}
 }

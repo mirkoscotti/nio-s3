@@ -79,11 +79,21 @@ public final class MultipartWriter
 				 .elseExecute(() -> Try.to(this::completeUpload).onCatch(this::cancelUpload).run());
 	}
 
-	public void write(byte[] buffer)
+	public void write(byte[] buffer) throws IOException
 	{
-		parts.add(Try.to(() -> createCompletedPart(buffer))
-					 .onCatch(ExceptionsHelper::sneakyThrow)
-					 .get());
+		try
+		{
+			parts.add(createCompletedPart(buffer));
+		}
+		catch (TimeoutException | ExecutionException x)
+		{
+			ExceptionsHelper.throwIoException(x);
+		}
+		catch (InterruptedException x)
+		{
+			Thread.currentThread().interrupt();
+			ExceptionsHelper.throwIoException(x);
+		}
 	}
 
 	public void copy(long size)
