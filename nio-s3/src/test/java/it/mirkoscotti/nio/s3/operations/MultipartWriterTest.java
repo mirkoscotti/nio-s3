@@ -14,8 +14,10 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
@@ -99,6 +101,26 @@ class MultipartWriterTest
 		catch (Exception x)
 		{
 			Assertions.fail(x);
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void failedCloseTest(@Mock CreateMultipartUploadResponse createMultipartUploadResponse,
+						 @Mock CompleteMultipartUploadResponse completeMultipartUploadResponse)
+	{
+		Mockito.when(client.createMultipartUpload(Mockito.any(Consumer.class)))
+			   .thenReturn(CompletableFuture.completedFuture(createMultipartUploadResponse));
+		Mockito.when(createMultipartUploadResponse.uploadId()).thenReturn(UPLOAD_ID);
+		Mockito.when(client.completeMultipartUpload(Mockito.any(Consumer.class)))
+			   .thenThrow(AwsServiceException.class);
+		try (var writer = new MultipartWriter(client, BUCKET, KEY))
+		{
+			// Nothing to do
+		}
+		catch (Exception x)
+		{
+			Assertions.assertInstanceOf(AwsServiceException.class, x);
 		}
 	}
 }

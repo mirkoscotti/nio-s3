@@ -87,12 +87,12 @@ public final class MultipartWriter
 		}
 		catch (TimeoutException | ExecutionException x)
 		{
-			ExceptionsHelper.throwIoException(x);
+			throw ExceptionsHelper.toIoException(x);
 		}
 		catch (InterruptedException x)
 		{
 			Thread.currentThread().interrupt();
-			ExceptionsHelper.throwIoException(x);
+			throw ExceptionsHelper.toIoException(x);
 		}
 	}
 
