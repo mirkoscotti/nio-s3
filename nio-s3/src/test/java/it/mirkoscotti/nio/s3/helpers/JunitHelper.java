@@ -49,8 +49,7 @@ public final class JunitHelper
 
 	public static Field findFieldByName(Class<?> sourceClass, String fieldName)
 	{
-		return ReflectionUtils.streamFields(sourceClass,
-											item -> item.getName().equals(fieldName),
+		return ReflectionUtils.streamFields(sourceClass, item -> item.getName().equals(fieldName),
 											HierarchyTraversalMode.TOP_DOWN)
 							  .findAny()
 							  .orElseThrow(() -> new IllegalArgumentException("Expected one field named %s in class %s, not found.".formatted(fieldName,
@@ -70,8 +69,7 @@ public final class JunitHelper
 
 	public static Field findFieldByType(Class<?> sourceClass, Class<?> fieldType)
 	{
-		var list = ReflectionUtils.findFields(sourceClass,
-											  item -> item.getType() == fieldType,
+		var list = ReflectionUtils.findFields(sourceClass, item -> item.getType() == fieldType,
 											  HierarchyTraversalMode.TOP_DOWN);
 		return Optional.of(list)
 					   .filter(item -> item.size() == 1)
@@ -95,17 +93,30 @@ public final class JunitHelper
 																																			  list.size())));
 	}
 
+	public static Field findFieldByGenericType(Class<?> sourceClass,
+											   Class<?> fieldType,
+											   Class<?>... arguments)
+	{
+		var list = ReflectionUtils.findFields(sourceClass, item -> item.getType() == fieldType
+			&& item.getGenericType() instanceof ParameterizedType parameterizedType
+			&& matchesParameters(parameterizedType, arguments), HierarchyTraversalMode.TOP_DOWN);
+		return Optional.of(list)
+					   .filter(item -> item.size() == 1)
+					   .map(item -> item.get(0))
+					   .orElseThrow(() -> new IllegalArgumentException("Expected one field of generic type %s in class %s, found %d".formatted(fieldType.getName(),
+																																			   sourceClass.getName(),
+																																			   list.size())));
+	}
+
 	public static Field findStaticFieldByGenericType(Class<?> sourceClass,
 													 Class<?> fieldType,
 													 Class<?>... arguments)
 	{
-		var list = ReflectionUtils.findFields(sourceClass,
-											  item -> Modifier.isStatic(item.getModifiers())
-												  && item.getType() == fieldType
-												  && item.getGenericType() instanceof ParameterizedType parameterizedType
-												  && matchesParameters(parameterizedType,
-																	   arguments),
-											  HierarchyTraversalMode.TOP_DOWN);
+		var list = ReflectionUtils.findFields(sourceClass, item -> Modifier
+																		   .isStatic(item.getModifiers())
+			&& item.getType() == fieldType
+			&& item.getGenericType() instanceof ParameterizedType parameterizedType
+			&& matchesParameters(parameterizedType, arguments), HierarchyTraversalMode.TOP_DOWN);
 		return Optional.of(list)
 					   .filter(item -> item.size() == 1)
 					   .map(item -> item.get(0))
@@ -141,6 +152,15 @@ public final class JunitHelper
 	{
 		var field = findFieldByType(sourceClass, fieldType);
 		var result = findStaticFieldValue(field);
+		return Assertions.assertInstanceOf(fieldType, result);
+	}
+
+	public static <T> T findFieldValueByGenericType(Object instance,
+													Class<T> fieldType,
+													Class<?>... arguments)
+	{
+		var field = findFieldByGenericType(instance.getClass(), fieldType, arguments);
+		var result = findFieldValue(instance, field);
 		return Assertions.assertInstanceOf(fieldType, result);
 	}
 

@@ -1,23 +1,22 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.IoHelper;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.platform.commons.function.Try;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import it.mirkoscotti.nio.s3.helpers.IoHelper;
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti
@@ -32,21 +31,21 @@ class BucketPathIT
 
 	private static final String DIRECTORY = "directory/";
 
-	private static final String SUB_DIRECTORY = DIRECTORY.concat("a/");
-
 	private static final String FILE = DIRECTORY.concat("test.txt");
+
+	private static final String PATTERN = "s3://%s:%s@test-bucket.s3.%s.localstack.cloud:%d";
 
 	@TempDir(cleanup = CleanupMode.ALWAYS)
 	private static Path path;
 
 	@Container
-	private static final S3Container CONTAINER = new S3Container();
+	@SuppressWarnings("resource")
+	private static final S3Container CONTAINER = new S3Container().withBucket(BUCKET_NAME);
 
 	@BeforeAll
 	static void beforeAll()
 	{
-		CONTAINER.createBucket(BUCKET_NAME);
-		CONTAINER.createObject(BUCKET_NAME, SUB_DIRECTORY);
+		CONTAINER.createObject(BUCKET_NAME, DIRECTORY);
 		var file = path.resolve("test.txt");
 		JunitHelper.tryCall(() -> IoHelper.createNotEmptyFile(file));
 		CONTAINER.createObject(BUCKET_NAME, FILE, file);
@@ -55,21 +54,16 @@ class BucketPathIT
 	@Test
 	void registerTest()
 	{
-		var pattern = "s3://%s:%s@test-bucket.s3.%s.localstack.cloud:%d/directory/";
-		var uri = pattern.formatted(CONTAINER.getAccessKey(),
-									CONTAINER.getSecretKey(),
-									CONTAINER.getHost(),
-									CONTAINER.getFirstMappedPort());
+		var uri = String.join(BucketDescriptor.PATH_SEPARATOR, PATTERN, DIRECTORY)
+						.formatted(CONTAINER.getAccessKey(), CONTAINER.getSecretKey(),
+								   CONTAINER.getHost(), CONTAINER.getFirstMappedPort());
 		var path = Paths.get(URI.create(uri));
-		var watchService = Try.call(() -> path.getFileSystem().newWatchService())
-							  .toOptional()
-							  .orElseGet(Assertions::fail);
-		var watchKey = Try.call(() -> path.register(watchService,
-													StandardWatchEventKinds.ENTRY_CREATE,
-													StandardWatchEventKinds.ENTRY_MODIFY,
-													StandardWatchEventKinds.ENTRY_DELETE))
-						  .toOptional()
-						  .orElseGet(Assertions::fail);
+		var fileSystem = path.getFileSystem();
+		var watchService = JunitHelper.tryCall(() -> path.getFileSystem().newWatchService());
+		var watchKey = JunitHelper.tryCall(() -> path.register(watchService,
+															   StandardWatchEventKinds.ENTRY_CREATE,
+															   StandardWatchEventKinds.ENTRY_MODIFY,
+															   StandardWatchEventKinds.ENTRY_DELETE));
 		System.out.println();
 	}
 }

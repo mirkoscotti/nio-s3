@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
@@ -21,6 +19,8 @@ import org.mockito.MockSettings;
 import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti

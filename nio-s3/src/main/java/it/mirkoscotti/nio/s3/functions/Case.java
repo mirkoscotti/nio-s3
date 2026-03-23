@@ -34,6 +34,11 @@ public class Case<T>
 		return new When<>(this, condition);
 	}
 
+	public When<T> whenNotNull()
+	{
+		return new When<>(this, Objects::nonNull);
+	}
+
 	public void otherwise(Handler<T> handler) throws IOException
 	{
 		var reference = new AtomicReference<IOException>();
@@ -49,6 +54,11 @@ public class Case<T>
 		{
 			throw exception;
 		}
+	}
+
+	public void otherwise(Action action) throws IOException
+	{
+		otherwise(item -> action.execute());
 	}
 
 	private void run() throws IOException

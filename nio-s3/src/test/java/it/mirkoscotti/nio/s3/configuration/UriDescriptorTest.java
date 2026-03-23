@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.configuration;
 
-import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
-
 import java.net.URI;
 
 import org.junit.jupiter.api.Assertions;
@@ -10,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
 
 /**
  * @author mirko.scotti

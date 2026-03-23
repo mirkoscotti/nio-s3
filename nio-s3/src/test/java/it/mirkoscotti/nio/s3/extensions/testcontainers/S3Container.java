@@ -42,7 +42,7 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.13.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:4.14.0".formatted(LOCALSTACK);
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 

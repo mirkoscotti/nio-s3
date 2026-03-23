@@ -41,6 +41,7 @@ class BucketDirectoryStream
 	public void close() throws IOException
 	{
 		isClosed = true;
+		directory.getFileSystem().unregisterResource(this);
 	}
 
 	@Override

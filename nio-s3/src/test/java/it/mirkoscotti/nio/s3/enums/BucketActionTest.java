@@ -1,7 +1,5 @@
 package it.mirkoscotti.nio.s3.enums;
 
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
-
 import java.lang.reflect.Field;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -11,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
+
+import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti

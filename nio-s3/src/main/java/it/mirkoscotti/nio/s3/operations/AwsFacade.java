@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.operations;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -10,6 +11,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.LazyReference;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 
@@ -20,6 +22,7 @@ import software.amazon.awssdk.regions.Region;
  * @version Dec 22, 2025
  */
 public class AwsFacade
+	implements Closeable
 {
 
 	private final AwsRecord awsRecord;
@@ -33,6 +36,14 @@ public class AwsFacade
 	private AwsFacade(AwsRecord awsRecord)
 	{
 		this.awsRecord = awsRecord;
+	}
+
+	@Override
+	public void close() throws IOException
+	{
+		Case.of(iam).when(LazyReference::isPresent).thenHandle(item -> item.get().close());
+		Case.of(s3).when(LazyReference::isPresent).thenHandle(item -> item.get().close());
+		Case.of(sts).when(LazyReference::isPresent).thenHandle(item -> item.get().close());
 	}
 
 	public static AwsFacade create(AwsRecord awsRecord)
@@ -132,6 +143,11 @@ public class AwsFacade
 		throws IOException
 	{
 		s3.get().receiveFile(bucketName, key, fileTransfer);
+	}
+
+	public AwsRecord awsRecord()
+	{
+		return awsRecord;
 	}
 
 	private <T extends AwsConnectorBuilder<T, ?, C, ?>,

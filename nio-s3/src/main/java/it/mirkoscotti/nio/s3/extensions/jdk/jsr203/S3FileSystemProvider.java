@@ -6,6 +6,7 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
+import java.nio.file.ClosedFileSystemException;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
@@ -106,7 +107,7 @@ public class S3FileSystemProvider
 
 	private static final Map<BucketRecord, BucketFileSystem> FILE_SYSTEMS_CACHE = new ConcurrentHashMap<>();
 
-	private static final Map<AwsRecord, AwsFacade> FACADE_CACHE = new ConcurrentHashMap<>();
+	private static final Map<AwsRecord, AwsFacade> FACADES_CACHE = new ConcurrentHashMap<>();
 
 	@Override
 	public String getScheme()
@@ -180,7 +181,9 @@ public class S3FileSystemProvider
 		throws IOException
 	{
 		var bucketPath = validatePath(path);
-		return new BucketSeekableByteChannel(bucketPath, options);
+		var result = new BucketSeekableByteChannel(bucketPath, options);
+		bucketPath.getFileSystem().registerResource(result);
+		return result;
 	}
 
 	@Override
@@ -188,7 +191,9 @@ public class S3FileSystemProvider
 		throws IOException
 	{
 		var bucketPath = validatePath(dir);
-		return new BucketDirectoryStream(bucketPath, filter);
+		var result = new BucketDirectoryStream(bucketPath, filter);
+		bucketPath.getFileSystem().registerResource(result);
+		return result;
 	}
 
 	@Override
@@ -380,10 +385,33 @@ public class S3FileSystemProvider
 		throw new UnsupportedOperationException("Metadata of an S3 object cannot be modified once it has been created.");
 	}
 
+	void closeFileSystem(BucketFileSystem fileSystem) throws IOException
+	{
+		var awsFacade = fileSystem.awsFacade();
+		var awsRecord = awsFacade.awsRecord();
+		var bucketRecord = new BucketRecord(awsRecord.endpoint(), fileSystem.bucketName());
+		Case.of(FILE_SYSTEMS_CACHE.remove(bucketRecord))
+			.when(Objects::isNull)
+			.thenThrow(ClosedFileSystemException::new);
+		FILE_SYSTEMS_CACHE.values()
+						  .stream()
+						  .map(BucketFileSystem::awsFacade)
+						  .filter(awsFacade::equals)
+						  .findAny()
+						  .ifPresentOrElse(item -> {}, () -> FACADES_CACHE.remove(awsRecord));
+	}
+
+	boolean isFileSystemOpen(BucketFileSystem fileSystem)
+	{
+		var awsRecord = fileSystem.awsFacade().awsRecord();
+		var bucketRecord = new BucketRecord(awsRecord.endpoint(), fileSystem.bucketName());
+		return FILE_SYSTEMS_CACHE.containsKey(bucketRecord);
+	}
+
 	private BucketFileSystem createFileSystem(BucketDescriptor bucketDescriptor)
 	{
 		var facadeKey = bucketDescriptor.connectorKey();
-		var awsFacade = FACADE_CACHE.computeIfAbsent(facadeKey, AwsFacade::create);
+		var awsFacade = FACADES_CACHE.computeIfAbsent(facadeKey, AwsFacade::create);
 		var result = new BucketFileSystem(awsFacade, bucketDescriptor, this);
 		var bucketKey = bucketDescriptor.bucketKey();
 		FILE_SYSTEMS_CACHE.put(bucketKey, result);

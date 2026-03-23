@@ -5,10 +5,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import it.mirkoscotti.nio.s3.functions.Case;
+import it.mirkoscotti.nio.s3.functions.Evaluator;
+import it.mirkoscotti.nio.s3.functions.Expression;
+import it.mirkoscotti.nio.s3.functions.Transformer;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
 
@@ -24,9 +29,9 @@ class BucketWritableByteChannel
 
 	private final ByteBuffer buffer = ByteBuffer.allocate(MULTIPART_THRESHOLD + 1);
 
-	private Optional<MultipartWriter> multipartWriter = Optional.empty();
-
 	private boolean isOpen = true;
+
+	private MultipartWriter multipartWriter;
 
 	private final AwsFacade awsFacade;
 
@@ -50,7 +55,7 @@ class BucketWritableByteChannel
 	 * Example: if the existing file contains "text123" and I write "abcd", at the end of the
 	 * session the file will contain "abcd"
 	 */
-	BucketWritableByteChannel(AwsFacade awsFacade, BucketPath path)
+	BucketWritableByteChannel(AwsFacade awsFacade, BucketPath path) throws IOException
 	{
 		this(awsFacade, path.getFileSystem().bucketName(), path.toString(), 0, false);
 	}
@@ -59,6 +64,7 @@ class BucketWritableByteChannel
 							  String bucket,
 							  ObjectBasicFileAttributes attributes,
 							  Optional<ObjectFlag> objectFlag)
+		throws IOException
 	{
 		this(awsFacade,
 			 bucket,
@@ -72,18 +78,13 @@ class BucketWritableByteChannel
 									  String key,
 									  long oldFileSize,
 									  boolean isAppendable)
+		throws IOException
 	{
 		this.awsFacade = awsFacade;
 		this.bucket = bucket;
 		this.key = key;
 		this.oldFileSize = oldFileSize;
-		if (isAppendable)
-		{
-			Optional.of(oldFileSize)
-					.filter(item -> item > MULTIPART_THRESHOLD)
-					.ifPresentOrElse(item -> startMultipartUploadAndCopy(oldFileSize),
-									 () -> buffer.put(awsFacade.readObject(bucket, key)));
-		}
+		Evaluator.when(() -> isAppendable).thenExecute(this::evaluateMultipart);
 	}
 
 	@Override
@@ -95,41 +96,55 @@ class BucketWritableByteChannel
 	@Override
 	public void close() throws IOException
 	{
-
-		var newFileSize = multipartWriter.map(item -> item.bytesWritten() + buffer.position())
-										 .orElseGet(() -> Long.valueOf(buffer.position()));
-		Optional.ofNullable(newFileSize)
-				.filter(item -> item < oldFileSize)
-				.ifPresentOrElse(this::partialOverwrite, this::flushBuffer);
+		var newFileSize = Transformer.<MultipartWriter, Long>of(multipartWriter)
+									 .whenNotNull()
+									 .then(item -> item.bytesWritten() + buffer.position())
+									 .orReturn(item -> Long.valueOf(buffer.position()));
+		Case.of(newFileSize)
+			.when(item -> item < oldFileSize)
+			.then(this::partialOverwrite)
+			.otherwise(this::flushBuffer);
 		isOpen = false;
 	}
 
 	@Override
 	public int write(ByteBuffer src) throws IOException
 	{
-		return Optional.of(this)
-					   .filter(item -> item.isOpen)
-					   .map(item -> item.writeBuffer(src))
-					   .orElseThrow(ClosedChannelException::new);
+		return Transformer.<BucketWritableByteChannel, Integer>of(this)
+						  .when(item -> item.isOpen)
+						  .then(item -> item.writeBuffer(src))
+						  .orThrow(ClosedChannelException::new);
 	}
 
-	private int writeBuffer(ByteBuffer input)
+	void mustAbort()
 	{
+		Optional.ofNullable(multipartWriter).ifPresent(MultipartWriter::mustAbort);
+	}
+
+	private int writeBuffer(ByteBuffer input) throws IOException
+	{
+		var reference = new AtomicReference<IOException>();
 		var position = input.position();
 		Stream.iterate(input, UnaryOperator.identity())
-			  .takeWhile(ByteBuffer::hasRemaining)
-			  .forEach(this::writeRemaining);
+			  .takeWhile(item -> reference.get() == null && item.hasRemaining())
+			  .forEach(item -> writeRemaining(item, reference));
+		var exception = reference.get();
+		Case.of(exception).whenNotNull().thenThrow(() -> exception);
 		return input.position() - position;
 	}
 
-	private void writeRemaining(ByteBuffer input)
+	private void writeRemaining(ByteBuffer input, AtomicReference<IOException> reference)
 	{
 		Optional.of(Math.min(input.remaining(), buffer.remaining()))
 				.filter(item -> item > 0)
 				.ifPresent(item -> writeRemaining(input, item));
-		if (!buffer.hasRemaining())
+		try
 		{
-			flushBuffer();
+			Evaluator.when(Expression.not(buffer::hasRemaining)).thenExecute(this::flushBuffer);
+		}
+		catch (IOException x)
+		{
+			reference.set(x);
 		}
 	}
 
@@ -140,36 +155,33 @@ class BucketWritableByteChannel
 		buffer.put(chunk);
 	}
 
-	private void partialOverwrite(long newFileSize)
+	private void partialOverwrite(long newFileSize) throws IOException
 	{
-		if (oldFileSize > MULTIPART_THRESHOLD)
-		{
-			multipartOverwrite(newFileSize);
-		}
-		else
-		{
-			singlepartOverwrite(newFileSize);
-		}
+		Evaluator.when(() -> oldFileSize > MULTIPART_THRESHOLD)
+				 .then(() -> multipartOverwrite(newFileSize))
+				 .elseExecute(() -> singlepartOverwrite(newFileSize));
 	}
 
-	private void singlepartOverwrite(long newFileSize)
+	private void singlepartOverwrite(long newFileSize) throws IOException
 	{
 		var array = awsFacade.readObject(bucket, key, newFileSize, oldFileSize - 1);
 		buffer.put(array);
 		flushBuffer();
 	}
 
-	private void multipartOverwrite(long newFileSize)
+	private void multipartOverwrite(long newFileSize) throws IOException
 	{
 		var remaining = buffer.remaining();
 		var startLastPart = newFileSize + remaining;
 		var array = awsFacade.readObject(bucket, key, newFileSize, startLastPart - 1);
 		buffer.put(array);
 		flushBuffer();
-		multipartWriter.ifPresent(item -> copyAndClose(item, startLastPart - 1, oldFileSize - 1));
+		Case.of(multipartWriter)
+			.whenNotNull()
+			.thenHandle(item -> copyAndClose(item, startLastPart - 1, oldFileSize - 1));
 	}
 
-	private void flushBuffer()
+	private void flushBuffer() throws IOException
 	{
 		buffer.flip();
 		var array = new byte[Math.min(buffer.remaining(), MULTIPART_THRESHOLD)];
@@ -177,43 +189,54 @@ class BucketWritableByteChannel
 		if (buffer.hasRemaining())
 		{
 			startMultipartUpload();
-			multipartWriter.ifPresent(item -> item.write(array));
+			multipartWriter.write(array);
 		}
 		else
 		{
-			multipartWriter.ifPresentOrElse(item -> writeAndClose(item, array),
-											() -> awsFacade.writeObject(bucket, key, array));
+			Case.of(multipartWriter)
+				.whenNotNull()
+				.then(item -> writeAndClose(item, array))
+				.otherwise(item -> awsFacade.writeObject(bucket, key, array));
 		}
 		buffer.compact();
 	}
 
+	private void evaluateMultipart() throws IOException
+	{
+		Case.of(oldFileSize)
+			.when(item -> item > MULTIPART_THRESHOLD)
+			.then(this::startMultipartUploadAndCopy)
+			.otherwise(() -> buffer.put(awsFacade.readObject(bucket, key)));
+	}
+
 	private void startMultipartUpload()
 	{
-		multipartWriter = multipartWriter.or(() -> Optional.of(awsFacade.startMultipartUpload(bucket,
-																							  key)));
+		multipartWriter = Optional.ofNullable(multipartWriter)
+								  .orElseGet(() -> awsFacade.startMultipartUpload(bucket, key));
 	}
 
-	private void startMultipartUploadAndCopy(long size)
+	private void startMultipartUploadAndCopy(long size) throws IOException
 	{
 		startMultipartUpload();
-		multipartWriter.ifPresent(item -> item.copy(size));
+		Case.of(multipartWriter).whenNotNull().thenHandle(item -> item.copy(size));
 	}
 
-	private void writeAndClose(MultipartWriter multipartWriter, byte[] buffer)
+	private void writeAndClose(MultipartWriter multipartWriter, byte[] buffer) throws IOException
 	{
 		try (var writer = multipartWriter)
 		{
 			writer.write(buffer);
 		}
-		this.multipartWriter = Optional.empty();
+		this.multipartWriter = null;
 	}
 
 	private void copyAndClose(MultipartWriter multipartWriter, long from, long to)
+		throws IOException
 	{
 		try (var writer = multipartWriter)
 		{
 			writer.copy(from, to);
 		}
-		this.multipartWriter = Optional.empty();
+		this.multipartWriter = null;
 	}
 }

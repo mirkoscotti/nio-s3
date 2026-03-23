@@ -21,9 +21,11 @@ class LazyReferenceTest
 	}
 
 	@Test
-	<T> void getTest(@Mock T object)
+	<T> void getAndPresentTest(@Mock T object)
 	{
 		var reference = LazyReference.of(() -> object);
+		Assertions.assertFalse(reference.isPresent());
 		Assertions.assertEquals(object, reference.get());
+		Assertions.assertTrue(reference.isPresent());
 	}
 }

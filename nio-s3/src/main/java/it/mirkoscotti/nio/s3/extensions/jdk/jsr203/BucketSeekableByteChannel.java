@@ -59,7 +59,7 @@ class BucketSeekableByteChannel
 	}
 
 	@Override
-	public void close() throws IOException
+	public synchronized void close() throws IOException
 	{
 		var readable = readableByteChannel.map(this::tryClose);
 		var writable = writableByteChannel.map(this::tryClose);
@@ -73,6 +73,7 @@ class BucketSeekableByteChannel
 				default -> throw new IllegalStateException(exception);
 			}
 		}
+		path.getFileSystem().unregisterResource(this);
 	}
 
 	@Override
@@ -156,6 +157,14 @@ class BucketSeekableByteChannel
 			result = new BucketWritableByteChannel(awsFacade, path);
 		}
 		return result;
+	}
+
+	private Exception tryClose(BucketWritableByteChannel channel)
+	{
+		Optional.of(path.getFileSystem())
+				.filter(BucketFileSystem::isClosing)
+				.ifPresent(item -> channel.mustAbort());
+		return tryClose((Closeable) channel);
 	}
 
 	private Exception tryClose(Closeable closeable)

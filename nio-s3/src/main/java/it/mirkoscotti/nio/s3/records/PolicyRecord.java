@@ -1,8 +1,5 @@
 package it.mirkoscotti.nio.s3.records;
 
-import it.mirkoscotti.nio.s3.enums.BucketAction;
-import it.mirkoscotti.nio.s3.enums.BucketEffect;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -12,6 +9,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jakarta.json.bind.annotation.JsonbProperty;
+
+import it.mirkoscotti.nio.s3.enums.BucketAction;
+import it.mirkoscotti.nio.s3.enums.BucketEffect;
 
 /**
  * @author mirko.scotti
