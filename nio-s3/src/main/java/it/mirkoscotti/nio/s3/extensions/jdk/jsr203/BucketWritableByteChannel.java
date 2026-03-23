@@ -126,7 +126,7 @@ class BucketWritableByteChannel
 		var reference = new AtomicReference<IOException>();
 		var position = input.position();
 		Stream.iterate(input, UnaryOperator.identity())
-			  .takeWhile(item -> item.hasRemaining() && reference.get() == null)
+			  .takeWhile(item -> reference.get() == null && item.hasRemaining())
 			  .forEach(item -> writeRemaining(item, reference));
 		var exception = reference.get();
 		Case.of(exception).whenNotNull().thenThrow(() -> exception);
