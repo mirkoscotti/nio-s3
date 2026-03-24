@@ -64,6 +64,5 @@ class BucketPathIT
 															   StandardWatchEventKinds.ENTRY_CREATE,
 															   StandardWatchEventKinds.ENTRY_MODIFY,
 															   StandardWatchEventKinds.ENTRY_DELETE));
-		System.out.println();
 	}
 }

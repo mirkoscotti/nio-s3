@@ -39,7 +39,7 @@ public final class ExceptionsHelper
 		throw toIoException(exception);
 	}
 
-	public static IOException toIoException(Exception exception) throws IOException
+	public static IOException toIoException(Exception exception)
 	{
 		return exception instanceof IOException ioException
 			? ioException
