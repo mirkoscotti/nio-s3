@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.support.ReflectionSupport;
@@ -27,7 +26,6 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
  * @author mirko.scotti
  * @version Apr 18, 2025
  */
-@Disabled
 @ExtendWith(MockitoExtension.class)
 class DirectoryWatchKeyTest
 {
