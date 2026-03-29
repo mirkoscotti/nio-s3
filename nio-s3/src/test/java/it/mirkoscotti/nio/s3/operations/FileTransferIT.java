@@ -166,9 +166,6 @@ class FileTransferIT
 		try
 		{
 			var expected = checksum(stream.readNBytes(size));
-			var message = "Expected checksum: %s. Result checksum: %s";
-			System.out.println("Part size: %d".formatted(size));
-			System.out.println(message.formatted(expected, result));
 			Assertions.assertEquals(expected, result);
 		}
 		catch (Exception x)

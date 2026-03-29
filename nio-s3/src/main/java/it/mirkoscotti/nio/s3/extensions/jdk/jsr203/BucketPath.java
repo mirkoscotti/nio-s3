@@ -379,7 +379,7 @@ public class BucketPath
 		}
 		if (watcher instanceof DirectoryWatchService watchService)
 		{
-			return watchService.registerPath(this);
+			return watchService.registerPath(this, events);
 		}
 		throw new ProviderMismatchException("Watcher missing or not working with S3 buckets.");
 	}

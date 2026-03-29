@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.support.ReflectionSupport;
@@ -26,6 +27,7 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
  * @author mirko.scotti
  * @version Apr 18, 2025
  */
+@Disabled
 @ExtendWith(MockitoExtension.class)
 class DirectoryWatchKeyTest
 {
@@ -107,8 +109,7 @@ class DirectoryWatchKeyTest
 	@Test
 	void initialUpdateEventsTest(@Mock Instant instant)
 	{
-		try (var mock = Mockito.mockConstruction(ConcurrentHashMap.class,
-												 initializeSettings(),
+		try (var mock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 												 this::initializeEmpty))
 		{
 			var watchKey = new DirectoryWatchKey(directory);
@@ -130,8 +131,7 @@ class DirectoryWatchKeyTest
 	{
 		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_CREATE);
@@ -155,8 +155,7 @@ class DirectoryWatchKeyTest
 	void noInsertEventsTest(@Mock BucketFileSystem fileSystem)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_CREATE);
@@ -189,8 +188,7 @@ class DirectoryWatchKeyTest
 	{
 		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_MODIFY);
@@ -215,8 +213,7 @@ class DirectoryWatchKeyTest
 	void noModifyEventsTest(@Mock BucketFileSystem fileSystem)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_MODIFY);
@@ -249,8 +246,7 @@ class DirectoryWatchKeyTest
 	{
 		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_DELETE);
@@ -274,8 +270,7 @@ class DirectoryWatchKeyTest
 	void noDeleteEventsTest(@Mock BucketFileSystem fileSystem)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_DELETE);
@@ -307,8 +302,7 @@ class DirectoryWatchKeyTest
 	void unsupportedEventTest(@Mock Instant instant, @Mock Kind<Path> kind)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
-													initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, kind);

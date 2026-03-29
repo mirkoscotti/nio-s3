@@ -1,10 +1,16 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
+import java.nio.file.ClosedWatchServiceException;
+import java.nio.file.WatchEvent.Kind;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,6 +31,8 @@ public class DirectoryWatchService
 	implements WatchService
 {
 
+	private static final Logger LOGGER = System.getLogger(DirectoryWatchService.class.getName());
+
 	private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
 
 	private static final int FREQUENCY = 5;
@@ -44,7 +52,7 @@ public class DirectoryWatchService
 		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing connector.");
 		scheduler = Executors.newSingleThreadScheduledExecutor(this::createDaemon);
 		Runnable action = () -> registry.forEach(this::detectEvents);
-		scheduler.scheduleAtFixedRate(action, 0, FREQUENCY, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(action, FREQUENCY, FREQUENCY, TimeUnit.SECONDS);
 	}
 
 	@Override
@@ -75,27 +83,40 @@ public class DirectoryWatchService
 	@Override
 	public WatchKey poll()
 	{
+		ensureIsOpen();
 		return events.poll();
 	}
 
 	@Override
 	public WatchKey poll(long timeout, TimeUnit unit) throws InterruptedException
 	{
+		ensureIsOpen();
 		return events.poll(timeout, unit);
 	}
 
 	@Override
 	public WatchKey take() throws InterruptedException
 	{
+		ensureIsOpen();
 		return events.take();
 	}
 
-	WatchKey registerPath(BucketPath directory)
+	WatchKey registerPath(BucketPath directory, Kind<?>... kinds)
 	{
 		Objects.requireNonNull(directory, () -> "Missing path.");
-		var result = new DirectoryWatchKey(directory);
-		registry.put(directory, result);
+		var result = new DirectoryWatchKey(directory, kinds);
+		LOGGER.log(Level.INFO, () -> "SERVICE - Registering directory %s...".formatted(directory));
+		registry.compute(directory, (item1, item2) -> computedKey(item2, result));
+		var objects = detectEvents(directory);
+		result.updateStates(objects);
 		return result;
+	}
+
+	private DirectoryWatchKey computedKey(DirectoryWatchKey oldWatchKey,
+										  DirectoryWatchKey newWatchKey)
+	{
+		Optional.ofNullable(oldWatchKey).ifPresent(WatchKey::cancel);
+		return newWatchKey;
 	}
 
 	private Thread createDaemon(Runnable runnable)
@@ -107,10 +128,25 @@ public class DirectoryWatchService
 		return result;
 	}
 
-	private void detectEvents(BucketPath directory, DirectoryWatchKey watchKey)
+	private Map<String, Instant> detectEvents(BucketPath directory)
 	{
 		var bucketName = directory.getFileSystem().getFileStores().iterator().next().name();
-		var objects = awsFacade.listObjects(bucketName, directory.toString());
+		return awsFacade.listObjects(bucketName, directory.toString());
+	}
+
+	private void detectEvents(BucketPath directory, DirectoryWatchKey watchKey)
+	{
+		LOGGER.log(Level.INFO,
+				   () -> "SERVICE - Detecting events of directory %s...".formatted(directory));
+		var objects = detectEvents(directory);
 		watchKey.updateEvents(objects);
+	}
+
+	private void ensureIsOpen()
+	{
+		if (scheduler.isTerminated())
+		{
+			throw new ClosedWatchServiceException();
+		}
 	}
 }

@@ -12,6 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -187,8 +188,14 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void registerPathTest(@Mock ScheduledExecutorService scheduler, @Mock BucketPath directory)
+	@SuppressWarnings("unchecked")
+	void registerPathTest(@Mock ScheduledExecutorService scheduler,
+						  @Mock BucketPath directory,
+						  @Mock BucketFileSystem fileSystem,
+						  @Mock BucketFileStore fileStore)
 	{
+		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		try (var schedulerMock = Mockito.mockStatic(Executors.class);
 			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
 													this::initializeRegistry))
@@ -204,16 +211,16 @@ class DirectoryWatchServiceTest
 				watchService.registerPath(directory);
 				if (mapMock.constructed().get(0) instanceof Map<?, ?> map)
 				{
-					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(map, Mockito.atLeastOnce())
+						   .compute(Mockito.any(), Mockito.any(BiFunction.class));
 					Mockito.verify(scheduler, Mockito.atLeastOnce())
-						   .scheduleAtFixedRate(argumentCaptor.capture(),
-												Mockito.anyLong(),
-												Mockito.anyLong(),
-												Mockito.any(TimeUnit.class));
+						   .scheduleAtFixedRate(argumentCaptor.capture(), Mockito.anyLong(),
+												Mockito.anyLong(), Mockito.any(TimeUnit.class));
 					var runnable = argumentCaptor.getValue();
 					Assertions.assertNotNull(runnable);
 					runnable.run();
-					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(map, Mockito.atLeastOnce())
+						   .compute(Mockito.any(), Mockito.any(BiFunction.class));
 					Mockito.verify(awsFacade, Mockito.atLeastOnce())
 						   .listObjects(Mockito.anyString(), Mockito.anyString());
 				}
