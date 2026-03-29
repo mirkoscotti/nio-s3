@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.FileStore;
 import java.time.Instant;
 import java.util.List;
@@ -88,6 +89,14 @@ class DirectoryWatchServiceTest
 				.thenReturn(scheduler);
 			var watchService = new DirectoryWatchService(awsFacade);
 			Assertions.assertDoesNotThrow(watchService::close);
+			Mockito.verify(scheduler, Mockito.atLeastOnce())
+				   .awaitTermination(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+			Mockito.when(scheduler.isTerminated()).thenReturn(true);
+			Assertions.assertThrows(ClosedWatchServiceException.class, watchService::poll);
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
 		}
 	}
 
