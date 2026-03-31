@@ -39,15 +39,23 @@ class DirectoryWatchServiceTest
 	@Mock
 	private AwsFacade awsFacade;
 
+	@Mock
+	private ScheduledExecutorService scheduler;
+
 	@Test
 	void nullTest()
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> new DirectoryWatchService(null));
-		Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(awsFacade));
+		try (var mock = Mockito.mockStatic(Executors.class))
+		{
+			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+				.thenReturn(scheduler);
+			Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(awsFacade));
+		}
 	}
 
 	@Test
-	void ioExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	void ioExceptionDuringCloseTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -62,7 +70,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void interruptedExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	void interruptedExceptionDuringCloseTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -78,7 +86,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void closeTest(@Mock ScheduledExecutorService scheduler)
+	void closeTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -101,7 +109,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void pollTest(@Mock ScheduledExecutorService scheduler)
+	void pollTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -125,7 +133,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void customPollTest(@Mock ScheduledExecutorService scheduler)
+	void customPollTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -150,7 +158,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void takeTest(@Mock ScheduledExecutorService scheduler)
+	void takeTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -174,7 +182,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void registerUndefinedPathTest(@Mock ScheduledExecutorService scheduler)
+	void registerUndefinedPathTest()
 	{
 		try (var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -198,8 +206,7 @@ class DirectoryWatchServiceTest
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void registerPathTest(@Mock ScheduledExecutorService scheduler,
-						  @Mock BucketPath directory,
+	void registerPathTest(@Mock BucketPath directory,
 						  @Mock BucketFileSystem fileSystem,
 						  @Mock BucketFileStore fileStore)
 	{
