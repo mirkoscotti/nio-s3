@@ -19,21 +19,21 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
  * @version Dec 25, 2025
  */
 @ExtendWith(MockitoExtension.class)
-class ExceptionsHelperTest
+class ExceptionHelperTest
 {
 
 	@Test
 	<X extends Exception> void throwIllegalStateExceptionTest(@Mock X exception)
 	{
 		Assertions.assertThrows(IllegalStateException.class,
-								() -> ExceptionsHelper.sneakyThrow(exception));
+								() -> ExceptionHelper.sneakyThrow(exception));
 	}
 
 	@Test
 	<X extends RuntimeException> void throwRuntimeExceptionTest(@Mock X exception)
 	{
 		Assertions.assertThrows(exception.getClass(),
-								() -> ExceptionsHelper.sneakyThrow(exception));
+								() -> ExceptionHelper.sneakyThrow(exception));
 	}
 
 	@Test
@@ -41,7 +41,7 @@ class ExceptionsHelperTest
 									 @Mock AwsServiceException cause)
 	{
 		Mockito.when(exception.getCause()).thenReturn(cause);
-		Assertions.assertThrows(cause.getClass(), () -> ExceptionsHelper.sneakyThrow(exception));
+		Assertions.assertThrows(cause.getClass(), () -> ExceptionHelper.sneakyThrow(exception));
 	}
 
 	@Test
@@ -49,7 +49,7 @@ class ExceptionsHelperTest
 									  @Mock AwsServiceException cause)
 	{
 		Mockito.when(exception.getCause()).thenReturn(cause);
-		Assertions.assertThrows(cause.getClass(), () -> ExceptionsHelper.sneakyThrow(exception));
+		Assertions.assertThrows(cause.getClass(), () -> ExceptionHelper.sneakyThrow(exception));
 	}
 
 	@Test
@@ -57,6 +57,6 @@ class ExceptionsHelperTest
 										@Mock AwsServiceException cause)
 	{
 		Assertions.assertThrows(FileSystemNotFoundException.class,
-								() -> ExceptionsHelper.sneakyThrow(exception));
+								() -> ExceptionHelper.sneakyThrow(exception));
 	}
 }

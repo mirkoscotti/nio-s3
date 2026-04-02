@@ -2,7 +2,7 @@ package it.mirkoscotti.nio.s3.functions;
 
 import java.io.IOException;
 
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti
@@ -18,6 +18,6 @@ public interface Action
 
 	public static Action throwing(Exception exception)
 	{
-		return () -> ExceptionsHelper.throwIoException(exception);
+		return () -> ExceptionHelper.throwIoException(exception);
 	}
 }

@@ -28,7 +28,7 @@ import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -120,9 +120,9 @@ public final class S3Connector
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
 								  .thenApply(this::permissions)
-								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .exceptionally(ExceptionHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -135,9 +135,9 @@ public final class S3Connector
 															 .lastModified(item.lastModified())
 															 .build())
 								  .thenApply(ObjectBasicFileAttributes::new)
-								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .exceptionally(ExceptionHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -171,9 +171,9 @@ public final class S3Connector
 															 .prefix(prefix)
 															 .maxKeys(2))
 								  .thenApply(item -> item.contents().size() == 2)
-								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .exceptionally(ExceptionHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -187,9 +187,9 @@ public final class S3Connector
 		return Try.to(() -> client.getObject(item -> item.bucket(bucketName).key(key),
 											 AsyncResponseTransformer.toBytes())
 								  .thenApply(BytesWrapper::asByteArray)
-								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .exceptionally(ExceptionHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -200,9 +200,9 @@ public final class S3Connector
 														 .range("bytes=%d-%d".formatted(from, to)),
 											 AsyncResponseTransformer.toBytes())
 								  .thenApply(BytesWrapper::asByteArray)
-								  .exceptionally(ExceptionsHelper::sneakyThrow)
+								  .exceptionally(ExceptionHelper::sneakyThrow)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -217,18 +217,18 @@ public final class S3Connector
 												  .key(key)
 												  .checksumAlgorithm(ChecksumAlgorithm.SHA256),
 									  AsyncRequestBody.fromBytes(content))
-						   .exceptionally(ExceptionsHelper::sneakyThrow)
+						   .exceptionally(ExceptionHelper::sneakyThrow)
 						   .get(30, TimeUnit.SECONDS))
-		   .onCatch(ExceptionsHelper::sneakyThrow)
+		   .onCatch(ExceptionHelper::sneakyThrow)
 		   .run();
 	}
 
 	public void deleteObject(String bucketName, String key)
 	{
 		Try.to(() -> client.deleteObject(item -> item.bucket(bucketName).key(key))
-						   .exceptionally(ExceptionsHelper::sneakyThrow)
+						   .exceptionally(ExceptionHelper::sneakyThrow)
 						   .get(30, TimeUnit.SECONDS))
-		   .onCatch(ExceptionsHelper::sneakyThrow)
+		   .onCatch(ExceptionHelper::sneakyThrow)
 		   .run();
 	}
 
@@ -309,7 +309,7 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		var exception = ExceptionsHelper.toAwsServiceException(throwable);
+		var exception = ExceptionHelper.toAwsServiceException(throwable);
 		var errorCode = exception.awsErrorDetails().errorCode();
 		return switch (errorCode)
 		{

@@ -12,10 +12,10 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
  * @author mirko.scotti
  * @version May 24, 2025
  */
-public final class ExceptionsHelper
+public final class ExceptionHelper
 {
 
-	private ExceptionsHelper()
+	private ExceptionHelper()
 	{
 		super();
 	}

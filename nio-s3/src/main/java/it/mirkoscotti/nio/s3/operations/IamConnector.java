@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.BucketAction;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.services.iam.IamAsyncClient;
 import software.amazon.awssdk.services.iam.IamAsyncClientBuilder;
@@ -66,7 +66,7 @@ public final class IamConnector
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
 		return Try.to(() -> simulate(simulation, BucketAction.S3_PUT_OBJECT))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 
@@ -76,7 +76,7 @@ public final class IamConnector
 		return Try.to(() -> simulate(simulation,
 									 BucketAction.S3_PUT_OBJECT,
 									 BucketAction.S3_DELETE_OBJECT))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 

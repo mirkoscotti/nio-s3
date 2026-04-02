@@ -31,7 +31,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -97,7 +97,7 @@ class BucketSeekableByteChannelIT
 		mediumFile = JunitHelper.tryCall(() -> createFile(MEDIUM_FILE, 1024 * 1024));
 		largeFile = JunitHelper.tryCall(() -> createFile(LARGE_FILE, PART_SIZE * 5 / 2));
 		hugeFile = JunitHelper.tryCall(() -> createFile(HUGE_FILE, PART_SIZE * 10 / 2));
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 		remoteFile = fileSystem.getRootDirectories().iterator().next().resolve(REMOTE_FILE);
 	}
@@ -105,7 +105,7 @@ class BucketSeekableByteChannelIT
 	@AfterEach
 	void afterEach()
 	{
-		ContainersHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, TEST_BUCKET);
 	}
 
 	@Test

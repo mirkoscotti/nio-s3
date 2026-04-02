@@ -22,7 +22,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
@@ -78,7 +78,7 @@ class S3ConnectorIT
 	{
 		Optional.of(BUCKET_NAME)
 				.filter(CONTAINER::bucketExists)
-				.ifPresent(item -> ContainersHelper.deleteBucket(CONTAINER, item));
+				.ifPresent(item -> ContainerHelper.deleteBucket(CONTAINER, item));
 	}
 
 	@Test

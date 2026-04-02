@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -77,8 +77,8 @@ class FileTransferIT
 	@AfterEach
 	void afterEach()
 	{
-		ContainersHelper.deleteObjects(CONTAINER, SOURCE_BUCKET);
-		ContainersHelper.deleteObjects(CONTAINER, TARGET_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, SOURCE_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, TARGET_BUCKET);
 	}
 
 	@Test

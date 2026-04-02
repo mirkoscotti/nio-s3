@@ -24,7 +24,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -65,13 +65,13 @@ class BucketFileSystemIT
 	@AfterEach
 	void afterEach()
 	{
-		ContainersHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, TEST_BUCKET);
 	}
 
 	@Test
 	void watchServiceForcedToCloseTest()
 	{
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		ScheduledExecutorService scheduler = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
@@ -96,7 +96,7 @@ class BucketFileSystemIT
 	void directoryStreamForcedToCloseTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		DirectoryStream<Path> stream = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
@@ -121,7 +121,7 @@ class BucketFileSystemIT
 	void seekableByteChannelForcedToCloseWithoutMultipartTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		Optional<BucketWritableByteChannel> optional = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
@@ -147,7 +147,7 @@ class BucketFileSystemIT
 	void seekableByteChannelForcedToCloseWithMultipartTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		Optional<BucketWritableByteChannel> optional = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{

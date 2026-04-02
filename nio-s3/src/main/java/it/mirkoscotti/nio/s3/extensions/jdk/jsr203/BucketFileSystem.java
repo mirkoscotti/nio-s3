@@ -20,7 +20,7 @@ import it.mirkoscotti.nio.s3.enums.PathSyntax;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
-import it.mirkoscotti.nio.s3.operations.ResourcesRegistry;
+import it.mirkoscotti.nio.s3.operations.ResourceRegistry;
 
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
@@ -35,7 +35,7 @@ class BucketFileSystem
 
 	private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
-	private final ResourcesRegistry resourcesRegistry = new ResourcesRegistry();
+	private final ResourceRegistry resourcesRegistry = new ResourceRegistry();
 
 	private final AwsFacade awsFacade;
 

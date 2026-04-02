@@ -31,7 +31,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -75,7 +75,7 @@ class S3FileSystemProviderIT
 	@BeforeAll
 	static void beforeAll()
 	{
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		sourceFile = JunitHelper.tryCall(() -> createSourceFile(SOURCE_FILE, 1024));
 		targetFile = JunitHelper.tryCall(() -> createSourceFile(TARGET_FILE, 512));
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
@@ -84,7 +84,7 @@ class S3FileSystemProviderIT
 	@AfterEach
 	void afterEach()
 	{
-		ContainersHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, TEST_BUCKET);
 	}
 
 	@Test

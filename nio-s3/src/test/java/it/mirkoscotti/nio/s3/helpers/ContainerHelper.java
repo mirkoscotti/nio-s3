@@ -10,10 +10,10 @@ import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
  * @author mirko.scotti
  * @version Jun 04, 2025
  */
-public final class ContainersHelper
+public final class ContainerHelper
 {
 
-	private ContainersHelper()
+	private ContainerHelper()
 	{
 		super();
 	}

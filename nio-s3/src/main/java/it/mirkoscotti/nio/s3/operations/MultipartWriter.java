@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -68,7 +68,7 @@ public final class MultipartWriter
 		this.client = Objects.requireNonNull(client, () -> "Missing client.");
 		this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket.");
 		this.key = Objects.requireNonNull(key, () -> "Missing key.");
-		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::sneakyThrow).get();
+		uploadId = Try.to(this::createUploadId).onCatch(ExceptionHelper::sneakyThrow).get();
 	}
 
 	@Override
@@ -87,26 +87,26 @@ public final class MultipartWriter
 		}
 		catch (TimeoutException | ExecutionException x)
 		{
-			throw ExceptionsHelper.toIoException(x);
+			throw ExceptionHelper.toIoException(x);
 		}
 		catch (InterruptedException x)
 		{
 			Thread.currentThread().interrupt();
-			throw ExceptionsHelper.toIoException(x);
+			throw ExceptionHelper.toIoException(x);
 		}
 	}
 
 	public void copy(long size)
 	{
 		parts.add(Try.to(() -> createCompletedPart(size))
-					 .onCatch(ExceptionsHelper::sneakyThrow)
+					 .onCatch(ExceptionHelper::sneakyThrow)
 					 .get());
 	}
 
 	public void copy(long from, long to)
 	{
 		parts.add(Try.to(() -> createCompletedPart(from, to))
-					 .onCatch(ExceptionsHelper::sneakyThrow)
+					 .onCatch(ExceptionHelper::sneakyThrow)
 					 .get());
 	}
 
@@ -187,7 +187,7 @@ public final class MultipartWriter
 			See the command put-bucket-lifecycle-configuration for further details.
 			""";
 		Try.to(this::cancelUpload).onCatch(item -> LOGGER.log(Level.WARNING, warning, item)).run();
-		var s3Exception = ExceptionsHelper.redirectException(exception);
+		var s3Exception = ExceptionHelper.redirectException(exception);
 		if (!(s3Exception instanceof NoSuchUploadException)
 			&& !(s3Exception instanceof InvalidRequestException))
 		{
@@ -204,7 +204,7 @@ public final class MultipartWriter
 		   .run();
 		Case.of(reference.get())
 			.when(Objects::nonNull)
-			.thenHandle(ExceptionsHelper::throwIoException);
+			.thenHandle(ExceptionHelper::throwIoException);
 		return null;
 	}
 

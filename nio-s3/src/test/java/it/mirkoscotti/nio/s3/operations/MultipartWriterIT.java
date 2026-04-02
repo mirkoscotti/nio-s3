@@ -18,7 +18,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -64,7 +64,7 @@ class MultipartWriterIT
 	{
 		Optional.of(TEST_BUCKET)
 				.filter(CONTAINER::bucketExists)
-				.ifPresent(item -> ContainersHelper.deleteObjects(CONTAINER, item));
+				.ifPresent(item -> ContainerHelper.deleteObjects(CONTAINER, item));
 	}
 
 	@Test
