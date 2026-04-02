@@ -1,6 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
+import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.FileStore;
 import java.time.Instant;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -37,15 +39,23 @@ class DirectoryWatchServiceTest
 	@Mock
 	private AwsFacade awsFacade;
 
+	@Mock
+	private ScheduledExecutorService scheduler;
+
 	@Test
 	void nullTest()
 	{
 		Assertions.assertThrows(NullPointerException.class, () -> new DirectoryWatchService(null));
-		Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(awsFacade));
+		try (var mock = Mockito.mockStatic(Executors.class))
+		{
+			mock.when(() -> Executors.newSingleThreadScheduledExecutor(Mockito.any(ThreadFactory.class)))
+				.thenReturn(scheduler);
+			Assertions.assertDoesNotThrow(() -> new DirectoryWatchService(awsFacade));
+		}
 	}
 
 	@Test
-	void ioExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	void ioExceptionDuringCloseTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -60,7 +70,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void interruptedExceptionDuringCloseTest(@Mock ScheduledExecutorService scheduler)
+	void interruptedExceptionDuringCloseTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -76,7 +86,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void closeTest(@Mock ScheduledExecutorService scheduler)
+	void closeTest()
 	{
 		try (var mock = Mockito.mockStatic(Executors.class))
 		{
@@ -87,11 +97,19 @@ class DirectoryWatchServiceTest
 				.thenReturn(scheduler);
 			var watchService = new DirectoryWatchService(awsFacade);
 			Assertions.assertDoesNotThrow(watchService::close);
+			Mockito.verify(scheduler, Mockito.atLeastOnce())
+				   .awaitTermination(Mockito.anyLong(), Mockito.any(TimeUnit.class));
+			Mockito.when(scheduler.isTerminated()).thenReturn(true);
+			Assertions.assertThrows(ClosedWatchServiceException.class, watchService::poll);
+		}
+		catch (Exception x)
+		{
+			Assertions.fail(x);
 		}
 	}
 
 	@Test
-	void pollTest(@Mock ScheduledExecutorService scheduler)
+	void pollTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -115,7 +133,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void customPollTest(@Mock ScheduledExecutorService scheduler)
+	void customPollTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -140,7 +158,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void takeTest(@Mock ScheduledExecutorService scheduler)
+	void takeTest()
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -164,7 +182,7 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void registerUndefinedPathTest(@Mock ScheduledExecutorService scheduler)
+	void registerUndefinedPathTest()
 	{
 		try (var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class);
 			 var schedulerMock = Mockito.mockStatic(Executors.class))
@@ -187,8 +205,13 @@ class DirectoryWatchServiceTest
 	}
 
 	@Test
-	void registerPathTest(@Mock ScheduledExecutorService scheduler, @Mock BucketPath directory)
+	@SuppressWarnings("unchecked")
+	void registerPathTest(@Mock BucketPath directory,
+						  @Mock BucketFileSystem fileSystem,
+						  @Mock BucketFileStore fileStore)
 	{
+		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		try (var schedulerMock = Mockito.mockStatic(Executors.class);
 			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
 													this::initializeRegistry))
@@ -204,16 +227,16 @@ class DirectoryWatchServiceTest
 				watchService.registerPath(directory);
 				if (mapMock.constructed().get(0) instanceof Map<?, ?> map)
 				{
-					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(map, Mockito.atLeastOnce())
+						   .compute(Mockito.any(), Mockito.any(BiFunction.class));
 					Mockito.verify(scheduler, Mockito.atLeastOnce())
-						   .scheduleAtFixedRate(argumentCaptor.capture(),
-												Mockito.anyLong(),
-												Mockito.anyLong(),
-												Mockito.any(TimeUnit.class));
+						   .scheduleAtFixedRate(argumentCaptor.capture(), Mockito.anyLong(),
+												Mockito.anyLong(), Mockito.any(TimeUnit.class));
 					var runnable = argumentCaptor.getValue();
 					Assertions.assertNotNull(runnable);
 					runnable.run();
-					Mockito.verify(map, Mockito.atLeastOnce()).put(Mockito.any(), Mockito.any());
+					Mockito.verify(map, Mockito.atLeastOnce())
+						   .compute(Mockito.any(), Mockito.any(BiFunction.class));
 					Mockito.verify(awsFacade, Mockito.atLeastOnce())
 						   .listObjects(Mockito.anyString(), Mockito.anyString());
 				}

@@ -1,5 +1,7 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
@@ -23,6 +25,8 @@ public class DirectoryWatchKey
 	implements WatchKey
 {
 
+	private static final Logger LOGGER = System.getLogger(DirectoryWatchKey.class.getName());
+
 	private final Object lock = new Object();
 
 	private final Map<String, Instant> lastState = new ConcurrentHashMap<>();
@@ -31,12 +35,12 @@ public class DirectoryWatchKey
 
 	private final BucketPath directory;
 
-	private final Kind<Path>[] kinds;
+	private final Kind<?>[] kinds;
 
 	private volatile boolean valid = true;
 
 	@SafeVarargs
-	DirectoryWatchKey(BucketPath directory, Kind<Path>... kinds)
+	DirectoryWatchKey(BucketPath directory, Kind<?>... kinds)
 	{
 		this.directory = directory;
 		this.kinds = kinds;
@@ -75,10 +79,12 @@ public class DirectoryWatchKey
 	}
 
 	@Override
-	public synchronized void cancel()
+	public void cancel()
 	{
 		synchronized (lock)
 		{
+			LOGGER.log(Level.INFO,
+					   () -> "Cancelling monitor of directory %s...".formatted(directory));
 			valid = false;
 			lastState.clear();
 			events.clear();
@@ -93,10 +99,12 @@ public class DirectoryWatchKey
 
 	void updateEvents(Map<String, Instant> currentState)
 	{
-		if (!lastState.isEmpty())
-		{
-			detectEvents(currentState);
-		}
+		detectEvents(currentState);
+		updateStates(currentState);
+	}
+
+	void updateStates(Map<String, Instant> currentState)
+	{
 		lastState.clear();
 		lastState.putAll(currentState);
 	}
@@ -108,13 +116,13 @@ public class DirectoryWatchKey
 			  .forEach(item -> detectEvents(item, currentState));
 	}
 
-	private void detectEvents(Kind<Path> kind, Map<String, Instant> currentState)
+	private void detectEvents(Kind<?> kind, Map<String, Instant> currentState)
 	{
 		switch (kind)
 		{
-			case Kind<Path> eventKind when eventKind == StandardWatchEventKinds.ENTRY_CREATE -> detectInserts(currentState);
-			case Kind<Path> eventKind when eventKind == StandardWatchEventKinds.ENTRY_MODIFY -> detectUpdates(currentState);
-			case Kind<Path> eventKind when eventKind == StandardWatchEventKinds.ENTRY_DELETE -> detectDeletions(currentState);
+			case Kind<?> eventKind when eventKind == StandardWatchEventKinds.ENTRY_CREATE -> detectInserts(currentState);
+			case Kind<?> eventKind when eventKind == StandardWatchEventKinds.ENTRY_MODIFY -> detectUpdates(currentState);
+			case Kind<?> eventKind when eventKind == StandardWatchEventKinds.ENTRY_DELETE -> detectDeletions(currentState);
 			default -> throw new UnsupportedOperationException("Event kind not supported: %s".formatted(kind.getClass()
 																											.getName()));
 		}
@@ -126,7 +134,10 @@ public class DirectoryWatchKey
 					.stream()
 					.filter(Predicate.not(lastState::containsKey))
 					.map(item -> createWatchEvent(StandardWatchEventKinds.ENTRY_CREATE, item))
-					.forEach(events::add);
+					.filter(events::add)
+					.map(WatchEvent::context)
+					.forEach(item -> LOGGER.log(Level.INFO,
+												() -> "MONITOR - Insert event -> %s".formatted(item)));
 	}
 
 	private void detectUpdates(Map<String, Instant> currentState)
@@ -137,7 +148,10 @@ public class DirectoryWatchKey
 				 .filter(Predicate.not(item -> item.getValue()
 												   .equals(currentState.get(item.getKey()))))
 				 .map(item -> createWatchEvent(StandardWatchEventKinds.ENTRY_MODIFY, item.getKey()))
-				 .forEach(events::add);
+				 .filter(events::add)
+				 .map(WatchEvent::context)
+				 .forEach(item -> LOGGER.log(Level.INFO,
+											 () -> "MONITOR - Update event -> %s".formatted(item)));
 	}
 
 	private void detectDeletions(Map<String, Instant> currentState)
@@ -146,7 +160,10 @@ public class DirectoryWatchKey
 				 .stream()
 				 .filter(Predicate.not(currentState::containsKey))
 				 .map(item -> createWatchEvent(StandardWatchEventKinds.ENTRY_DELETE, item))
-				 .forEach(events::add);
+				 .filter(events::add)
+				 .map(WatchEvent::context)
+				 .forEach(item -> LOGGER.log(Level.INFO,
+											 () -> "MONITOR - Delete event -> %s".formatted(item)));
 	}
 
 	private WatchEvent<Path> createWatchEvent(Kind<Path> kind, String key)

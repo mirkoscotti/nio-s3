@@ -103,6 +103,6 @@ class UriDescriptor
 		var protocol = Optional.ofNullable(uri.getScheme()).orElse("https");
 		var realHost = host.startsWith(bucketName) ? host.substring(bucketName.length() + 1) : host;
 		var result = "%s://%s".formatted(protocol, realHost);
-		return Optional.of(port < 0 ? result : result.concat(":%d").formatted(port));
+		return Optional.of(port < 0 ? result : String.join(":", result, Integer.toString(port)));
 	}
 }
