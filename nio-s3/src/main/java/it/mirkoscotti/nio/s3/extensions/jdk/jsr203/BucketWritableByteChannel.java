@@ -10,10 +10,12 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Expression;
 import it.mirkoscotti.nio.s3.functions.Transformer;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
 
@@ -236,6 +238,10 @@ class BucketWritableByteChannel
 		try (var writer = multipartWriter)
 		{
 			writer.copy(from, to);
+		}
+		catch (TransportException x)
+		{
+			throw ExceptionHelper.toIoException(x.toNioException());
 		}
 		this.multipartWriter = null;
 	}

@@ -1,5 +1,6 @@
 package it.mirkoscotti.nio.s3.records;
 
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -9,4 +10,8 @@ import java.util.Optional;
 public record BucketRecord(Optional<String> endpoint, String bucketName)
 {
 
+	public BucketRecord
+	{
+		Objects.requireNonNull(bucketName, () -> "Missing bucket name.");
+	}
 }

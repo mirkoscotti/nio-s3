@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
@@ -67,11 +68,11 @@ class BucketWritableByteChannelTest
 		var buffer = ByteBuffer.wrap(new byte[MULTIPART_THRESHOLD + 1]);
 		Mockito.when(awsFacade.startMultipartUpload(Mockito.anyString(), Mockito.anyString()))
 			   .thenReturn(writer);
+		Mockito.doThrow(TransportException.class).doNothing().when(writer).write(Mockito.any());
 		try (var channel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
 																				   path)))
 		{
-			Mockito.doThrow(IOException.class).doNothing().when(writer).write(Mockito.any());
-			Assertions.assertThrows(IOException.class, () -> channel.write(buffer));
+			Assertions.assertThrows(TransportException.class, () -> channel.write(buffer));
 		}
 		catch (IOException x)
 		{

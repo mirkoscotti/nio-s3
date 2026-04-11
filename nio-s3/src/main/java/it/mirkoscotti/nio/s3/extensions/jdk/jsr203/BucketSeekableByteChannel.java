@@ -43,8 +43,7 @@ class BucketSeekableByteChannel
 	BucketSeekableByteChannel(BucketPath path, Set<? extends OpenOption> openOptions)
 		throws IOException
 	{
-		Objects.requireNonNull(path, () -> "Missing path.");
-		this.path = path;
+		this.path = Objects.requireNonNull(path, () -> "Missing path.");
 		awsFacade = path.getFileSystem().awsFacade();
 		ObjectFlag.readWriteCheck(openOptions);
 		readableByteChannel = createReadableByteChannel(openOptions);

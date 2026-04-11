@@ -2,11 +2,10 @@ package it.mirkoscotti.nio.s3.operations;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -15,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Try;
@@ -28,8 +28,6 @@ import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
-import software.amazon.awssdk.services.s3.model.InvalidRequestException;
-import software.amazon.awssdk.services.s3.model.NoSuchUploadException;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
@@ -41,8 +39,6 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 public final class MultipartWriter
 	implements Closeable
 {
-
-	private static final Logger LOGGER = System.getLogger(MultipartWriter.class.getName());
 
 	private final List<CompletedPart> parts = new ArrayList<>();
 
@@ -74,26 +70,16 @@ public final class MultipartWriter
 	@Override
 	public void close() throws IOException
 	{
-		Evaluator.when(() -> mustAbort)
+		Evaluator.when(() -> mustAbort || parts.isEmpty())
 				 .then(this::cancelUpload)
-				 .elseExecute(() -> Try.to(this::completeUpload).onCatch(this::cancelUpload).run());
+				 .elseExecute(this::completeUpload);
 	}
 
-	public void write(byte[] buffer) throws IOException
+	public void write(byte[] buffer)
 	{
-		try
-		{
-			parts.add(createCompletedPart(buffer));
-		}
-		catch (TimeoutException | ExecutionException x)
-		{
-			throw ExceptionHelper.toIoException(x);
-		}
-		catch (InterruptedException x)
-		{
-			Thread.currentThread().interrupt();
-			throw ExceptionHelper.toIoException(x);
-		}
+		Try.to(() -> parts.add(createCompletedPart(buffer)))
+		   .onCatch(ExceptionHelper::sneakyThrow)
+		   .run();
 	}
 
 	public void copy(long size)
@@ -172,27 +158,23 @@ public final class MultipartWriter
 							.build();
 	}
 
-	private Void completeUpload() throws TimeoutException, ExecutionException, InterruptedException
+	private void completeUpload() throws IOException
 	{
-		client.completeMultipartUpload(this::createCompleteMultipartRequest)
-			  .get(30, TimeUnit.SECONDS);
-		return null;
+		var reference = new AtomicReference<Exception>();
+		Try.to(() -> client.completeMultipartUpload(this::createCompleteMultipartRequest)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(reference::set)
+		   .run();
+		var exception = Optional.ofNullable(reference.get())
+								.map(ExceptionHelper::redirectException);
+		Case.of(reference.get()).when(Objects::nonNull).thenHandle(this::cancelUpload);
+		exception.ifPresent(ExceptionHelper::sneakyThrow);
 	}
 
-	private void cancelUpload(Exception exception)
+	private void cancelUpload(Exception completeException)
 	{
-		Supplier<String> warning = () -> """
-			A multi-part upload has failed but it was not possible to abort it.
-			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
-			See the command put-bucket-lifecycle-configuration for further details.
-			""";
-		Try.to(this::cancelUpload).onCatch(item -> LOGGER.log(Level.WARNING, warning, item)).run();
-		var s3Exception = ExceptionHelper.redirectException(exception);
-		if (!(s3Exception instanceof NoSuchUploadException)
-			&& !(s3Exception instanceof InvalidRequestException))
-		{
-			throw s3Exception;
-		}
+		var exception = ExceptionHelper.redirectException(completeException);
+		Try.to(this::cancelUpload).onCatch(item -> handleException(exception, item)).run();
 	}
 
 	private Void cancelUpload() throws IOException
@@ -206,6 +188,22 @@ public final class MultipartWriter
 			.when(Objects::nonNull)
 			.thenHandle(ExceptionHelper::throwIoException);
 		return null;
+	}
+
+	private void handleException(RuntimeException completeException, Exception cancelException)
+	{
+
+		Supplier<String> warning = () -> """
+			A multi-part upload has failed but it was not possible to abort it.
+			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
+			See the command put-bucket-lifecycle-configuration for further details.
+			""";
+		var exception = ExceptionHelper.redirectException(cancelException);
+		Optional.ofNullable(exception)
+				.filter(TransportException.class::isInstance)
+				.map(TransportException.class::cast)
+				.map(item -> item.toNioException(warning.get()))
+				.ifPresent(completeException::addSuppressed);
 	}
 
 	private void createMultipartRequest(CreateMultipartUploadRequest.Builder builder)

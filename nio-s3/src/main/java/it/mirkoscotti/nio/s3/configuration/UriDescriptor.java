@@ -15,7 +15,7 @@ import it.mirkoscotti.nio.s3.records.CredentialsRecord;
  * @author mirko.scotti
  * @version Mar 03, 2025
  */
-class UriDescriptor
+public class UriDescriptor
 {
 
 	private final String bucketName;

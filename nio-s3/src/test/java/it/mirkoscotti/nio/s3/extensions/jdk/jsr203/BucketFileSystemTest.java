@@ -18,13 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.PathSyntax;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
-
-import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
-import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
 /**
  * @author mirko.scotti
@@ -49,44 +45,11 @@ class BucketFileSystemTest
 	private S3FileSystemProvider fileSystemProvider;
 
 	@Test
-	void bucketAlreadyOwnedByYouExceptionTest()
-	{
-		Mockito.doThrow(BucketAlreadyOwnedByYouException.class)
-			   .when(awsFacade)
-			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Assertions.assertDoesNotThrow(() -> doWithFileSystem(item -> {}));
-	}
-
-	@Test
 	void bucketNameExceptionTest()
 	{
 		Mockito.doThrow(BucketNameException.class)
 			   .when(awsFacade)
 			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
-	}
-
-	@Test
-	void credentialsExceptionTest()
-	{
-		Mockito.doThrow(CredentialsException.class)
-			   .when(awsFacade)
-			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
-	}
-
-	@Test
-	void bucketAlreadyExistsExceptionTest()
-	{
-		Mockito.doThrow(BucketAlreadyExistsException.class)
-			   .when(awsFacade)
-			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
 	}
 
@@ -96,7 +59,6 @@ class BucketFileSystemTest
 		Mockito.doThrow(RuntimeException.class)
 			   .when(awsFacade)
 			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
 	}
 

@@ -1,6 +1,5 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -13,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -68,7 +69,8 @@ class MultipartWriterTest
 			Mockito.when(partFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class)))
 				   .thenThrow(TimeoutException.class);
 			var buffer = new byte[0];
-			var exception = Assertions.assertThrows(IOException.class, () -> writer.write(buffer));
+			var exception = Assertions.assertThrows(IllegalStateException.class,
+													() -> writer.write(buffer));
 			Assertions.assertInstanceOf(TimeoutException.class, exception.getCause());
 		}
 		catch (Exception x)
@@ -95,7 +97,8 @@ class MultipartWriterTest
 			Mockito.when(partFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class)))
 				   .thenThrow(InterruptedException.class);
 			var buffer = new byte[0];
-			var exception = Assertions.assertThrows(IOException.class, () -> writer.write(buffer));
+			var exception = Assertions.assertThrows(TransportException.class,
+													() -> writer.write(buffer));
 			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
 		}
 		catch (Exception x)
@@ -112,15 +115,16 @@ class MultipartWriterTest
 		Mockito.when(client.createMultipartUpload(Mockito.any(Consumer.class)))
 			   .thenReturn(CompletableFuture.completedFuture(createMultipartUploadResponse));
 		Mockito.when(createMultipartUploadResponse.uploadId()).thenReturn(UPLOAD_ID);
-		Mockito.when(client.completeMultipartUpload(Mockito.any(Consumer.class)))
-			   .thenThrow(AwsServiceException.class);
+		// Mockito.when(client.completeMultipartUpload(Mockito.any(Consumer.class)))
+		// .thenThrow(AwsServiceException.class);
 		try (var writer = new MultipartWriter(client, BUCKET, KEY))
 		{
 			// Nothing to do
 		}
 		catch (Exception x)
 		{
-			Assertions.assertInstanceOf(AwsServiceException.class, x);
+			var exception = Assertions.assertInstanceOf(TransportException.class, x);
+			Assertions.assertInstanceOf(AwsServiceException.class, exception.getCause());
 		}
 	}
 }

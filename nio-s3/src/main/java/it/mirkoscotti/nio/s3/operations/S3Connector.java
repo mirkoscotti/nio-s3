@@ -14,9 +14,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -88,23 +86,10 @@ public final class S3Connector
 
 	public void createBucket(BucketDescriptor bucketDescriptor)
 	{
-		try
-		{
-			var response = client.createBucket(item -> configureBucket(bucketDescriptor, item));
-			response.get(30, TimeUnit.SECONDS);
-		}
-		catch (InterruptedException x)
-		{
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException(x);
-		}
-		catch (ExecutionException | TimeoutException x)
-		{
-			var cause = x.getCause();
-			throw cause instanceof RuntimeException runtimeException
-				? runtimeException
-				: new IllegalStateException(cause);
-		}
+		Try.to(() -> client.createBucket(item -> configureBucket(bucketDescriptor, item))
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(ExceptionHelper::sneakyThrow)
+		   .run();
 	}
 
 	public boolean isBucketReadOnly(String bucketName)
@@ -309,7 +294,7 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		var exception = ExceptionHelper.toAwsServiceException(throwable);
+		var exception = ExceptionHelper.toAwsException(throwable);
 		var errorCode = exception.awsErrorDetails().errorCode();
 		return switch (errorCode)
 		{

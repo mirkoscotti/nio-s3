@@ -1,6 +1,5 @@
 package it.mirkoscotti.nio.s3.helpers;
 
-import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
@@ -11,8 +10,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
+
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 /**
  * @author mirko.scotti
@@ -23,40 +23,46 @@ class ExceptionHelperTest
 {
 
 	@Test
-	<X extends Exception> void throwIllegalStateExceptionTest(@Mock X exception)
+	<T extends Throwable> void throwInterruptedExceptionTest(@Mock InterruptedException exception)
 	{
-		Assertions.assertThrows(IllegalStateException.class,
-								() -> ExceptionHelper.sneakyThrow(exception));
+		var transportException = Assertions.assertThrows(TransportException.class,
+														 () -> ExceptionHelper.sneakyThrow(exception));
+		Assertions.assertEquals(exception, transportException.getCause());
+	}
+
+	@Test
+	<T extends Throwable> void throwIllegalStateExceptionTest(@Mock T throwable)
+	{
+		var exception = Assertions.assertThrows(IllegalStateException.class,
+												() -> ExceptionHelper.sneakyThrow(throwable));
+		Assertions.assertEquals(throwable, exception.getCause());
 	}
 
 	@Test
 	<X extends RuntimeException> void throwRuntimeExceptionTest(@Mock X exception)
 	{
-		Assertions.assertThrows(exception.getClass(),
-								() -> ExceptionHelper.sneakyThrow(exception));
+		Assertions.assertThrows(exception.getClass(), () -> ExceptionHelper.sneakyThrow(exception));
 	}
 
 	@Test
 	void throwExecutionExceptionTest(@Mock ExecutionException exception,
 									 @Mock AwsServiceException cause)
 	{
-		Mockito.when(exception.getCause()).thenReturn(cause);
-		Assertions.assertThrows(cause.getClass(), () -> ExceptionHelper.sneakyThrow(exception));
+		throwExceptionWithCauseTest(exception, cause);
 	}
 
 	@Test
 	void throwCompletionExceptionTest(@Mock CompletionException exception,
 									  @Mock AwsServiceException cause)
 	{
-		Mockito.when(exception.getCause()).thenReturn(cause);
-		Assertions.assertThrows(cause.getClass(), () -> ExceptionHelper.sneakyThrow(exception));
+		throwExceptionWithCauseTest(exception, cause);
 	}
 
-	@Test
-	void throwNoSuchBucketExceptionTest(@Mock NoSuchBucketException exception,
-										@Mock AwsServiceException cause)
+	void throwExceptionWithCauseTest(Exception exception, AwsServiceException cause)
 	{
-		Assertions.assertThrows(FileSystemNotFoundException.class,
-								() -> ExceptionHelper.sneakyThrow(exception));
+		Mockito.when(exception.getCause()).thenReturn(cause);
+		var transportException = Assertions.assertThrows(TransportException.class,
+														 () -> ExceptionHelper.sneakyThrow(exception));
+		Assertions.assertEquals(cause, transportException.getCause());
 	}
 }

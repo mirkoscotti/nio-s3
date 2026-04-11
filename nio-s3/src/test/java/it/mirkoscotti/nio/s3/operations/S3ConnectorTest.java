@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.OngoingStubbing;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.crt.CrtRuntimeException;
@@ -179,7 +180,7 @@ class S3ConnectorTest
 		{
 			clientMock.when(S3AsyncClient::crtBuilder).thenReturn(builder);
 			var connector = S3Connector.create().build();
-			var exception = Assertions.assertThrows(IllegalStateException.class,
+			var exception = Assertions.assertThrows(TransportException.class,
 													() -> connector.createBucket(bucketDescriptor));
 			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
 		}

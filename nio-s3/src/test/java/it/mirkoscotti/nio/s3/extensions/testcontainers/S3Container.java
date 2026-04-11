@@ -32,6 +32,8 @@ import org.testcontainers.utility.MountableFile;
 import it.mirkoscotti.nio.s3.records.ObjectAttributes;
 import it.mirkoscotti.nio.s3.records.ObjectParts;
 
+import software.amazon.awssdk.regions.Region;
+
 /**
  * @author mirko.scotti
  * @version Oct 24, 2024
@@ -42,7 +44,9 @@ public class S3Container
 
 	private static final String LOCALSTACK = "localstack";
 
-	private static final String IMAGE_NAME = "%1$s/%1$s:4.14.0".formatted(LOCALSTACK);
+	private static final String IMAGE_NAME = "%1$s/%1$s:2026.03.0".formatted(LOCALSTACK);
+
+	private static final String LOCALSTACK_AUTH_TOKEN = "LOCALSTACK_AUTH_TOKEN";
 
 	private static final String INITIALIZATION_FILE = "/etc/localstack/init/ready.d/init-s3.sh";
 
@@ -125,6 +129,8 @@ public class S3Container
 
 	private static final String CREATE_BUCKET_COMMAND = "awslocal s3api create-bucket --bucket %s";
 
+	private static final String CREATE_BUCKET_COMMAND_IN_DIFFERENT_REGION = CREATE_BUCKET_COMMAND.concat(" --region %2$s --create-bucket-configuration LocationConstraint=%2$s");
+
 	private static final String HEAD_BUCKET_COMMAND = "awslocal s3api head-bucket --bucket %s";
 
 	private static final String DELETE_BUCKET_COMMAND = "awslocal s3api delete-bucket --bucket %s";
@@ -157,7 +163,11 @@ public class S3Container
 
 	private static final String CHECKSUM_OPTION = " --checksum-algorithm SHA256";
 
+	private static final String SPACE = " ";
+
 	private final List<String> commands = new ArrayList<>();
+
+	private final Map<String, String> accounts = new HashMap<>();
 
 	private final Map<String, Credentials> credentials = new HashMap<>();
 
@@ -167,6 +177,8 @@ public class S3Container
 		withServices("s3", "iam", "sts");
 		withEnv("DEBUG", "1");
 		withEnv("LS_LOG", "trace");
+		withEnv("MULTI_ACCOUNTS", "1");
+		withEnv(LOCALSTACK_AUTH_TOKEN, System.getenv(LOCALSTACK_AUTH_TOKEN));
 		commands.add(INSTALL_JQ_COMMAND);
 	}
 
@@ -190,6 +202,14 @@ public class S3Container
 		withCopyToContainer(Transferable.of(policy), IAM_POLICY_FILE);
 		commands.add(PUT_USER_POLICY_COMMAND.formatted(user, "bucket-write-policy"));
 		return this;
+	}
+
+	public S3Container withUser(String user, String accountId)
+	{
+		Objects.requireNonNull(user, () -> "Missing user.");
+		Objects.requireNonNull(accountId, () -> "Missing account.");
+		accounts.put(user, accountId);
+		return withUser(user);
 	}
 
 	public S3Container withReadOnlyUser(String user)
@@ -243,10 +263,17 @@ public class S3Container
 
 	public void createBucket(String bucketName)
 	{
-		var command = CREATE_BUCKET_COMMAND.formatted(bucketName);
+		createBucket(bucketName, null);
+	}
+
+	public void createBucket(String bucketName, Region region)
+	{
+		var command = region == null
+			? CREATE_BUCKET_COMMAND.formatted(bucketName)
+			: CREATE_BUCKET_COMMAND_IN_DIFFERENT_REGION.formatted(bucketName, region.toString());
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer("sh", "-c", command);
 			var message = "Failed to create bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
@@ -267,7 +294,7 @@ public class S3Container
 		var command = HEAD_BUCKET_COMMAND.formatted(bucketName);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			result = output.getExitCode() == 0;
 		}
 		catch (InterruptedException x)
@@ -309,7 +336,7 @@ public class S3Container
 			var policy = READ_ONLY_POLICY.getBytes(StandardCharsets.UTF_8);
 			copyFileToContainer(Transferable.of(policy), BUCKET_POLICY_FILE);
 			var command = PUT_BUCKET_POLICY_COMMAND.formatted(bucketName);
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create policy for bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
@@ -334,7 +361,7 @@ public class S3Container
 		var command = GET_BUCKET_POLICY_COMMAND.formatted(bucketName);
 		try
 		{
-			var output = Optional.of(execInContainer(command.split(" ")));
+			var output = Optional.of(execInContainer(command.split(SPACE)));
 			result = output.filter(item -> item.getExitCode() == 0
 				|| item.getStderr().contains("NoSuchBucketPolicy"))
 						   .map(ExecResult::getStdout)
@@ -357,7 +384,7 @@ public class S3Container
 		var command = DELETE_BUCKET_POLICY_COMMAND.formatted(bucketName);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to delete policy for bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
@@ -377,7 +404,7 @@ public class S3Container
 		try
 		{
 			var command = PUT_BUCKET_ACL_COMMAND.formatted(bucketName, acl);
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create ACL for bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 		}
@@ -401,7 +428,7 @@ public class S3Container
 		var command = PUT_OBJECT_COMMAND.formatted(bucketName, key);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create object %s in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
@@ -423,7 +450,7 @@ public class S3Container
 		var command = PUT_OBJECT_WITH_TEXT_COMMAND.formatted(bucketName, key, path);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create object %s in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
@@ -443,7 +470,7 @@ public class S3Container
 		var command = PUT_OBJECT_COMMAND.concat(CHECKSUM_OPTION).formatted(bucketName, key);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create object %s with checksum in bucket %s.";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
@@ -466,7 +493,7 @@ public class S3Container
 												  .formatted(bucketName, key, path);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to create object %s with checksum in bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
@@ -487,7 +514,7 @@ public class S3Container
 		var command = GET_OBJECT_COMMAND.formatted(bucketName, key, path);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to read object %s in bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 			copyFileFromContainer(path, item -> Files.copy(item, file,
@@ -510,7 +537,7 @@ public class S3Container
 		var command = HEAD_OBJECT_COMMAND.formatted(bucketName, key);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			result = output.getExitCode() == 0;
 		}
 		catch (InterruptedException x)
@@ -586,7 +613,7 @@ public class S3Container
 		var command = LIST_OBJECTS_COMMAND.formatted(bucketName);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to list objects from bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(bucketName));
 			result = output.getStdout().replace("\n", "").split("\t");
@@ -608,7 +635,7 @@ public class S3Container
 		var command = DELETE_OBJECT_COMMAND.formatted(bucketName, key);
 		try
 		{
-			var output = execInContainer(command.split(" "));
+			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to delete object %s from bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
 		}
@@ -656,7 +683,8 @@ public class S3Container
 			var message = "Failed to create credentials for user %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(user));
 			var result = output.getStdout().split(" ");
-			credentials.put(user, new Credentials(result[0], result[1]));
+			var accessKey = accounts.getOrDefault(user, result[0]);
+			credentials.put(user, new Credentials(accessKey, result[1]));
 		}
 		catch (InterruptedException x)
 		{
@@ -688,7 +716,7 @@ public class S3Container
 	{
 		try
 		{
-			var output = execInContainer(DELETE_POLICY_FILE_COMMAND.split(" "));
+			var output = execInContainer(DELETE_POLICY_FILE_COMMAND.split(SPACE));
 			var message = "Failed to delete temporary policy file.";
 			Assertions.assertEquals(0, output.getExitCode(), message);
 		}

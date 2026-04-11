@@ -17,13 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.PathSyntax;
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import it.mirkoscotti.nio.s3.exceptions.CredentialsException;
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.ResourceRegistry;
-
-import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
-import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
 /**
  * @author mirko.scotti
@@ -183,24 +179,20 @@ class BucketFileSystem
 
 	private String ensureBucketExists(BucketDescriptor bucketDescriptor)
 	{
+		var message = "Failed to create the file system.";
 		try
 		{
 			awsFacade.createBucket(bucketDescriptor);
 		}
-		catch (BucketAlreadyOwnedByYouException x)
+		catch (TransportException x)
 		{
-			// Bucket already exists and it is granted to access, so there is nothing to do
+			var nioException = x.toNioException();
+			throw nioException instanceof RuntimeException exception
+				? exception
+				: new IllegalArgumentException(message, nioException);
 		}
 		catch (Exception x)
 		{
-			var bucketRecord = bucketDescriptor.bucketKey();
-			var message = switch (x)
-			{
-				case BucketNameException exception -> "Illegal bucket name: %s.".formatted(bucketRecord.bucketName());
-				case CredentialsException exception -> "Missing or wrong credentials.";
-				case BucketAlreadyExistsException exception -> "You do not have the permission to access the bucket %s".formatted(bucketRecord.bucketName());
-				default -> "Unpredicted issue. Possible a bug or a not supported feature?";
-			};
 			throw new IllegalArgumentException(message, x);
 		}
 		return bucketDescriptor.bucketKey().bucketName();

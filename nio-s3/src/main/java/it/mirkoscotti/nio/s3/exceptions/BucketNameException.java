@@ -1,11 +1,15 @@
 package it.mirkoscotti.nio.s3.exceptions;
 
+import java.util.Optional;
+
+import it.mirkoscotti.nio.s3.configuration.UriDescriptor;
+
 /**
  * @author mirko.scotti
  * @version Jan 25, 2025
  */
 public class BucketNameException
-	extends RuntimeException
+	extends IllegalArgumentException
 {
 
 	private static final long serialVersionUID = -1719565605695094042L;
@@ -23,8 +27,16 @@ public class BucketNameException
 		9. it can contain only lowercase and uppercase letters, digits, periods, and dashes without violating one of the previous rules
 		""";
 
-	public BucketNameException(String bucketName)
+	public BucketNameException(UriDescriptor uriDescriptor)
 	{
-		super(BUCKET_NAME_MESSAGE.formatted(bucketName == null ? "null" : bucketName));
+		super(buildMessage(uriDescriptor));
+	}
+
+	private static final String buildMessage(UriDescriptor uriDescriptor)
+	{
+		var bucketName = Optional.ofNullable(uriDescriptor)
+								 .map(UriDescriptor::bucketName)
+								 .orElse("null");
+		return BUCKET_NAME_MESSAGE.formatted(bucketName);
 	}
 }
