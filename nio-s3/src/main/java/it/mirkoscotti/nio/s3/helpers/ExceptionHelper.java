@@ -78,15 +78,6 @@ public final class ExceptionHelper
 		};
 	}
 
-	public static TransportException toTransportException(Throwable throwable)
-	{
-		return switch (throwable)
-		{
-
-			default -> new TransportException(throwable);
-		};
-	}
-
 	public static RuntimeException interruptThread(InterruptedException exception)
 	{
 		Thread.currentThread().interrupt();
