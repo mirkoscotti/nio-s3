@@ -165,16 +165,21 @@ public final class MultipartWriter
 						   .get(30, TimeUnit.SECONDS))
 		   .onCatch(reference::set)
 		   .run();
-		var exception = Optional.ofNullable(reference.get())
-								.map(ExceptionHelper::redirectException);
 		Case.of(reference.get()).when(Objects::nonNull).thenHandle(this::cancelUpload);
-		exception.ifPresent(ExceptionHelper::sneakyThrow);
 	}
 
-	private void cancelUpload(Exception completeException)
+	private void cancelUpload(Exception completeException) throws IOException
 	{
 		var exception = ExceptionHelper.redirectException(completeException);
 		Try.to(this::cancelUpload).onCatch(item -> handleException(exception, item)).run();
+		if (exception instanceof TransportException transportException)
+		{
+			transportException.throwNioException();
+		}
+		else
+		{
+			ExceptionHelper.throwIoException(exception);
+		}
 	}
 
 	private Void cancelUpload() throws IOException
@@ -192,13 +197,12 @@ public final class MultipartWriter
 
 	private void handleException(RuntimeException completeException, Exception cancelException)
 	{
-
 		Supplier<String> warning = () -> """
 			A multi-part upload has failed but it was not possible to abort it.
 			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
 			See the command put-bucket-lifecycle-configuration for further details.
 			""";
-		var exception = ExceptionHelper.redirectException(cancelException);
+		var exception = ExceptionHelper.redirectException(cancelException.getCause());
 		Optional.ofNullable(exception)
 				.filter(TransportException.class::isInstance)
 				.map(TransportException.class::cast)
