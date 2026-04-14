@@ -23,6 +23,8 @@ import jakarta.json.bind.JsonbBuilder;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import it.mirkoscotti.nio.s3.enums.ErrorCode;
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
@@ -294,13 +296,15 @@ public final class S3Connector
 
 	private boolean guessReadOnly(Throwable throwable)
 	{
-		var exception = ExceptionHelper.toAwsException(throwable);
-		var errorCode = exception.awsErrorDetails().errorCode();
-		return switch (errorCode)
+		var exception = ExceptionHelper.redirectException(throwable);
+		if (exception instanceof TransportException transportException)
 		{
-			case "NoSuchBucketPolicy" -> false;
-			default -> throw new IllegalStateException(exception);
-		};
+			return transportException.toErrorCode()
+									 .filter(Predicate.isEqual(ErrorCode.NO_SUCH_BUCKET_POLICY))
+									 .map(item -> false)
+									 .orElseThrow(() -> new IllegalStateException(exception));
+		}
+		throw exception;
 	}
 
 	private String permissions(GetBucketAclResponse response)

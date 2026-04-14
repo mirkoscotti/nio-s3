@@ -38,11 +38,6 @@ public final class ExceptionHelper
 		};
 	}
 
-	public static boolean isRuntimeException(Throwable throwable)
-	{
-		return throwable instanceof RuntimeException;
-	}
-
 	public static <T> T throwIoException(Exception exception) throws IOException
 	{
 		throw toIoException(exception);
@@ -53,18 +48,6 @@ public final class ExceptionHelper
 		return exception instanceof IOException ioException
 			? ioException
 			: new IOException(exception);
-	}
-
-	public static AwsServiceException toAwsException(Throwable throwable)
-	{
-		return switch (throwable)
-		{
-			case AwsServiceException exception -> exception;
-			case CompletionException exception -> toAwsException(exception.getCause());
-			case ExecutionException exception -> toAwsException(exception.getCause());
-			case RuntimeException exception -> throw exception;
-			default -> throw new IllegalStateException(throwable);
-		};
 	}
 
 	public static AwsServiceException toAwsServiceException(Throwable throwable)
@@ -81,6 +64,6 @@ public final class ExceptionHelper
 	public static RuntimeException interruptThread(InterruptedException exception)
 	{
 		Thread.currentThread().interrupt();
-		return new TransportException(exception);
+		return new IllegalStateException(exception);
 	}
 }

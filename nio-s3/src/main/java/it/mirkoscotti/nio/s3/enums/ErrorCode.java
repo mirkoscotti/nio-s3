@@ -29,6 +29,7 @@ public enum ErrorCode
 	INVALID_ACCESS_KEY_ID(AccessDeniedException.class),
 	INVALID_BUCKET_NAME(IllegalArgumentException.class),
 	INVALID_REQUEST(IllegalStateException.class),
+	NO_SUCH_BUCKET_POLICY(null),
 	NO_SUCH_KEY(NoSuchFileException.class),
 	NO_SUCH_UPLOAD(null),
 	// ---- GESTITO FINO QUA ----
@@ -72,7 +73,6 @@ public enum ErrorCode
 	MISSING_CONTENT_LENGTH(null),
 	MISSING_REQUEST_BODY_ERROR(null),
 	NO_SUCH_BUCKET(FileSystemNotFoundException.class),
-	NO_SUCH_BUCKET_POLICY(null),
 	NO_SUCH_CORS_CONFIGURATION(null),
 	NO_SUCH_LIFECYCLE_CONFIGURATION(null),
 	NO_SUCH_VERSION(NoSuchFileException.class),
@@ -133,9 +133,9 @@ public enum ErrorCode
 
 	private static Optional<ErrorCode> resolve(String errorCode)
 	{
-		return Try.to(() -> Optional.of(ErrorCode.valueOf(errorCode)))
-				  .onCatch(item -> Optional.empty())
-				  .get();
+		return Stream.of(ErrorCode.values())
+					 .filter(item -> item.name().equals(errorCode))
+					 .findAny();
 	}
 
 	private Constructor<?> matchingConstructor(int parameterCount)

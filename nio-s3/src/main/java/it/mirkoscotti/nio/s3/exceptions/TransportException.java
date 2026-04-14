@@ -25,7 +25,7 @@ public class TransportException
 	/**
 	 * @param cause
 	 */
-	public TransportException(Throwable cause)
+	public TransportException(AwsServiceException cause)
 	{
 		super(cause);
 		awsErrorDetails = Optional.ofNullable(ExceptionHelper.toAwsServiceException(cause))
@@ -68,5 +68,10 @@ public class TransportException
 		return ErrorCode.of(awsErrorDetails)
 						.map(item -> item.nioException(finalMessage))
 						.orElseGet(() -> new IOException(finalMessage));
+	}
+
+	public Optional<ErrorCode> toErrorCode()
+	{
+		return ErrorCode.of(awsErrorDetails);
 	}
 }
