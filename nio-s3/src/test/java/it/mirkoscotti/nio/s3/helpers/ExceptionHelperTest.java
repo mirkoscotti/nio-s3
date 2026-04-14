@@ -25,9 +25,9 @@ class ExceptionHelperTest
 	@Test
 	<T extends Throwable> void throwInterruptedExceptionTest(@Mock InterruptedException exception)
 	{
-		var transportException = Assertions.assertThrows(TransportException.class,
-														 () -> ExceptionHelper.sneakyThrow(exception));
-		Assertions.assertEquals(exception, transportException.getCause());
+		var runtimeException = Assertions.assertThrows(IllegalStateException.class,
+													   () -> ExceptionHelper.sneakyThrow(exception));
+		Assertions.assertEquals(exception, runtimeException.getCause());
 	}
 
 	@Test

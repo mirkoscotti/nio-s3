@@ -103,7 +103,7 @@ class MultipartWriterTest
 			Mockito.when(partFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class)))
 				   .thenThrow(InterruptedException.class);
 			var buffer = new byte[0];
-			var exception = Assertions.assertThrows(TransportException.class,
+			var exception = Assertions.assertThrows(IllegalStateException.class,
 													() -> writer.write(buffer));
 			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
 		}
