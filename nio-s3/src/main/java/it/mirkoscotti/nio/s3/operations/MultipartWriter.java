@@ -172,14 +172,10 @@ public final class MultipartWriter
 	{
 		var exception = ExceptionHelper.redirectException(completeException);
 		Try.to(this::cancelUpload).onCatch(item -> handleException(exception, item)).run();
-		if (exception instanceof TransportException transportException)
-		{
-			transportException.throwNioException();
-		}
-		else
-		{
-			ExceptionHelper.throwIoException(exception);
-		}
+		Case.of(exception)
+			.when(TransportException.class::isInstance)
+			.then(item -> TransportException.class.cast(item).throwNioException())
+			.otherwise(() -> ExceptionHelper.throwIoException(exception));
 	}
 
 	private Void cancelUpload() throws IOException
