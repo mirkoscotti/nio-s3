@@ -73,7 +73,7 @@ public class TransportException
 	{
 		var result = ExceptionHelper.redirectException(exception);
 		Stream.of(getSuppressed()).forEach(result::addSuppressed);
-		throw result;
+		return ExceptionHelper.sneakyThrow(result);
 	}
 
 	private IOException redirectToIoException(Exception exception)
