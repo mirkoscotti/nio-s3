@@ -148,13 +148,11 @@ class BucketFileSystemIT
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
-			try (var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
-													StandardOpenOption.CREATE_NEW))
-			{
-				optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
-																   BucketWritableByteChannel.class);
-				Assertions.assertTrue(optional.isPresent());
-			}
+			var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
+											   StandardOpenOption.CREATE_NEW);
+			optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
+															   BucketWritableByteChannel.class);
+			Assertions.assertTrue(optional.isPresent());
 		}
 		catch (IOException x)
 		{
@@ -176,15 +174,13 @@ class BucketFileSystemIT
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
-			try (var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
-													StandardOpenOption.CREATE_NEW))
-			{
-				var buffer = ByteBuffer.wrap(Files.readAllBytes(hugeFile));
-				channel.write(buffer);
-				optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
-																   BucketWritableByteChannel.class);
-				Assertions.assertTrue(optional.isPresent());
-			}
+			var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
+											   StandardOpenOption.CREATE_NEW);
+			var buffer = ByteBuffer.wrap(Files.readAllBytes(hugeFile));
+			channel.write(buffer);
+			optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
+															   BucketWritableByteChannel.class);
+			Assertions.assertTrue(optional.isPresent());
 		}
 		catch (IOException x)
 		{
