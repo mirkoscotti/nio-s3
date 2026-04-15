@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import it.mirkoscotti.nio.s3.enums.ErrorCode;
+import it.mirkoscotti.nio.s3.functions.Transformer;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
@@ -44,17 +45,10 @@ public class TransportException
 		var exception = ErrorCode.of(awsErrorDetails)
 								 .map(item -> item.nioException(finalMessage))
 								 .orElseGet(() -> new IOException(finalMessage));
-		if (exception instanceof RuntimeException runtimeException)
-		{
-			Stream.of(getSuppressed()).forEach(runtimeException::addSuppressed);
-			throw runtimeException;
-		}
-		else
-		{
-			var ioException = ExceptionHelper.toIoException(exception);
-			Stream.of(getSuppressed()).forEach(ioException::addSuppressed);
-			throw ioException;
-		}
+		Transformer.of(exception)
+				   .when(RuntimeException.class::isInstance)
+				   .then(this::throwAsRuntimeException)
+				   .orThrow(() -> redirectToIoException(exception));
 	}
 
 	public Exception toNioException()
@@ -73,5 +67,19 @@ public class TransportException
 	public Optional<ErrorCode> toErrorCode()
 	{
 		return ErrorCode.of(awsErrorDetails);
+	}
+
+	private RuntimeException throwAsRuntimeException(Exception exception)
+	{
+		var result = ExceptionHelper.redirectException(exception);
+		Stream.of(getSuppressed()).forEach(result::addSuppressed);
+		throw result;
+	}
+
+	private IOException redirectToIoException(Exception exception)
+	{
+		var result = ExceptionHelper.toIoException(exception);
+		Stream.of(getSuppressed()).forEach(result::addSuppressed);
+		return result;
 	}
 }
