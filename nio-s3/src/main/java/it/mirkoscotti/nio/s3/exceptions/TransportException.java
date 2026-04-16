@@ -29,7 +29,7 @@ public class TransportException
 	public TransportException(AwsServiceException cause)
 	{
 		super(cause);
-		awsErrorDetails = Optional.ofNullable(ExceptionHelper.toAwsServiceException(cause))
+		awsErrorDetails = Optional.ofNullable(cause)
 								  .map(AwsServiceException::awsErrorDetails)
 								  .orElse(null);
 	}

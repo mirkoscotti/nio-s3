@@ -50,17 +50,6 @@ public final class ExceptionHelper
 			: new IOException(exception);
 	}
 
-	public static AwsServiceException toAwsServiceException(Throwable throwable)
-	{
-		return switch (throwable)
-		{
-			case AwsServiceException exception -> exception;
-			case CompletionException exception -> toAwsServiceException(exception.getCause());
-			case ExecutionException exception -> toAwsServiceException(exception.getCause());
-			default -> null;
-		};
-	}
-
 	public static RuntimeException interruptThread(InterruptedException exception)
 	{
 		Thread.currentThread().interrupt();
