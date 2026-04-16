@@ -1,6 +1,5 @@
 package it.mirkoscotti.nio.s3.operations;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -143,8 +142,7 @@ class MultipartWriterTest
 						 @Mock ExecutionException executionException,
 						 @Mock AwsServiceException awsServiceException,
 						 @Mock AwsErrorDetails awsErrorDetails,
-						 @Mock ErrorCode errorCode,
-						 @Mock IOException ioException)
+						 @Mock ErrorCode errorCode)
 	{
 		Mockito.when(client.createMultipartUpload(Mockito.any(Consumer.class)))
 			   .thenReturn(CompletableFuture.completedFuture(createMultipartUploadResponse));
@@ -159,10 +157,11 @@ class MultipartWriterTest
 			   .thenReturn(abortFuture);
 		Mockito.when(executionException.getCause()).thenReturn(awsServiceException);
 		Mockito.when(awsServiceException.awsErrorDetails()).thenReturn(awsErrorDetails);
-		Mockito.when(errorCode.nioException(Mockito.any(String[].class))).thenReturn(ioException);
+		var exception = new RuntimeException();
+		Mockito.when(errorCode.nioException(Mockito.any(String[].class))).thenReturn(exception);
 		try (var errorMock = Mockito.mockStatic(ErrorCode.class))
 		{
-			errorMock.when(() -> ErrorCode.of(Mockito.any(AwsErrorDetails.class)))
+			errorMock.when(() -> ErrorCode.of(Mockito.nullable(AwsErrorDetails.class)))
 					 .thenReturn(Optional.of(errorCode));
 			try (var writer = new MultipartWriter(client, BUCKET, KEY))
 			{
@@ -176,10 +175,8 @@ class MultipartWriterTest
 			}
 			catch (Exception x)
 			{
-				var exception = Assertions.assertInstanceOf(IOException.class, x);
-				var suppressed = exception.getSuppressed();
-				Assertions.assertEquals(1, suppressed.length);
-				Assertions.assertEquals(ioException, suppressed[0]);
+				var ioException = Assertions.assertInstanceOf(RuntimeException.class, x);
+				Assertions.assertEquals(0, ioException.getSuppressed().length);
 			}
 		}
 	}

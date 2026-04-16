@@ -47,7 +47,7 @@ public class TransportException
 								 .orElseGet(() -> new IOException(finalMessage));
 		Transformer.of(exception)
 				   .when(RuntimeException.class::isInstance)
-				   .then(this::throwAsRuntimeException)
+				   .then(ExceptionHelper::sneakyThrow)
 				   .orThrow(() -> redirectToIoException(exception));
 	}
 
@@ -67,13 +67,6 @@ public class TransportException
 	public Optional<ErrorCode> toErrorCode()
 	{
 		return ErrorCode.of(awsErrorDetails);
-	}
-
-	private RuntimeException throwAsRuntimeException(Exception exception)
-	{
-		var result = ExceptionHelper.redirectException(exception);
-		Stream.of(getSuppressed()).forEach(result::addSuppressed);
-		return ExceptionHelper.sneakyThrow(result);
 	}
 
 	private IOException redirectToIoException(Exception exception)
