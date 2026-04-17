@@ -21,12 +21,16 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -39,7 +43,15 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 class S3ConnectorIT
 {
 
-	private static final String READ_USER = "read-user";
+	private static final String ACCOUNT_1 = "000000000001";
+
+	private static final String ACCOUNT_2 = "000000000002";
+
+	private static final String USER_1 = "user-1";
+
+	private static final String USER_2 = "user-2";
+
+	private static final String USER_3 = "user-3";
 
 	private static final String BUCKET_NAME = "test-bucket";
 
@@ -59,7 +71,9 @@ class S3ConnectorIT
 
 	@Container
 	@SuppressWarnings("resource")
-	private static final S3Container CONTAINER = new S3Container().withUser(READ_USER);
+	private static final S3Container CONTAINER = new S3Container().withUser(USER_1, ACCOUNT_1)
+																  .withUser(USER_2, ACCOUNT_2)
+																  .withUser(USER_3, ACCOUNT_1);
 
 	@TempDir(cleanup = CleanupMode.ALWAYS)
 	private static Path baseDirectory;
@@ -78,7 +92,37 @@ class S3ConnectorIT
 	{
 		Optional.of(BUCKET_NAME)
 				.filter(CONTAINER::bucketExists)
-				.ifPresent(item -> ContainersHelper.deleteBucket(CONTAINER, item));
+				.ifPresent(item -> ContainerHelper.deleteBucket(CONTAINER, item));
+	}
+
+	@Test
+	void createBucketAlreadyOwnedByUserTest(@Mock BucketDescriptor bucketDescriptor,
+											@Mock BucketRecord bucketKey)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
+		createConnector(USER_1, Region.US_WEST_1.toString()).createBucket(bucketDescriptor);
+		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
+		var connector = createConnector(USER_3, Region.US_WEST_2.toString());
+		var exception = Assertions.assertThrows(TransportException.class,
+												() -> connector.createBucket(bucketDescriptor));
+		Assertions.assertInstanceOf(BucketAlreadyOwnedByYouException.class, exception.getCause());
+	}
+
+	@Test
+	void createAlreadyExistingBucketTest(@Mock BucketDescriptor bucketDescriptor,
+										 @Mock BucketRecord bucketKey)
+	{
+		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
+		createConnector(USER_1, Region.US_WEST_1.toString()).createBucket(bucketDescriptor);
+		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
+		var connector = createConnector(USER_2, Region.US_WEST_2.toString());
+		var exception = Assertions.assertThrows(TransportException.class,
+												() -> connector.createBucket(bucketDescriptor));
+		Assertions.assertInstanceOf(BucketAlreadyExistsException.class, exception.getCause());
 	}
 
 	@Test
@@ -87,7 +131,7 @@ class S3ConnectorIT
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
-		createConnector(READ_USER).createBucket(bucketDescriptor);
+		createConnector(USER_1).createBucket(bucketDescriptor);
 		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
 	}
 
@@ -98,7 +142,7 @@ class S3ConnectorIT
 	{
 		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		var connector = createConnector(READ_USER);
+		var connector = createConnector(USER_1);
 		Assertions.assertThrows(S3Exception.class, () -> connector.createBucket(bucketDescriptor));
 	}
 
@@ -107,7 +151,7 @@ class S3ConnectorIT
 	void isBucketReadOnlyForUserTest()
 	{
 		CONTAINER.createBucket(BUCKET_NAME);
-		var connector = createConnector(READ_USER);
+		var connector = createConnector(USER_1);
 		connector.createBucket(null);
 		var content = "test".getBytes(StandardCharsets.UTF_8);
 		Assertions.assertThrows(S3Exception.class,
@@ -149,8 +193,9 @@ class S3ConnectorIT
 	void bucketAclWhenBucketDoesNotExistTest()
 	{
 		var connector = createConnector();
-		Assertions.assertThrows(NoSuchBucketException.class,
-								() -> connector.bucketAcl(BUCKET_NAME));
+		var exception = Assertions.assertThrows(TransportException.class,
+												() -> connector.bucketAcl(BUCKET_NAME));
+		Assertions.assertInstanceOf(NoSuchBucketException.class, exception.getCause());
 	}
 
 	@Test
@@ -231,12 +276,17 @@ class S3ConnectorIT
 
 	private S3Connector createConnector(String user)
 	{
+		return createConnector(user, CONTAINER.getRegion());
+	}
+
+	private S3Connector createConnector(String user, String region)
+	{
 		var optional = Optional.ofNullable(user);
 		var accessKey = optional.map(CONTAINER::getAccessKey).orElseGet(CONTAINER::getAccessKey);
 		var secretKey = optional.map(CONTAINER::getSecretKey).orElseGet(CONTAINER::getSecretKey);
 		return S3Connector.create()
 						  .withEndpoint(CONTAINER.getEndpoint())
-						  .withRegion(CONTAINER.getRegion())
+						  .withRegion(region)
 						  .withCredentials(accessKey, secretKey)
 						  .build();
 	}

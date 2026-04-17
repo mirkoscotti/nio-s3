@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.services.sts.StsAsyncClient;
 import software.amazon.awssdk.services.sts.StsAsyncClientBuilder;
@@ -56,7 +56,7 @@ public final class StsConnector
 		return Try.to(() -> client.getCallerIdentity()
 								  .thenApply(GetCallerIdentityResponse::arn)
 								  .get(30, TimeUnit.SECONDS))
-				  .onCatch(ExceptionsHelper::sneakyThrow)
+				  .onCatch(ExceptionHelper::sneakyThrow)
 				  .get();
 	}
 

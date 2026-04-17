@@ -51,7 +51,7 @@ import it.mirkoscotti.nio.s3.functions.Condition;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Expression;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.FileTransfer;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
@@ -218,7 +218,7 @@ public class S3FileSystemProvider
 								.orElseGet(() -> checkIfPathExists(path));
 		Case.of(exception)
 			.when(Condition.not(Objects::isNull))
-			.thenHandle(ExceptionsHelper::throwIoException);
+			.thenHandle(ExceptionHelper::throwIoException);
 		fileSystem.awsFacade()
 				  .writeObject(fileSystem.getFileStores().iterator().next().name(),
 							   bucketPath.toString());
@@ -374,7 +374,7 @@ public class S3FileSystemProvider
 																 .get()));
 		Case.of(reference.get())
 			.when(Objects::nonNull)
-			.thenHandle(ExceptionsHelper::throwIoException);
+			.thenHandle(ExceptionHelper::throwIoException);
 		return result;
 	}
 

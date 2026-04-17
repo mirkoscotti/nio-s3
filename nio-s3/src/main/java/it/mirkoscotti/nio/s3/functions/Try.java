@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti
@@ -18,7 +18,7 @@ public class Try<T>
 
 	private final Callable<T> tryBlock;
 
-	private Consumer<? super Exception> catchBlock = ExceptionsHelper::sneakyThrow;
+	private Consumer<? super Exception> catchBlock = ExceptionHelper::sneakyThrow;
 
 	private Callable<Void> finallyBlock = this::doNothing;
 

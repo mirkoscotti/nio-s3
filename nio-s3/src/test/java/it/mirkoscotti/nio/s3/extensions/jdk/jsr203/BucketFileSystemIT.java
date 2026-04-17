@@ -4,13 +4,17 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -24,7 +28,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -65,13 +69,31 @@ class BucketFileSystemIT
 	@AfterEach
 	void afterEach()
 	{
-		ContainersHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+		ContainerHelper.deleteObjects(CONTAINER, TEST_BUCKET);
+	}
+
+	@Test
+	void createFileSystemWithWrongCredentialsTest()
+	{
+		var uri = URI.create("s3://".concat(TEST_BUCKET));
+		var map = ContainerHelper.unauthenticatedProperties(CONTAINER);
+		var reference = new AtomicReference<FileSystem>();
+		var exception = Assertions.assertThrows(IllegalArgumentException.class,
+												() -> createFileSystem(uri, map, reference));
+		try (var fileSystem = reference.get())
+		{
+			Assertions.assertInstanceOf(AccessDeniedException.class, exception.getCause());
+		}
+		catch (IOException x)
+		{
+			Assertions.fail();
+		}
 	}
 
 	@Test
 	void watchServiceForcedToCloseTest()
 	{
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		ScheduledExecutorService scheduler = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
@@ -96,7 +118,7 @@ class BucketFileSystemIT
 	void directoryStreamForcedToCloseTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		DirectoryStream<Path> stream = null;
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
@@ -121,8 +143,8 @@ class BucketFileSystemIT
 	void seekableByteChannelForcedToCloseWithoutMultipartTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
-		Optional<BucketWritableByteChannel> optional = null;
+		var properties = ContainerHelper.standardProperties(CONTAINER);
+		Optional<BucketWritableByteChannel> optional = Optional.empty();
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
@@ -147,8 +169,8 @@ class BucketFileSystemIT
 	void seekableByteChannelForcedToCloseWithMultipartTest()
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
-		Optional<BucketWritableByteChannel> optional = null;
+		var properties = ContainerHelper.standardProperties(CONTAINER);
+		Optional<BucketWritableByteChannel> optional = Optional.empty();
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
@@ -168,6 +190,15 @@ class BucketFileSystemIT
 		{
 			optional.map(Channel::isOpen).ifPresent(Assertions::assertFalse);
 		}
+	}
+
+	private void createFileSystem(URI uri,
+								  Map<String, ?> properties,
+								  AtomicReference<FileSystem> reference)
+		throws IOException
+	{
+		var fileSystem = FileSystems.newFileSystem(uri, properties);
+		reference.set(fileSystem);
 	}
 
 	private static Path createFile() throws IOException

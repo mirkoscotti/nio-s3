@@ -1,16 +1,16 @@
 package it.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Objects;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
@@ -49,11 +49,9 @@ public class ObjectBasicFileAttributeView
 		{
 			return awsFacade.objectMetadata(bucketName, objectKey);
 		}
-		catch (NoSuchKeyException x)
+		catch (TransportException x)
 		{
-			var reason = x.awsErrorDetails().errorMessage();
-			var message = "Bucket: %s, Key: %s (%s)".formatted(bucketName, objectKey, reason);
-			throw new NoSuchFileException(message);
+			throw ExceptionHelper.toIoException(x.toNioException());
 		}
 		catch (S3Exception x)
 		{

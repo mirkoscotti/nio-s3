@@ -11,13 +11,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Condition;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti
  * @version Mar 04, 2026
  */
-public class ResourcesRegistry
+public class ResourceRegistry
 	implements Closeable
 {
 
@@ -32,7 +32,7 @@ public class ResourcesRegistry
 				 .forEach(item -> Try.to(() -> close(item)).onCatch(reference::set).run());
 		Case.of(reference.get())
 			.when(Condition.not(Objects::isNull))
-			.thenHandle(ExceptionsHelper::throwIoException);
+			.thenHandle(ExceptionHelper::throwIoException);
 	}
 
 	public Void registerResource(Closeable resource)

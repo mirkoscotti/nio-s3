@@ -278,7 +278,7 @@ class S3ConnectorTest
 		Mockito.when(builder.crossRegionAccessEnabled(Mockito.anyBoolean())).thenReturn(builder);
 		Mockito.when(builder.build()).thenReturn(client);
 		Mockito.when(s3Exception.awsErrorDetails()).thenReturn(awsErrorDetails);
-		Mockito.when(awsErrorDetails.errorCode()).thenReturn("Some Error");
+		Mockito.when(awsErrorDetails.errorCode()).thenReturn("Some error");
 		var future = new CompletableFuture<GetBucketPolicyResponse>();
 		future.completeExceptionally(s3Exception);
 		Mockito.when(client.getBucketPolicy(Mockito.any(Consumer.class))).thenReturn(future);

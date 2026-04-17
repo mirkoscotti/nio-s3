@@ -20,7 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-import it.mirkoscotti.nio.s3.helpers.ContainersHelper;
+import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
@@ -88,7 +88,7 @@ class BucketDirectoryStreamIT
 		// Copy file to remote other sub-directory
 		copyFilesToRemoteDirectory(TEXT_PATTERN, OTHER_SUB_DIRECTORY);
 		copyFilesToRemoteDirectory(PDF_PATTERN, OTHER_SUB_DIRECTORY);
-		var properties = ContainersHelper.standardProperties(CONTAINER);
+		var properties = ContainerHelper.standardProperties(CONTAINER);
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 	}
 

@@ -48,6 +48,8 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 class S3FileSystemProviderTest
 {
 
+	private static final String BUCKET_NAME = "bucket-name";
+
 	private static final String ACCESS_KEY = "access-key";
 
 	private static final String SECRET_KEY = "secret-key";
@@ -478,8 +480,9 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
 		{
+			Mockito.when(fileSystem.bucketName()).thenReturn(BUCKET_NAME);
 			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
-			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), BUCKET_NAME), fileSystem);
 			facadesCache.put(awsRecord, awsFacade);
 			fileSystemProvider.closeFileSystem(fileSystem);
 			Assertions.assertTrue(fileSystemsCache.isEmpty());
@@ -506,7 +509,7 @@ class S3FileSystemProviderTest
 			Stream.of(fileSystem1, fileSystem2)
 				  .forEach(item -> Mockito.when(item.awsFacade()).thenReturn(awsFacade));
 			fileSystemsCache.put(new BucketRecord(Optional.empty(), bucketName1), fileSystem1);
-			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem2);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), BUCKET_NAME), fileSystem2);
 			facadesCache.put(awsRecord, awsFacade);
 			fileSystemProvider.closeFileSystem(fileSystem1);
 			Assertions.assertFalse(fileSystemsCache.containsValue(fileSystem1));
@@ -527,8 +530,9 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
 		{
+			Mockito.when(fileSystem.bucketName()).thenReturn(BUCKET_NAME);
 			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
-			fileSystemsCache.put(new BucketRecord(Optional.empty(), null), fileSystem);
+			fileSystemsCache.put(new BucketRecord(Optional.empty(), BUCKET_NAME), fileSystem);
 			facadesCache.put(awsRecord, awsFacade);
 			Assertions.assertTrue(fileSystemProvider.isFileSystemOpen(fileSystem));
 		}
@@ -546,6 +550,7 @@ class S3FileSystemProviderTest
 		var fileSystemProvider = new S3FileSystemProvider();
 		try (var fileSystem = Mockito.mock(BucketFileSystem.class))
 		{
+			Mockito.when(fileSystem.bucketName()).thenReturn(BUCKET_NAME);
 			Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
 			Assertions.assertFalse(fileSystemProvider.isFileSystemOpen(fileSystem));
 		}

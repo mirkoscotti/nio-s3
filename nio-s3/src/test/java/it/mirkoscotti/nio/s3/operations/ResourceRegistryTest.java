@@ -20,7 +20,7 @@ import it.mirkoscotti.nio.s3.helpers.JunitHelper;
  */
 @SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
-class ResourcesRegistryTest
+class ResourceRegistryTest
 {
 
 	@Mock
@@ -29,7 +29,7 @@ class ResourcesRegistryTest
 	@Test
 	void closeTest()
 	{
-		var registry = new ResourcesRegistry();
+		var registry = new ResourceRegistry();
 		try
 		{
 			var list = JunitHelper.findFieldValueByType(registry, List.class);
@@ -46,7 +46,7 @@ class ResourcesRegistryTest
 	@Test
 	void closeFailedTest(@Mock Closeable otherCloseable)
 	{
-		var registry = new ResourcesRegistry();
+		var registry = new ResourceRegistry();
 		try
 		{
 			Mockito.doThrow(IOException.class).when(otherCloseable).close();

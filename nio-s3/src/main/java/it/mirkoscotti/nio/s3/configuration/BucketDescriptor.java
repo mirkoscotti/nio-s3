@@ -202,10 +202,8 @@ public class BucketDescriptor
 
 	private void addProperty(BucketProperty property, Object object)
 	{
-		Stream.<Supplier<?>>of(() -> object,
-							   () -> System.getProperty(property.toProperty()),
-							   () -> System.getenv(property.toProperty()),
-							   property::defaultValue)
+		Stream.<Supplier<?>>of(() -> object, () -> System.getProperty(property.toProperty()),
+							   () -> System.getenv(property.toProperty()), property::defaultValue)
 			  .map(Supplier::get)
 			  .filter(Objects::nonNull)
 			  .findFirst()
@@ -218,7 +216,7 @@ public class BucketDescriptor
 		var bucket = uriDescriptor.bucketName();
 		var bucketName = Optional.of(bucket)
 								 .filter(item -> Pattern.matches(BUCKET_PATTERN, item))
-								 .orElseThrow(() -> new BucketNameException(bucket));
+								 .orElseThrow(() -> new BucketNameException(uriDescriptor));
 		var endpoint = uriDescriptor.endpoint()
 									.orElseGet(() -> configuration.remove(BucketProperty.ENDPOINT));
 		return new BucketRecord(Optional.ofNullable(endpoint), bucketName);

@@ -2,11 +2,10 @@ package it.mirkoscotti.nio.s3.operations;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -15,10 +14,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Try;
-import it.mirkoscotti.nio.s3.helpers.ExceptionsHelper;
+import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -28,8 +28,6 @@ import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
-import software.amazon.awssdk.services.s3.model.InvalidRequestException;
-import software.amazon.awssdk.services.s3.model.NoSuchUploadException;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
@@ -41,8 +39,6 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 public final class MultipartWriter
 	implements Closeable
 {
-
-	private static final Logger LOGGER = System.getLogger(MultipartWriter.class.getName());
 
 	private final List<CompletedPart> parts = new ArrayList<>();
 
@@ -68,45 +64,35 @@ public final class MultipartWriter
 		this.client = Objects.requireNonNull(client, () -> "Missing client.");
 		this.bucket = Objects.requireNonNull(bucket, () -> "Missing bucket.");
 		this.key = Objects.requireNonNull(key, () -> "Missing key.");
-		uploadId = Try.to(this::createUploadId).onCatch(ExceptionsHelper::sneakyThrow).get();
+		uploadId = Try.to(this::createUploadId).onCatch(ExceptionHelper::sneakyThrow).get();
 	}
 
 	@Override
 	public void close() throws IOException
 	{
-		Evaluator.when(() -> mustAbort)
+		Evaluator.when(() -> mustAbort || parts.isEmpty())
 				 .then(this::cancelUpload)
-				 .elseExecute(() -> Try.to(this::completeUpload).onCatch(this::cancelUpload).run());
+				 .elseExecute(this::completeUpload);
 	}
 
-	public void write(byte[] buffer) throws IOException
+	public void write(byte[] buffer)
 	{
-		try
-		{
-			parts.add(createCompletedPart(buffer));
-		}
-		catch (TimeoutException | ExecutionException x)
-		{
-			throw ExceptionsHelper.toIoException(x);
-		}
-		catch (InterruptedException x)
-		{
-			Thread.currentThread().interrupt();
-			throw ExceptionsHelper.toIoException(x);
-		}
+		Try.to(() -> parts.add(createCompletedPart(buffer)))
+		   .onCatch(ExceptionHelper::sneakyThrow)
+		   .run();
 	}
 
 	public void copy(long size)
 	{
 		parts.add(Try.to(() -> createCompletedPart(size))
-					 .onCatch(ExceptionsHelper::sneakyThrow)
+					 .onCatch(ExceptionHelper::sneakyThrow)
 					 .get());
 	}
 
 	public void copy(long from, long to)
 	{
 		parts.add(Try.to(() -> createCompletedPart(from, to))
-					 .onCatch(ExceptionsHelper::sneakyThrow)
+					 .onCatch(ExceptionHelper::sneakyThrow)
 					 .get());
 	}
 
@@ -172,27 +158,24 @@ public final class MultipartWriter
 							.build();
 	}
 
-	private Void completeUpload() throws TimeoutException, ExecutionException, InterruptedException
+	private void completeUpload() throws IOException
 	{
-		client.completeMultipartUpload(this::createCompleteMultipartRequest)
-			  .get(30, TimeUnit.SECONDS);
-		return null;
+		var reference = new AtomicReference<Exception>();
+		Try.to(() -> client.completeMultipartUpload(this::createCompleteMultipartRequest)
+						   .get(30, TimeUnit.SECONDS))
+		   .onCatch(reference::set)
+		   .run();
+		Case.of(reference.get()).when(Objects::nonNull).thenHandle(this::cancelUpload);
 	}
 
-	private void cancelUpload(Exception exception)
+	private void cancelUpload(Exception completeException) throws IOException
 	{
-		Supplier<String> warning = () -> """
-			A multi-part upload has failed but it was not possible to abort it.
-			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
-			See the command put-bucket-lifecycle-configuration for further details.
-			""";
-		Try.to(this::cancelUpload).onCatch(item -> LOGGER.log(Level.WARNING, warning, item)).run();
-		var s3Exception = ExceptionsHelper.redirectException(exception);
-		if (!(s3Exception instanceof NoSuchUploadException)
-			&& !(s3Exception instanceof InvalidRequestException))
-		{
-			throw s3Exception;
-		}
+		var exception = ExceptionHelper.redirectException(completeException);
+		Try.to(this::cancelUpload).onCatch(item -> handleException(exception, item)).run();
+		Case.of(exception)
+			.when(TransportException.class::isInstance)
+			.then(item -> TransportException.class.cast(item).throwNioException())
+			.otherwise(() -> ExceptionHelper.throwIoException(exception));
 	}
 
 	private Void cancelUpload() throws IOException
@@ -204,8 +187,23 @@ public final class MultipartWriter
 		   .run();
 		Case.of(reference.get())
 			.when(Objects::nonNull)
-			.thenHandle(ExceptionsHelper::throwIoException);
+			.thenHandle(ExceptionHelper::throwIoException);
 		return null;
+	}
+
+	private void handleException(RuntimeException completeException, Exception cancelException)
+	{
+		Supplier<String> warning = () -> """
+			A multi-part upload has failed but it was not possible to abort it.
+			Ensure to enable the automatic abort of the incomplete parts after a given number of days.
+			See the command put-bucket-lifecycle-configuration for further details.
+			""";
+		var exception = ExceptionHelper.redirectException(cancelException.getCause());
+		Optional.ofNullable(exception)
+				.filter(TransportException.class::isInstance)
+				.map(TransportException.class::cast)
+				.map(item -> item.toNioException(warning.get()))
+				.ifPresent(completeException::addSuppressed);
 	}
 
 	private void createMultipartRequest(CreateMultipartUploadRequest.Builder builder)

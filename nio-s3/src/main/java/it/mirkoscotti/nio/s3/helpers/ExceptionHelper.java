@@ -1,21 +1,21 @@
 package it.mirkoscotti.nio.s3.helpers;
 
 import java.io.IOException;
-import java.nio.file.FileSystemNotFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import it.mirkoscotti.nio.s3.exceptions.TransportException;
+
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 /**
  * @author mirko.scotti
  * @version May 24, 2025
  */
-public final class ExceptionsHelper
+public final class ExceptionHelper
 {
 
-	private ExceptionsHelper()
+	private ExceptionHelper()
 	{
 		super();
 	}
@@ -29,8 +29,12 @@ public final class ExceptionsHelper
 	{
 		return switch (throwable)
 		{
-			case NoSuchBucketException exception -> new FileSystemNotFoundException(exception.getMessage());
-			default -> toAwsServiceException(throwable);
+			case InterruptedException exception -> interruptThread(exception);
+			case CompletionException exception -> redirectException(exception.getCause());
+			case ExecutionException exception -> redirectException(exception.getCause());
+			case AwsServiceException exception -> new TransportException(exception);
+			case RuntimeException exception -> exception;
+			default -> new IllegalStateException(throwable);
 		};
 	}
 
@@ -46,15 +50,9 @@ public final class ExceptionsHelper
 			: new IOException(exception);
 	}
 
-	public static AwsServiceException toAwsServiceException(Throwable throwable)
+	public static RuntimeException interruptThread(InterruptedException exception)
 	{
-		return switch (throwable)
-		{
-			case AwsServiceException exception -> exception;
-			case CompletionException exception -> toAwsServiceException(exception.getCause());
-			case ExecutionException exception -> toAwsServiceException(exception.getCause());
-			case RuntimeException exception -> throw exception;
-			default -> throw new IllegalStateException(throwable);
-		};
+		Thread.currentThread().interrupt();
+		return new IllegalStateException(exception);
 	}
 }
