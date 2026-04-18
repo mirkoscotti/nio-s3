@@ -16,7 +16,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import io.github.mirkoscotti.nio.s3.enums.ObjectFlag;
+
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 

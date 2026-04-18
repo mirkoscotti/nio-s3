@@ -43,10 +43,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
+import io.github.mirkoscotti.nio.s3.enums.CopyFlag;
+import io.github.mirkoscotti.nio.s3.enums.ObjectAccess;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
-import it.mirkoscotti.nio.s3.enums.CopyFlag;
-import it.mirkoscotti.nio.s3.enums.ObjectAccess;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Condition;
 import it.mirkoscotti.nio.s3.functions.Evaluator;

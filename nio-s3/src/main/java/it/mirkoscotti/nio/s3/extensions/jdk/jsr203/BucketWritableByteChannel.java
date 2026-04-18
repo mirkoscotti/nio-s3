@@ -9,7 +9,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.enums.ObjectFlag;
+import io.github.mirkoscotti.nio.s3.enums.ObjectFlag;
+
 import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;

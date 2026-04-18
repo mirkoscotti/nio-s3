@@ -10,8 +10,8 @@ import java.util.stream.Stream;
 
 import jakarta.json.bind.annotation.JsonbProperty;
 
-import it.mirkoscotti.nio.s3.enums.BucketAction;
-import it.mirkoscotti.nio.s3.enums.BucketEffect;
+import io.github.mirkoscotti.nio.s3.enums.BucketAction;
+import io.github.mirkoscotti.nio.s3.enums.BucketEffect;
 
 /**
  * @author mirko.scotti

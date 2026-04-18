@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.enums.ErrorCode;
+import io.github.mirkoscotti.nio.s3.enums.ErrorCode;
+
 import it.mirkoscotti.nio.s3.functions.Transformer;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 

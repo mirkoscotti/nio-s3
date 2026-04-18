@@ -29,8 +29,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-
-import it.mirkoscotti.nio.s3.enums.BucketModifier;
+import io.github.mirkoscotti.nio.s3.enums.BucketModifier;
 
 /**
  * Defines an S3 bucket object with a name compliant with the rules described in

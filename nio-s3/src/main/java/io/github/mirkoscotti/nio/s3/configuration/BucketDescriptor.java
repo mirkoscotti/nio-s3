@@ -11,7 +11,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
+
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
 import it.mirkoscotti.nio.s3.records.AwsRecord;

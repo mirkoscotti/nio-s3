@@ -5,7 +5,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
-import it.mirkoscotti.nio.s3.enums.BucketProperty;
+import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
+
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**

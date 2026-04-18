@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.enums;
+package io.github.mirkoscotti.nio.s3.enums;
 
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Optional;

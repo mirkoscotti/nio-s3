@@ -15,7 +15,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.enums.ErrorCode;
+import io.github.mirkoscotti.nio.s3.enums.ErrorCode;
+
 import it.mirkoscotti.nio.s3.exceptions.TransportException;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
