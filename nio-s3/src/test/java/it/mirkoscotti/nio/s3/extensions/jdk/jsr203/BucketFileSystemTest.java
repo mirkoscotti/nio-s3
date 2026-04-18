@@ -15,7 +15,8 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
 import it.mirkoscotti.nio.s3.enums.PathSyntax;
 import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;

@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.configuration;
+package io.github.mirkoscotti.nio.s3.configuration;
 
 import java.net.URI;
 import java.util.List;

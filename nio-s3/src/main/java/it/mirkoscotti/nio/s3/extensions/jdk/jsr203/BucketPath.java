@@ -28,7 +28,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
 import it.mirkoscotti.nio.s3.enums.BucketModifier;
 
 /**

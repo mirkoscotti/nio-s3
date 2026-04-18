@@ -10,7 +10,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.LazyReference;
 import it.mirkoscotti.nio.s3.records.AwsRecord;

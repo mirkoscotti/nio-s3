@@ -2,7 +2,7 @@ package it.mirkoscotti.nio.s3.exceptions;
 
 import java.util.Optional;
 
-import it.mirkoscotti.nio.s3.configuration.UriDescriptor;
+import io.github.mirkoscotti.nio.s3.configuration.UriDescriptor;
 
 /**
  * @author mirko.scotti

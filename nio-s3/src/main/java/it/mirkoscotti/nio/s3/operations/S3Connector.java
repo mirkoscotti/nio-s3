@@ -21,7 +21,8 @@ import java.util.stream.Collectors;
 
 import jakarta.json.bind.JsonbBuilder;
 
-import it.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+
 import it.mirkoscotti.nio.s3.enums.BucketProperty;
 import it.mirkoscotti.nio.s3.enums.ErrorCode;
 import it.mirkoscotti.nio.s3.exceptions.TransportException;
