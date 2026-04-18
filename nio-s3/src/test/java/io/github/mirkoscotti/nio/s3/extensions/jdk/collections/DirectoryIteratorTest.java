@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.extensions.jdk.collections;
+package io.github.mirkoscotti.nio.s3.extensions.jdk.collections;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
@@ -12,6 +12,8 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import io.github.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;

@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.extensions.jdk.collections;
+package io.github.mirkoscotti.nio.s3.extensions.jdk.collections;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
