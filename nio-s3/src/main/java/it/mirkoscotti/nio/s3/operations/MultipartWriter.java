@@ -14,7 +14,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import it.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
+
 import it.mirkoscotti.nio.s3.functions.Case;
 import it.mirkoscotti.nio.s3.functions.Evaluator;
 import it.mirkoscotti.nio.s3.functions.Try;

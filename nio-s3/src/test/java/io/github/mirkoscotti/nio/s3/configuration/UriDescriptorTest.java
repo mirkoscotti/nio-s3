@@ -9,7 +9,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.exceptions.BucketUriException;
+import io.github.mirkoscotti.nio.s3.exceptions.BucketUriException;
 
 /**
  * @author mirko.scotti

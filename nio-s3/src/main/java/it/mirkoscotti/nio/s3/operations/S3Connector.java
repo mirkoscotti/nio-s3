@@ -24,8 +24,8 @@ import jakarta.json.bind.JsonbBuilder;
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.enums.ErrorCode;
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 
-import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
 import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;

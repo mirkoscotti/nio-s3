@@ -17,8 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.enums.PathSyntax;
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 
-import it.mirkoscotti.nio.s3.exceptions.TransportException;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.ResourceRegistry;
 

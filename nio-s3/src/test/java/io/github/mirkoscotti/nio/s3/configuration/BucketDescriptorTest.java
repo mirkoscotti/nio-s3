@@ -14,8 +14,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
+import io.github.mirkoscotti.nio.s3.exceptions.BucketNameException;
 
-import it.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.regions.Region;

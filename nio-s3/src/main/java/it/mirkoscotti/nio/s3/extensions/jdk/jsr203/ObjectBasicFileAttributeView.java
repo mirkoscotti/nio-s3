@@ -6,8 +6,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Objects;
 
-import it.mirkoscotti.nio.s3.exceptions.TransportException;
-import it.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
+
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 

@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
-import it.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 

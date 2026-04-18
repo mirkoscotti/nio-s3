@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.exceptions;
+package io.github.mirkoscotti.nio.s3.exceptions;
 
 import java.io.IOException;
 import java.util.Optional;
