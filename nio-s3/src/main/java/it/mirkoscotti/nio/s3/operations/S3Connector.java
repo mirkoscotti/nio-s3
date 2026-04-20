@@ -26,8 +26,8 @@ import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.enums.ErrorCode;
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 import io.github.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator;
+import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.records.PolicyRecord;

@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
+import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 
 /**
  * @author mirko.scotti
