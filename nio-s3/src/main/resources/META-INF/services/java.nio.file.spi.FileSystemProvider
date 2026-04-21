@@ -1,1 +1,1 @@
-it.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider
+io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider
