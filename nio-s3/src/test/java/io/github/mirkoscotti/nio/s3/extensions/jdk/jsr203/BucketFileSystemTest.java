@@ -20,8 +20,7 @@ import io.github.mirkoscotti.nio.s3.enums.PathSyntax;
 import io.github.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import io.github.mirkoscotti.nio.s3.operations.S3Connector;
-
-import it.mirkoscotti.nio.s3.records.BucketRecord;
+import io.github.mirkoscotti.nio.s3.records.BucketRecord;
 
 /**
  * @author mirko.scotti

@@ -9,8 +9,7 @@ import java.util.stream.IntStream;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.exceptions.BucketUriException;
-
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 /**
  * @author mirko.scotti

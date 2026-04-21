@@ -29,8 +29,8 @@ import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
-import it.mirkoscotti.nio.s3.records.ObjectAttributes;
-import it.mirkoscotti.nio.s3.records.ObjectParts;
+import io.github.mirkoscotti.nio.s3.records.ObjectAttributes;
+import io.github.mirkoscotti.nio.s3.records.ObjectParts;
 
 import software.amazon.awssdk.regions.Region;
 

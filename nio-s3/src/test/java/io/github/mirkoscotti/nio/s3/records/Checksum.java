@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.records;
+package io.github.mirkoscotti.nio.s3.records;
 
 import jakarta.json.bind.annotation.JsonbProperty;
 

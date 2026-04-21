@@ -29,8 +29,7 @@ import io.github.mirkoscotti.nio.s3.extensions.jdk.collections.DirectoryIterator
 import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
 import io.github.mirkoscotti.nio.s3.functions.Try;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
-
-import it.mirkoscotti.nio.s3.records.PolicyRecord;
+import io.github.mirkoscotti.nio.s3.records.PolicyRecord;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.BytesWrapper;

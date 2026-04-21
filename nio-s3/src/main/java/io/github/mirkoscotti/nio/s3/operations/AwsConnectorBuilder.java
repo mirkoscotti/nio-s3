@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.awscore.AwsClient;

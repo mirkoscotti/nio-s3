@@ -54,9 +54,8 @@ import io.github.mirkoscotti.nio.s3.functions.Try;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import io.github.mirkoscotti.nio.s3.operations.FileTransfer;
-
-import it.mirkoscotti.nio.s3.records.AwsRecord;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
+import io.github.mirkoscotti.nio.s3.records.AwsRecord;
+import io.github.mirkoscotti.nio.s3.records.BucketRecord;
 
 /**
  * * This provider manages one file system for each S3 bucket on an AWS account or its emulator

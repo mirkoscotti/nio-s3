@@ -26,8 +26,7 @@ import io.github.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 import io.github.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import io.github.mirkoscotti.nio.s3.helpers.IoHelper;
 import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
-
-import it.mirkoscotti.nio.s3.records.BucketRecord;
+import io.github.mirkoscotti.nio.s3.records.BucketRecord;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;

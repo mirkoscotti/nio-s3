@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.records;
+package io.github.mirkoscotti.nio.s3.records;
 
 import java.time.Instant;
 import java.time.ZoneOffset;

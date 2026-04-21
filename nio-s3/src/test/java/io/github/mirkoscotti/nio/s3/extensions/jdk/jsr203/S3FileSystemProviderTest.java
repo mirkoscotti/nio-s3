@@ -33,10 +33,9 @@ import io.github.mirkoscotti.nio.s3.functions.LazyReference;
 import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
 import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import io.github.mirkoscotti.nio.s3.operations.S3Connector;
-
-import it.mirkoscotti.nio.s3.records.AwsRecord;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import io.github.mirkoscotti.nio.s3.records.AwsRecord;
+import io.github.mirkoscotti.nio.s3.records.BucketRecord;
+import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;

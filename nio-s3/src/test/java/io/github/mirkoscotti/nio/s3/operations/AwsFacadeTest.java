@@ -18,9 +18,8 @@ import io.github.mirkoscotti.nio.s3.functions.LazyReference;
 import io.github.mirkoscotti.nio.s3.operations.IamConnector.IamConnectorBuilder;
 import io.github.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
 import io.github.mirkoscotti.nio.s3.operations.StsConnector.StsConnectorBuilder;
-
-import it.mirkoscotti.nio.s3.records.AwsRecord;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import io.github.mirkoscotti.nio.s3.records.AwsRecord;
+import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 /**
  * @author mirko.scotti

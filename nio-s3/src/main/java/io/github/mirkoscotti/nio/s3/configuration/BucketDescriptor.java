@@ -14,10 +14,9 @@ import java.util.stream.Stream;
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.exceptions.BucketNameException;
 import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
-
-import it.mirkoscotti.nio.s3.records.AwsRecord;
-import it.mirkoscotti.nio.s3.records.BucketRecord;
-import it.mirkoscotti.nio.s3.records.CredentialsRecord;
+import io.github.mirkoscotti.nio.s3.records.AwsRecord;
+import io.github.mirkoscotti.nio.s3.records.BucketRecord;
+import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 import software.amazon.awssdk.regions.Region;
 
