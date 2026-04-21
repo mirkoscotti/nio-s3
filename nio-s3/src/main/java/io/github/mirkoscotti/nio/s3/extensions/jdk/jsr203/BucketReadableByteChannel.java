@@ -6,7 +6,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Optional;
 
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti

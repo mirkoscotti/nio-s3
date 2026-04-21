@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.operations;
+package io.github.mirkoscotti.nio.s3.operations;
 
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
@@ -15,10 +15,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.functions.LazyReference;
+import io.github.mirkoscotti.nio.s3.operations.IamConnector.IamConnectorBuilder;
+import io.github.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
+import io.github.mirkoscotti.nio.s3.operations.StsConnector.StsConnectorBuilder;
 
-import it.mirkoscotti.nio.s3.operations.IamConnector.IamConnectorBuilder;
-import it.mirkoscotti.nio.s3.operations.S3Connector.S3ConnectorBuilder;
-import it.mirkoscotti.nio.s3.operations.StsConnector.StsConnectorBuilder;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;
 

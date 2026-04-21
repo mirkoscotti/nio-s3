@@ -16,9 +16,8 @@ import io.github.mirkoscotti.nio.s3.functions.Evaluator;
 import io.github.mirkoscotti.nio.s3.functions.Expression;
 import io.github.mirkoscotti.nio.s3.functions.Transformer;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
-
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
-import it.mirkoscotti.nio.s3.operations.MultipartWriter;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.MultipartWriter;
 
 /**
  * @author mirko.scotti

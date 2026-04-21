@@ -31,9 +31,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.functions.LazyReference;
 import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.S3Connector;
 
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
-import it.mirkoscotti.nio.s3.operations.S3Connector;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 import it.mirkoscotti.nio.s3.records.CredentialsRecord;

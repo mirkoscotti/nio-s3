@@ -6,8 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
-
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * The whole set of properties of the bucket mapped to the file store defining this view.

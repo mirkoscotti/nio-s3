@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.operations;
+package io.github.mirkoscotti.nio.s3.operations;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;

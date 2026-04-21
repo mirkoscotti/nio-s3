@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.operations;
+package io.github.mirkoscotti.nio.s3.operations;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

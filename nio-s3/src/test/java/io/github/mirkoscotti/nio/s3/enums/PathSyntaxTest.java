@@ -7,7 +7,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.operations.GlobPattern;
+import io.github.mirkoscotti.nio.s3.operations.GlobPattern;
 
 /**
  * @author mirko.scotti

@@ -52,9 +52,9 @@ import io.github.mirkoscotti.nio.s3.functions.Evaluator;
 import io.github.mirkoscotti.nio.s3.functions.Expression;
 import io.github.mirkoscotti.nio.s3.functions.Try;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.FileTransfer;
 
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
-import it.mirkoscotti.nio.s3.operations.FileTransfer;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 import it.mirkoscotti.nio.s3.records.BucketRecord;
 

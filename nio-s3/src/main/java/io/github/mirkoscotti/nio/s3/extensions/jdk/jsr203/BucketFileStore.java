@@ -10,8 +10,7 @@ import java.util.Optional;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.functions.Try;
-
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * According to the {@link FileStore} specification, this one represents a single bucket in the same

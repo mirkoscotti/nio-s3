@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.operations;
+package io.github.mirkoscotti.nio.s3.operations;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;

@@ -13,7 +13,7 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
  * @author mirko.scotti

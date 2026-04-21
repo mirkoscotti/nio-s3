@@ -9,8 +9,7 @@ import java.util.Objects;
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 import io.github.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
-
-import it.mirkoscotti.nio.s3.operations.AwsFacade;
+import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 import software.amazon.awssdk.services.s3.model.S3Exception;
 

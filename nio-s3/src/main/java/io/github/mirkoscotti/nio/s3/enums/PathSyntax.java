@@ -3,7 +3,7 @@ package io.github.mirkoscotti.nio.s3.enums;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.operations.GlobPattern;
+import io.github.mirkoscotti.nio.s3.operations.GlobPattern;
 
 /**
  * @author mirko.scotti
