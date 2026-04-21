@@ -30,7 +30,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import io.github.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+
 import it.mirkoscotti.nio.s3.helpers.ContainerHelper;
 import it.mirkoscotti.nio.s3.helpers.IoHelper;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;

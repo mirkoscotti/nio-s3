@@ -16,7 +16,8 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import it.mirkoscotti.nio.s3.functions.Try;
+import io.github.mirkoscotti.nio.s3.functions.Try;
+
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;

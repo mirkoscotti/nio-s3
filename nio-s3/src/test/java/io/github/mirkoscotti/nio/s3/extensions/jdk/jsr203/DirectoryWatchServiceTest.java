@@ -26,12 +26,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileStore;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystem;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.DirectoryWatchKey;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.DirectoryWatchService;
-
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**

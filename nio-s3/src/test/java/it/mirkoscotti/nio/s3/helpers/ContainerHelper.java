@@ -6,8 +6,7 @@ import java.util.stream.Stream;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
-
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import io.github.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 
 /**
  * @author mirko.scotti

@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import it.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.Case;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;

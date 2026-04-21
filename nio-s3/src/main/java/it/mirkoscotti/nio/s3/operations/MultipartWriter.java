@@ -15,10 +15,10 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.Evaluator;
+import io.github.mirkoscotti.nio.s3.functions.Try;
 
-import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.functions.Evaluator;
-import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.core.async.AsyncRequestBody;

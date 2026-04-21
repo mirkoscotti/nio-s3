@@ -8,7 +8,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileStoreAttributeView;
 
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 

@@ -18,11 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.enums.PathSyntax;
 import io.github.mirkoscotti.nio.s3.exceptions.BucketNameException;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileStore;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystem;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.DirectoryWatchService;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
 
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.S3Connector;

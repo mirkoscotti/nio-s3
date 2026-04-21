@@ -11,9 +11,9 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
+import io.github.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.LazyReference;
 
-import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.functions.LazyReference;
 import it.mirkoscotti.nio.s3.records.AwsRecord;
 
 import software.amazon.awssdk.regions.Region;

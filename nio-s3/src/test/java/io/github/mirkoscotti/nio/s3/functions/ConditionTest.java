@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.functions;
+package io.github.mirkoscotti.nio.s3.functions;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

@@ -10,8 +10,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
-
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**

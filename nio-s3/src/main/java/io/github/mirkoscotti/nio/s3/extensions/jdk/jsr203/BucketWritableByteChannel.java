@@ -11,11 +11,11 @@ import java.util.stream.Stream;
 
 import io.github.mirkoscotti.nio.s3.enums.ObjectFlag;
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.Evaluator;
+import io.github.mirkoscotti.nio.s3.functions.Expression;
+import io.github.mirkoscotti.nio.s3.functions.Transformer;
 
-import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.functions.Evaluator;
-import it.mirkoscotti.nio.s3.functions.Expression;
-import it.mirkoscotti.nio.s3.functions.Transformer;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;

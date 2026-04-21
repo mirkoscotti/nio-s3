@@ -14,10 +14,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystem;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketReadableByteChannel;
-
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import it.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
+import io.github.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
 
 /**
  * @author mirko.scotti

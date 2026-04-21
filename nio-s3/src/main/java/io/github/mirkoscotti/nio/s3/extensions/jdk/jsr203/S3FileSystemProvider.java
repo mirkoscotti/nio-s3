@@ -46,12 +46,12 @@ import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
 import io.github.mirkoscotti.nio.s3.enums.CopyFlag;
 import io.github.mirkoscotti.nio.s3.enums.ObjectAccess;
+import io.github.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.Condition;
+import io.github.mirkoscotti.nio.s3.functions.Evaluator;
+import io.github.mirkoscotti.nio.s3.functions.Expression;
+import io.github.mirkoscotti.nio.s3.functions.Try;
 
-import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.functions.Condition;
-import it.mirkoscotti.nio.s3.functions.Evaluator;
-import it.mirkoscotti.nio.s3.functions.Expression;
-import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.FileTransfer;

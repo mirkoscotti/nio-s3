@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.functions;
+package io.github.mirkoscotti.nio.s3.functions;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;

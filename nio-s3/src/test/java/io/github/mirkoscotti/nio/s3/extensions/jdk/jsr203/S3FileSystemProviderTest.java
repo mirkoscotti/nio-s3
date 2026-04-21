@@ -29,16 +29,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketDirectoryStream;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileStore;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystem;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketSeekableByteChannel;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributeView;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributes;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.S3FileSystemProvider;
+import io.github.mirkoscotti.nio.s3.functions.LazyReference;
 
-import it.mirkoscotti.nio.s3.functions.LazyReference;
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.S3Connector;

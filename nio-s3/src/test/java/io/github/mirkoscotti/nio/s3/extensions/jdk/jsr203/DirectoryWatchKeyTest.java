@@ -20,10 +20,6 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketFileSystem;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.DirectoryWatchKey;
-
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**

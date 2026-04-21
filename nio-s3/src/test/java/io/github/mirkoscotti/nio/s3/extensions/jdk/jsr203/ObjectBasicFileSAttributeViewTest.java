@@ -11,7 +11,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.exceptions.UnsupportedIoOperationException;
-import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.ObjectBasicFileAttributeView;
 
 import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;

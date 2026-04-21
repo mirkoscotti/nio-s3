@@ -8,9 +8,10 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
-import it.mirkoscotti.nio.s3.functions.Case;
-import it.mirkoscotti.nio.s3.functions.Condition;
-import it.mirkoscotti.nio.s3.functions.Try;
+import io.github.mirkoscotti.nio.s3.functions.Case;
+import io.github.mirkoscotti.nio.s3.functions.Condition;
+import io.github.mirkoscotti.nio.s3.functions.Try;
+
 import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**

@@ -9,8 +9,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketProperty;
+import io.github.mirkoscotti.nio.s3.functions.Try;
 
-import it.mirkoscotti.nio.s3.functions.Try;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
