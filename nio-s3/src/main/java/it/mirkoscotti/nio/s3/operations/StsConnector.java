@@ -7,8 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import io.github.mirkoscotti.nio.s3.functions.Try;
-
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.services.sts.StsAsyncClient;
 import software.amazon.awssdk.services.sts.StsAsyncClientBuilder;

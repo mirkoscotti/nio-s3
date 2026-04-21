@@ -6,8 +6,7 @@ import java.util.stream.Stream;
 
 import io.github.mirkoscotti.nio.s3.enums.ErrorCode;
 import io.github.mirkoscotti.nio.s3.functions.Transformer;
-
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;

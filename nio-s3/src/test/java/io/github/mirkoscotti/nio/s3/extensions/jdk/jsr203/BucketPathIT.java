@@ -24,9 +24,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import io.github.mirkoscotti.nio.s3.configuration.BucketDescriptor;
 import io.github.mirkoscotti.nio.s3.extensions.testcontainers.S3Container;
-
-import it.mirkoscotti.nio.s3.helpers.IoHelper;
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import io.github.mirkoscotti.nio.s3.helpers.IoHelper;
+import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti

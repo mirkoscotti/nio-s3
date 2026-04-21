@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.helpers;
+package io.github.mirkoscotti.nio.s3.helpers;
 
 import java.io.IOException;
 import java.util.concurrent.CompletionException;

@@ -13,8 +13,7 @@ import java.util.stream.Stream;
 
 import io.github.mirkoscotti.nio.s3.enums.BucketAction;
 import io.github.mirkoscotti.nio.s3.functions.Try;
-
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 import software.amazon.awssdk.services.iam.IamAsyncClient;
 import software.amazon.awssdk.services.iam.IamAsyncClientBuilder;

@@ -2,7 +2,7 @@ package io.github.mirkoscotti.nio.s3.functions;
 
 import java.io.IOException;
 
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti

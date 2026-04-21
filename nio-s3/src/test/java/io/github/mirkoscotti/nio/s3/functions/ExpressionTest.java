@@ -3,7 +3,7 @@ package io.github.mirkoscotti.nio.s3.functions;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti

@@ -1,4 +1,4 @@
-package it.mirkoscotti.nio.s3.helpers;
+package io.github.mirkoscotti.nio.s3.helpers;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

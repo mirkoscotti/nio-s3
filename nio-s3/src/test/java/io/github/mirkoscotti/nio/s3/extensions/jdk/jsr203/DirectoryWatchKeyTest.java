@@ -20,7 +20,7 @@ import org.mockito.MockedConstruction.Context;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
+import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
 
 /**
  * @author mirko.scotti

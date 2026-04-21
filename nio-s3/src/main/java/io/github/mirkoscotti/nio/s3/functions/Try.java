@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti

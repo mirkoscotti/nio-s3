@@ -11,8 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import io.github.mirkoscotti.nio.s3.functions.Case;
 import io.github.mirkoscotti.nio.s3.functions.Condition;
 import io.github.mirkoscotti.nio.s3.functions.Try;
-
-import it.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
  * @author mirko.scotti

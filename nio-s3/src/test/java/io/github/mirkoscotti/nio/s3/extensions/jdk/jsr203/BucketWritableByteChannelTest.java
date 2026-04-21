@@ -16,8 +16,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
+import io.github.mirkoscotti.nio.s3.helpers.JunitHelper;
 
-import it.mirkoscotti.nio.s3.helpers.JunitHelper;
 import it.mirkoscotti.nio.s3.operations.AwsFacade;
 import it.mirkoscotti.nio.s3.operations.MultipartWriter;
 
