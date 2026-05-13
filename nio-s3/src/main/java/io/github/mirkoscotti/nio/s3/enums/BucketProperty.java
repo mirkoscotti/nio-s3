@@ -18,7 +18,6 @@ public enum BucketProperty
 	REGION(Region.US_EAST_1.toString()),
 	ACCESS_KEY,
 	SECRET_KEY,
-	CREDENTIALS,
 	ACL,
 	FULL_CONTROL,
 	READ,

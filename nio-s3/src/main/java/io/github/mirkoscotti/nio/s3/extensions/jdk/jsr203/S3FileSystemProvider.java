@@ -72,14 +72,14 @@ import io.github.mirkoscotti.nio.s3.records.BucketRecord;
  * If the property {@link S3Property#ENDPOINT} is also specified in the same map, the bucket is
  * created, or it is required to be existing, on the specific LocalStack instance instead of an AWS
  * account.
- * <li><code>s3://access-key:secret-key@bucket-name/<code>
+ * <li><code>s3://access-key:secret-key@bucket-name<code>
  * <p>
  * In this case, since credentials are directly provided within the URI, the file system can be
  * created either invoking {@link FileSystems#newFileSystem(URI, Map)} or {@link Paths#get(URI)}. If
  * this last API is used, necessarily it is not possible to access LocalStack. If the first one is
  * invoked, credentials eventually specified in the environment properties are ignored because the
  * ones specified in the URI are used.
- * <li><code>s3://access-key:secret-key@host-name/bucket-name/<code>
+ * <li><code>s3://access-key:secret-key@host-name/bucket-name<code>
  * <p>
  * This is for accessing LocalStack from the {@link Paths#get(URI)} API. If
  * {@link FileSystems#newFileSystem(URI, Map)} is invoked and the {@link S3Property#ENDPOINT}
@@ -398,7 +398,9 @@ public class S3FileSystemProvider
 						  .map(BucketFileSystem::awsFacade)
 						  .filter(awsFacade::equals)
 						  .findAny()
-						  .ifPresentOrElse(item -> {}, () -> FACADES_CACHE.remove(awsRecord));
+						  .ifPresentOrElse(item ->
+						  {
+						  }, () -> FACADES_CACHE.remove(awsRecord));
 	}
 
 	boolean isFileSystemOpen(BucketFileSystem fileSystem)
@@ -434,7 +436,8 @@ public class S3FileSystemProvider
 					   Predicate.not(BucketPath::isRootDirectory)
 								.and(item -> reference.get() == null),
 					   BucketPath::getParent)
-			  .forEach(item -> Try.to(() -> readAttributes(item, BasicFileAttributes.class,
+			  .forEach(item -> Try.to(() -> readAttributes(item,
+														   BasicFileAttributes.class,
 														   LinkOption.NOFOLLOW_LINKS))
 								  .onCatch(reference::set)
 								  .run());
