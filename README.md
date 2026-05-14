@@ -3,7 +3,7 @@
 ## 🔭 Overview
 This is a [JSR-203](https://jcp.org/en/jsr/detail?id=203) implementation of Amazon Simple Storage Service, a.k.a. S3, allowing operations on buckets as if they were file systems. This approach decouples the business logic from the underlying infrastructure chosen for I/O operations, making it straightforward to swap out the storage provider without affecting the rest of the codebase.
 
-## 🤷‍♂️ Why another library
+## 🤷‍♂️ Why Another Library
 Throughout my experience as a Software Architect specializing in Java applications, I have often had to deal with dynamically managed file systems. In one particular project, a key requirement was to acquire files from external data providers through I/O operations using different protocols, such as SFTP and AWS S3 buckets. There were also cases involving migrations from one system to another.
 
 To avoid rework whenever providers make infrastructure changes beyond the application’s control, I decided to adopt the Java NIO.2 standard.
@@ -75,30 +75,48 @@ The following properties are supported only when the creation of a new file syst
 | `aws.write` |
 | `aws.write-acp` |
 
-## ✨ Features / What's supported
-- Tabella o checklist delle operazioni NIO.2 supportate (Files.copy, move, delete, walk, ecc.)
-- Feature AWS SDK sfruttate (presigned URL, tagging, encryption, lifecycle, ecc.)
-- Link a una matrice completa (in un file separato se lunga)
+## 📐 Design Decisions
+### FileSystemProvider
+It is a container of bucket descriptors and credentials. Rules:
+- Many buckets can be accessed with the same credentials
+- A bucket cannot be accessed by different credentials
+
+### FileSystem
+Buckets are mapped to file system instances. Rules:
+- Naming convention according to [AWS specification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html).
+- A bucket must physically exist. If not, during a `FileSystems#newFileSystem` invocation, it is created if credentials are granted to it.
+- An existing bucket whose descriptor still has not been cached into the `FileSystemProvider` it is considered *new*. According to the specification:
+  - `FileSystems#newFileSystem` does not raise an exception
+  - `FileSystems#getFileSystem` throws `FileSystemNotFoundException`
+  - The AWS `BucketAlreadyOwnedByYouException` is ignored
+  - The `BucketAlreadyExistsException` is converted to `AccessDeniedException` and not `FileSystemAlreadyExistsException`
+- An existing bucket whose descriptor has already been cached into the `FileSystemProvider` it is considered *existing*. According to the specification:
+  - `FileSystems#newFileSystem` throws `FileSystemAlreadyExistsException`
+  - `FileSystems#getFileSystem` does not raise an exception
+
+### Path
+Bucket objects are mapped to path instances. Rules:
+- Naming convention according to [AWS specification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html).
+- All warnings in AWS documentation correspond to restrctions applied to the object key.
+- Although keys starting with `/` are not allowed by AWS, such a character is permitted to distinguish absolute from relative paths.
+- The key `/` is considered the only root path of the file system.
+- Names ending with `/` identify directories
+- POSIX relative paths like `.` and `..` are treated as their meaning. The following object keys are considered equivalent:
+  - `abc/xyz/../file.txt`
+  - `abc/./file.txt`
+  - `abc/file.txt`
+- Keys where the number of `..` is higher than the number of preceeding `/` (excluding the one marking an absolute path) are forbidden
+
+### SeekableByteChannel
+TODO
+  
 
 ## 📚 Usage examples
 - Esempi progressivi: base → avanzato
 - Focus sui casi d'uso che le altre librerie non coprono
 
-## 🧭 Compatibility
-- Versioni Java supportate
-- Versioni AWS SDK v2.x testate
-- Note su backward compatibility
-
 ## ⚠️ Limitations / Not supported
 - Onestà intellettuale: cosa *non* è supportato (es. watch service, file lock, ecc.)
 - Aiuta a gestire le aspettative e riduce issue inutili
-
-## 🔗 References
-- Java NIO.2 SPI docs
-- AWS SDK S3 documentation
-- Link a ARCHITECTURE.md / CONTRIBUTING.md
-
-## 🤝 Contributing (opzionale)
-- Solo se vuoi contributi esterni: linee guida minime
 
 ## 📄 License
