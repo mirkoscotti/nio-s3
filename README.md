@@ -83,32 +83,48 @@ It is a container of bucket descriptors and credentials. Rules:
 
 ### FileSystem
 Buckets are mapped to file system instances. Rules:
-- Naming convention according to [AWS specification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html).
-- A bucket must physically exist. If not, during a `FileSystems#newFileSystem` invocation, it is created if credentials are granted to it.
-- An existing bucket whose descriptor still has not been cached into the `FileSystemProvider` it is considered *new*. According to the specification:
-  - `FileSystems#newFileSystem` does not raise an exception
+- Naming convention according to the [AWS specification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html)
+- A bucket must physically exist. When FileSystems#newFileSystem is invoked, the bucket is created if credentials allow it and it does not exist
+- An existing bucket whose descriptor still has not been cached by the `FileSystemProvider` it is considered *new*. According to the specification:
+  - `FileSystems#newFileSystem` does not throw an exception
   - `FileSystems#getFileSystem` throws `FileSystemNotFoundException`
   - The AWS `BucketAlreadyOwnedByYouException` is ignored
-  - The `BucketAlreadyExistsException` is converted to `AccessDeniedException` and not `FileSystemAlreadyExistsException`
-- An existing bucket whose descriptor has already been cached into the `FileSystemProvider` it is considered *existing*. According to the specification:
+  - The `BucketAlreadyExistsException` is converted to `AccessDeniedException`, not `FileSystemAlreadyExistsException`
+- An existing bucket whose descriptor has already been cached by the `FileSystemProvider` it is considered *existing*. According to the specification:
   - `FileSystems#newFileSystem` throws `FileSystemAlreadyExistsException`
-  - `FileSystems#getFileSystem` does not raise an exception
+  - `FileSystems#getFileSystem` does not throw an exception
 
 ### Path
 Bucket objects are mapped to path instances. Rules:
 - Naming convention according to [AWS specification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html).
-- All warnings in AWS documentation correspond to restrctions applied to the object key.
-- Although keys starting with `/` are not allowed by AWS, such a character is permitted to distinguish absolute from relative paths.
-- The key `/` is considered the only root path of the file system.
-- Names ending with `/` identify directories
-- POSIX relative paths like `.` and `..` are treated as their meaning. The following object keys are considered equivalent:
+- All warnings in the AWS documentation correspond to restrctions applied to the object key.
+- Although keys starting with `/` are not allowed by AWS, this character is permitted here to distinguish absolute paths from relative ones.
+- The key `/` is considered the only root path in the file system.
+- Keys ending with `/` identify directories
+- POSIX relative paths like `.` and `..` are interpreted according to their usual meaning. The following object keys are considered equivalent:
   - `abc/xyz/../file.txt`
   - `abc/./file.txt`
   - `abc/file.txt`
-- Keys where the number of `..` is higher than the number of preceeding `/` (excluding the one marking an absolute path) are forbidden
+- Keys where the number of `..` exceeds the number of preceeding `/` (excluding the leading `/` that marks an absolute path) are forbidden
 
 ### SeekableByteChannel
-TODO
+File streaming does not fully cover the NIO.2 specifications. Limitations:
+- A channel cannot be opened for both reading and writing
+- Positioning is available only when a channel is open for read
+- Size is available only when channel is open for read
+- Truncations are not yet supported.
+
+In all other use cases, the behaviour of the channel implementation is exactly the same as that of the default file system.
+
+### Less frequently used components
+- **FileStore** - Collects bucket metadata. Each bucket defines a single file store
+- **BasicFileAttributes** - Collects object metadata when available from AWS S3 service. Differences from the NIO.2 specifications:
+  - *last access time* - Not available, falls back to to *last modified time*
+  - *creation time* - Not available, falls back to to *last modified time*
+  - *symbolic link* - Not supported by AWS S3, always returns `false`
+- **BasicFileAttributeView** - Supported only for reading metadata. It is not possible to modify them because because AWS S3 does not support it
+- **DirectoryStream** - 
+- **WatchService** - 
   
 
 ## 📚 Usage examples

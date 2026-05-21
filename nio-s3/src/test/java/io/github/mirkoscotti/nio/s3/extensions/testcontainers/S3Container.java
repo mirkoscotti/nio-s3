@@ -245,7 +245,8 @@ public class S3Container
 		{
 			var output = execInContainer("sh", "-c", command);
 			var message = "Failed to retrieve arn of user %s: %s.";
-			Assertions.assertEquals(0, output.getExitCode(),
+			Assertions.assertEquals(0,
+									output.getExitCode(),
 									message.formatted(user, output.getStderr()));
 			result = output.getStdout().trim();
 		}
@@ -517,8 +518,10 @@ public class S3Container
 			var output = execInContainer(command.split(SPACE));
 			var message = "Failed to read object %s in bucket %s";
 			Assertions.assertEquals(0, output.getExitCode(), message.formatted(key, bucketName));
-			copyFileFromContainer(path, item -> Files.copy(item, file,
-														   StandardCopyOption.REPLACE_EXISTING));
+			copyFileFromContainer(path,
+								  item -> Files.copy(item,
+													 file,
+													 StandardCopyOption.REPLACE_EXISTING));
 		}
 		catch (InterruptedException x)
 		{
