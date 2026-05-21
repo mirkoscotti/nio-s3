@@ -60,9 +60,7 @@ Please include a clear description of the issue and steps to reproduce if possib
 
 ### Dependency Security
 
-This project uses the AWS Java SDK and Jakarta APIs.
-
-Security issues should be checked via [Security Bulletins](https://aws.amazon.com/security/security-bulletins/) or reported via [Vulnerability Reporting](https://aws.amazon.com/it/security/vulnerability-reporting/).
+This project uses the AWS Java SDK as unique external dependency. Security issues should be checked via [Security Bulletins](https://aws.amazon.com/security/security-bulletins/) or reported via [Vulnerability Reporting](https://aws.amazon.com/it/security/vulnerability-reporting/).
 
 ### Code Quality & Security Analysis
 
