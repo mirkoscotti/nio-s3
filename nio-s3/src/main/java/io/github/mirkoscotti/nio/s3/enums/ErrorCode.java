@@ -32,7 +32,6 @@ public enum ErrorCode
 	NO_SUCH_BUCKET_POLICY(null),
 	NO_SUCH_KEY(NoSuchFileException.class),
 	NO_SUCH_UPLOAD(null),
-	// ---- GESTITO FINO QUA ----
 	ACCESS_DENIED(AccessDeniedException.class),
 	ACCOUNT_PROBLEM(null),
 	ALL_ACCESS_DISABLED(AccessDeniedException.class),
