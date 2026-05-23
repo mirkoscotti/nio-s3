@@ -17,6 +17,8 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
+ * The AWS API <code>listObjectsV2Paginator</code> represented as a standard JDK iterator.
+ *
  * @author mirko.scotti
  * @version Dec 26, 2025
  */

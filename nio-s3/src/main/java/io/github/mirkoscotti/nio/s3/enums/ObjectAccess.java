@@ -20,8 +20,14 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
- * @author mirko.scotti
- * @version Jun 23, 2025
+ * Access modes supported on S3 objects when the bucket is exposed as a Java NIO.2 file system.
+ *
+ * <p>
+ * Each constant maps to a standard NIO.2 <code>AccessMode</code> and mirrors file system semantics:
+ * <ul>
+ * <li>directories are considered readable and executable if they can be listed
+ * <li>regular files are never executable on S3
+ * </ul>
  */
 public enum ObjectAccess
 {
@@ -100,32 +106,24 @@ public enum ObjectAccess
 
 	private static final String ERROR_TEMPLATE = "Bucket: %s, Object Type: %s, Key: %s, Permission: %s";
 
-	protected abstract String checkAccess(AwsFacade awsFacade,
-										  BasicFileAttributes basicFileAttributes,
-										  String bucket);
-
-	protected String tryListObjects(AwsFacade awsFacade, String bucket, String key)
-	{
-		String result = null;
-		try
-		{
-			awsFacade.listObjects(bucket, key, 0);
-		}
-		catch (S3Exception x)
-		{
-			result = awsErrorMessage(x);
-		}
-		return result;
-	}
-
-	protected String awsErrorMessage(AwsServiceException exception)
-	{
-		return Optional.of(exception.awsErrorDetails())
-					   .filter(item -> "AccessDenied".equals(item.errorCode()))
-					   .map(AwsErrorDetails::toString)
-					   .orElseThrow(() -> exception);
-	}
-
+	/**
+	 * Checks whether the caller holds all of the requested access modes on the given S3 object.
+	 *
+	 * @param awsFacade
+	 *            the component to interact with AWS
+	 * @param bucket
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 * @param accessModes
+	 *            the access modes to check (an empty array corresponds to a no-op)
+	 * @throws java.nio.file.AccessDeniedException
+	 *             if any of the requested modes are denied
+	 * @throws java.nio.file.NoSuchFileException
+	 *             if the given key does not exist in the specified bucket
+	 * @throws java.io.IOException
+	 *             on any unpredicted I/O error
+	 */
 	public static void check(AwsFacade awsFacade,
 							 String bucket,
 							 String key,
@@ -158,5 +156,31 @@ public enum ObjectAccess
 			var message = "File not found and not creatable: ".concat(originalMessage);
 			throw new NoSuchFileException(key, null, message);
 		}
+	}
+
+	protected abstract String checkAccess(AwsFacade awsFacade,
+										  BasicFileAttributes basicFileAttributes,
+										  String bucket);
+
+	protected String tryListObjects(AwsFacade awsFacade, String bucket, String key)
+	{
+		String result = null;
+		try
+		{
+			awsFacade.listObjects(bucket, key, 0);
+		}
+		catch (S3Exception x)
+		{
+			result = awsErrorMessage(x);
+		}
+		return result;
+	}
+
+	protected String awsErrorMessage(AwsServiceException exception)
+	{
+		return Optional.of(exception.awsErrorDetails())
+					   .filter(item -> "AccessDenied".equals(item.errorCode()))
+					   .map(AwsErrorDetails::toString)
+					   .orElseThrow(() -> exception);
 	}
 }
