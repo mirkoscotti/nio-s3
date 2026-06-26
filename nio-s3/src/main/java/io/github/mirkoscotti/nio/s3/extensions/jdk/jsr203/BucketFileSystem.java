@@ -22,8 +22,22 @@ import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import io.github.mirkoscotti.nio.s3.operations.ResourceRegistry;
 
 /**
+ * A {@link java.nio.file.FileSystem} implementation backed by a single Amazon S3 bucket.
+ *
+ * <p>
+ * Each instance represents one S3 bucket as a navigable file system, where S3 object keys are
+ * mapped to hierarchical paths. The bucket is guaranteed to exist by the time this file system is
+ * ready for use: if it does not exist, it is created during construction. If creation fails, an
+ * exception is thrown and no instance is produced.
+ * <p>
+ * All operations on the bucket are delegated to a connector configured with specific credentials.
+ * Each operation is only possible if the roles and policies associated with those credentials allow
+ * its execution.
+ *
  * @author mirko.scotti
  * @version Jan 24, 2025
+ * @see S3FileSystemProvider
+ * @see BucketDescriptor
  */
 class BucketFileSystem
 	extends FileSystem
@@ -50,12 +64,18 @@ class BucketFileSystem
 		resourcesRegistry.registerResource(awsFacade);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public FileSystemProvider provider()
 	{
 		return fileSystemProvider;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
@@ -65,48 +85,76 @@ class BucketFileSystem
 		isClosing.compareAndSet(true, false);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isOpen()
 	{
 		return fileSystemProvider.isFileSystemOpen(this);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isReadOnly()
 	{
 		return fileStore.isReadOnly();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getSeparator()
 	{
 		return BucketDescriptor.PATH_SEPARATOR;
 	}
 
+	/**
+	 * A bucket does not have the <i>root directory</i> concept. By the way, a <i>virtual</i> root
+	 * directory is defined to track objects whose names do not contain the path separator. This is
+	 * the only root directory of this logical file system.
+	 */
 	@Override
 	public Iterable<Path> getRootDirectories()
 	{
 		return List.<Path>of(new BucketPath(this));
 	}
 
+	/**
+	 * A single bucket is always described by a single file store.
+	 *
+	 * @see BucketFileStore
+	 */
 	@Override
 	public Iterable<FileStore> getFileStores()
 	{
 		return List.of(fileStore);
 	}
 
+	/**
+	 * Only <code>basic</code is supported.
+	 */
 	@Override
 	public Set<String> supportedFileAttributeViews()
 	{
 		return Set.of("basic");
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath getPath(String first, String... more)
 	{
 		return new BucketPath(this, first, more);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public PathMatcher getPathMatcher(String syntaxAndPattern)
 	{
@@ -119,12 +167,20 @@ class BucketFileSystem
 		return item -> pattern.matcher(item.toString()).matches();
 	}
 
+	/**
+	 * Not supported.
+	 *
+	 * @throws UnsupportedOperationException
+	 */
 	@Override
 	public UserPrincipalLookupService getUserPrincipalLookupService()
 	{
 		throw new UnsupportedOperationException("S3 is not a POSIX file system. Thus user/group do not make sense.");
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public WatchService newWatchService() throws IOException
 	{

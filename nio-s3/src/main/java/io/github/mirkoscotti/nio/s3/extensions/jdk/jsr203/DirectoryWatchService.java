@@ -24,8 +24,25 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
+ * A <code>WatchService</code> thread-safe implementation that allows one or more "directories" (key
+ * prefixes) within an Amazon S3 bucket to be monitored for object creation, modification and
+ * deletion, surfacing the changes through the standard JSR-203 watch service API.
+ * <p>
+ * This service does not depend on Amazon S3's own event notification mechanism (notifications to
+ * SNS, SQS, EventBridge or Lambda), which would require provisioning additional AWS resources
+ * outside of the S3 API itself. Instead, it emulates a comparable watch behaviour through polling:
+ * a single background daemon thread, scheduled at a fixed frequency, periodically lists the objects
+ * of every registered path and delegates to each directory's {@link DirectoryWatchKey} the
+ * comparison against its previous state in order to detect and queue the corresponding events.
+ * <p>
+ * Directories are registered through {@link #registerPath(BucketPath, Kind[])} and monitored until
+ * their key is cancelled or this service is {@link #close() closed}. Instances are normally
+ * obtained through the associated file system provider rather than constructed directly.
+ *
  * @author mirko.scotti
  * @version Mar 29, 2025
+ * @see DirectoryWatchKey
+ * @see AwsFacade
  */
 public class DirectoryWatchService
 	implements WatchService
@@ -55,6 +72,14 @@ public class DirectoryWatchService
 		scheduler.scheduleAtFixedRate(action, FREQUENCY, FREQUENCY, TimeUnit.SECONDS);
 	}
 
+	/**
+	 * Stops the background polling scheduler, clears the registry of watched directories and
+	 * discards any pending events. After this method returns successfully, the service is closed.
+	 *
+	 * @throws IOException
+	 *             if the scheduler does not terminate within the shutdown timeout, or if the
+	 *             calling thread is interrupted while waiting for termination
+	 */
 	@Override
 	public void close() throws IOException
 	{
@@ -80,6 +105,9 @@ public class DirectoryWatchService
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public WatchKey poll()
 	{
@@ -87,6 +115,9 @@ public class DirectoryWatchService
 		return events.poll();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public WatchKey poll(long timeout, TimeUnit unit) throws InterruptedException
 	{
@@ -94,6 +125,9 @@ public class DirectoryWatchService
 		return events.poll(timeout, unit);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public WatchKey take() throws InterruptedException
 	{
@@ -101,6 +135,23 @@ public class DirectoryWatchService
 		return events.take();
 	}
 
+	/**
+	 * Registers the given directory with this watch service for the specified event kinds and
+	 * returns the corresponding {@link WatchKey}.
+	 * <p>
+	 * If the directory was already registered, the previous key is cancelled and replaced by the
+	 * new one. The current state of the directory is captured immediately as the registration
+	 * baseline, so that the first subsequent polling cycle only reports changes that occurred after
+	 * registration.
+	 *
+	 * @param directory
+	 *            the path representing the S3 key prefix to watch
+	 * @param kinds
+	 *            the event kinds to watch for
+	 * @return the watch key representing the registration
+	 * @throws NullPointerException
+	 *             if the path is not defined
+	 */
 	WatchKey registerPath(BucketPath directory, Kind<?>... kinds)
 	{
 		Objects.requireNonNull(directory, () -> "Missing path.");

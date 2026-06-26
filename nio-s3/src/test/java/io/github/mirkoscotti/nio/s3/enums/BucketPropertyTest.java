@@ -23,8 +23,6 @@ class BucketPropertyTest
 
 	private static final String AWS_SECRET_KEY = "aws.secret-key";
 
-	private static final String AWS_CREDENTIALS = "aws.credentials";
-
 	private static final String AWS_ACL = "aws.acl";
 
 	private static final String AWS_FULL_CONTROL = "aws.full-control";

@@ -18,8 +18,24 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
+ * A <code>WatchKey</code> thread-safe implementation representing the registration of a single
+ * "directory" (an S3 key prefix) with a {@link DirectoryWatchService}, as part of an emulation of
+ * the JSR-203 watch service API on top of an Amazon S3 bucket.
+ * <p>
+ * Each key keeps an internal snapshot of the watched directory, mapping every object key found
+ * under it to its last-modified instant. On every polling cycle driven by the owning
+ * {@link DirectoryWatchService}, the new snapshot is compared against the previous one in order to
+ * synthesize watch events, depending on which event kinds the key was registered for. Detected
+ * events are queued internally until retrieved through {@link #pollEvents()}.
+ * <p>
+ * Instances of this class are created exclusively by {@link DirectoryWatchService} via
+ * {@link DirectoryWatchService#registerPath(BucketPath, Kind[])} and are not meant to be
+ * instantiated directly by client code..
+ *
  * @author mirko.scotti
  * @version Apr 04, 2025
+ * @see DirectoryWatchService
+ * @see BucketPath
  */
 public class DirectoryWatchKey
 	implements WatchKey
@@ -46,12 +62,22 @@ public class DirectoryWatchKey
 		this.kinds = kinds;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isValid()
 	{
 		return valid;
 	}
 
+	/**
+	 * Returns a snapshot of the events accumulated since the last invocation of this method (or
+	 * since the key was registered, if this is the first invocation), and atomically clears the
+	 * internal queue. Events queued afterwards are not included in the returned list.
+	 *
+	 * @return the list of events detected since the last poll
+	 */
 	@Override
 	public List<WatchEvent<?>> pollEvents()
 	{
@@ -63,6 +89,13 @@ public class DirectoryWatchKey
 		}
 	}
 
+	/**
+	 * Discards any pending events without invalidating the key, allowing it to continue being
+	 * polled by the owning {@link DirectoryWatchService}.
+	 *
+	 * @return true if the key was valid and has been reset; false if the key had already been
+	 *         cancelled
+	 */
 	@Override
 	public boolean reset()
 	{
@@ -78,6 +111,11 @@ public class DirectoryWatchKey
 		}
 	}
 
+	/**
+	 * Marks this key as no longer valid, clears the recorded directory state and discards any
+	 * pending events. Once cancelled, a key cannot be reactivated and will no longer be updated by
+	 * the owning {@link DirectoryWatchService}.
+	 */
 	@Override
 	public void cancel()
 	{
@@ -91,18 +129,38 @@ public class DirectoryWatchKey
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath watchable()
 	{
 		return directory;
 	}
 
+	/**
+	 * Compares the given up-to-date state of the watched directory against the previously recorded
+	 * state, enqueues the resulting watch events for the registered {@link #kinds}, and then
+	 * replaces the recorded state with the given one.
+	 *
+	 * @param currentState
+	 *            the up-to-date snapshot of the directory, mapping each object key to its
+	 *            last-modified instant
+	 */
 	void updateEvents(Map<String, Instant> currentState)
 	{
 		detectEvents(currentState);
 		updateStates(currentState);
 	}
 
+	/**
+	 * Replaces the recorded state of the watched directory with the given snapshot, without
+	 * generating any event. Typically used to establish the initial baseline right after
+	 * registration, before the first polling cycle takes place.
+	 *
+	 * @param currentState
+	 *            the snapshot to store as the new baseline
+	 */
 	void updateStates(Map<String, Instant> currentState)
 	{
 		lastState.clear();

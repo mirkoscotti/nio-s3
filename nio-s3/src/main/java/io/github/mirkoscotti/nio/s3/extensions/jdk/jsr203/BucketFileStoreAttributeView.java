@@ -31,12 +31,22 @@ public class BucketFileStoreAttributeView
 		this.bucketName = Objects.requireNonNull(bucketName, "Missing bucket name");
 	}
 
+	/**
+	 * The name of this view, corresponding to the simple name of this class.
+	 */
 	@Override
 	public String name()
 	{
 		return BucketFileStoreAttributeView.class.getSimpleName();
 	}
 
+	/**
+	 * Extracts the value of the given property.
+	 *
+	 * @param bucketProperty
+	 *            the property item
+	 * @return the value of the property or <code>null</code> if the property is not set
+	 */
 	public String get(BucketProperty bucketProperty)
 	{
 		return attributes.computeIfAbsent(bucketProperty, this::extract);

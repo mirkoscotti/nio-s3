@@ -9,8 +9,16 @@ import java.util.Optional;
 import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 
 /**
- * @author mirko.scotti
- * @version May 20, 2025
+ * A <code>ReadableByteChannel</code> that reads the content of an object stored in an S3-compatible
+ * bucket, supporting sequential and repositioned reads over the object's byte range.
+ *
+ * <p>
+ * An instance is bound at construction time to a specific bucket and key, derived from the supplied
+ * {@link BucketPath}. The object size is resolved at construction time and remains fixed for the
+ * lifetime of the channel.
+ *
+ * @see BucketPath
+ * @see BucketSeekableByteChannel
  */
 class BucketReadableByteChannel
 	implements ReadableByteChannel
@@ -36,18 +44,27 @@ class BucketReadableByteChannel
 		size = awsFacade.objectMetadata(bucket, key).size();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isOpen()
 	{
 		return isOpen;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
 		isOpen = false;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int read(ByteBuffer dst) throws IOException
 	{
