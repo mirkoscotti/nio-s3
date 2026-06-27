@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
+ * The if/else pattern with functional programming, yielding a transformed value.
+ *
  * @author mirko.scotti
  * @version Mar 12, 2026
  */
@@ -24,21 +26,53 @@ public class Transformer<I, O>
 		this.value = value;
 	}
 
+	/**
+	 * Starts a new transformation from the given input value.
+	 *
+	 * @param <I>
+	 *            the source type
+	 * @param <O>
+	 *            the target type
+	 * @param value
+	 *            the input value to be evaluated
+	 * @return the transformer instance
+	 */
 	public static <I, O> Transformer<I, O> of(I value)
 	{
 		return new Transformer<>(value);
 	}
 
+	/**
+	 * A specific <code>when</code> based on not-null condition.
+	 *
+	 * @return the <code>when</code> instance of the transformer
+	 */
 	public When<I, O> whenNotNull()
 	{
 		return new When<>(this, Objects::nonNull);
 	}
 
+	/**
+	 * Registers a condition on the embedded object
+	 *
+	 * @param condition
+	 *            the condition
+	 * @return the <code>when</code> instance of the transformer
+	 */
 	public When<I, O> when(Condition<I> condition)
 	{
 		return new When<>(this, condition);
 	}
 
+	/**
+	 * Performs the if/else pattern processing the internal object through the mapper corresponding
+	 * to the first matching <code>when</code> condition.
+	 *
+	 * @param mapper
+	 *            the fall back mapper
+	 * @throws IOException
+	 *             when an I/O error occurs
+	 */
 	public O orReturn(Mapper<I, O> mapper) throws IOException
 	{
 		var reference = new AtomicReference<IOException>();
@@ -57,6 +91,16 @@ public class Transformer<I, O>
 		return result;
 	}
 
+	/**
+	 * Performs the if/else pattern processing the internal object through the mapper corresponding
+	 * to the first matching <code>when</code> condition, throwing an exception if no conditions
+	 * match.
+	 *
+	 * @param mapper
+	 *            the exception supplier
+	 * @throws IOException
+	 *             when an I/O error occurs
+	 */
 	public O orThrow(Supplier<? extends Exception> supplier) throws IOException
 	{
 		return orReturn(Mapper.throwing(supplier.get()));
@@ -109,6 +153,15 @@ public class Transformer<I, O>
 		return result;
 	}
 
+	/**
+	 * A <code>when</code> condition representation.
+	 *
+	 * @version Jun 27, 2026
+	 * @param <I>
+	 *            the type of the object to be evaluated against this <code>when</code> condition
+	 * @param <O>
+	 *            the target type of the transformation
+	 */
 	public static class When<I, O>
 	{
 
@@ -122,6 +175,13 @@ public class Transformer<I, O>
 			this.condition = Optional.ofNullable(condition).orElseGet(Condition::unsatisfied);
 		}
 
+		/**
+		 * The transformation process to perform when the internal condition is satisfied.
+		 *
+		 * @param mapper
+		 *            the object mapper
+		 * @return the transformation process managing this <code>when</code> condition
+		 */
 		public Transformer<I, O> then(Mapper<I, O> mapper)
 		{
 			return transformer.addBranch(condition, mapper);
