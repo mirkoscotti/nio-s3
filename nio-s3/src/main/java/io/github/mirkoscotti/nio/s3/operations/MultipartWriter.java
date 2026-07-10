@@ -33,6 +33,17 @@ import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
 /**
+ * Writes an S3 object using a multipart upload, accumulating parts either from raw bytes or by
+ * copying byte ranges from the same object.
+ * <p>
+ * An instance of this class covers the full upload workflow. The lifecycle is detailed below:
+ * <ul>
+ * <li>The process starts when this class is instantiated, creating the native upload identifier
+ * <li>This instance allows many partial writes and each write correspond to a complete part in the
+ * upload process
+ * <li>The process ends completing or aborting the upload when this instance is closed
+ * </ul>
+ *
  * @author mirko.scotti
  * @version May 24, 2025
  */
@@ -57,7 +68,14 @@ public final class MultipartWriter
 	private boolean mustAbort = false;
 
 	/**
+	 * Starts a multipart upload for the given bucket and key.
+	 *
 	 * @param client
+	 *            the S3 client
+	 * @param bucket
+	 *            the target bucket
+	 * @param key
+	 *            the target object key
 	 */
 	public MultipartWriter(S3AsyncClient client, String bucket, String key)
 	{
@@ -67,6 +85,16 @@ public final class MultipartWriter
 		uploadId = Try.to(this::createUploadId).onCatch(ExceptionHelper::sneakyThrow).get();
 	}
 
+	/**
+	 * Completes the multipart upload, or aborts it if:
+	 * <ul>
+	 * <li>an error occurred during the process
+	 * <li>the process is forced to stop by an external trigger was called or
+	 * <li>no parts were written.
+	 *
+	 * @throws IOException
+	 *             if completing or aborting the upload fails
+	 */
 	@Override
 	public void close() throws IOException
 	{
@@ -75,6 +103,12 @@ public final class MultipartWriter
 				 .elseExecute(this::completeUpload);
 	}
 
+	/**
+	 * Uploads the given buffer as the next part of the multipart upload.
+	 *
+	 * @param buffer
+	 *            the part content
+	 */
 	public void write(byte[] buffer)
 	{
 		Try.to(() -> parts.add(createCompletedPart(buffer)))
@@ -82,6 +116,13 @@ public final class MultipartWriter
 		   .run();
 	}
 
+	/**
+	 * Adds the next part by copying the specified number of bytes from the source object into this
+	 * upload.
+	 *
+	 * @param size
+	 *            the number of bytes to copy
+	 */
 	public void copy(long size)
 	{
 		parts.add(Try.to(() -> createCompletedPart(size))
@@ -89,6 +130,15 @@ public final class MultipartWriter
 					 .get());
 	}
 
+	/**
+	 * Adds the next part by copying the specified byte range from the source object into this
+	 * upload.
+	 *
+	 * @param from
+	 *            the range start offset, inclusive
+	 * @param to
+	 *            the range end offset, inclusive
+	 */
 	public void copy(long from, long to)
 	{
 		parts.add(Try.to(() -> createCompletedPart(from, to))
@@ -96,18 +146,28 @@ public final class MultipartWriter
 					 .get());
 	}
 
+	/**
+	 * The total number of bytes written so far across all parts.
+	 *
+	 * @return the total bytes written
+	 */
 	public long bytesWritten()
 	{
 		return bytesWritten.stream().collect(Collectors.summingLong(Long::longValue));
 	}
 
+	/**
+	 * Marks this upload to be aborted instead of completed on {@link #close()}.
+	 */
 	public void mustAbort()
 	{
 		mustAbort = true;
 	}
 
 	private String createUploadId()
-		throws TimeoutException, ExecutionException, InterruptedException
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
 	{
 		return client.createMultipartUpload(this::createMultipartRequest)
 					 .thenApply(CreateMultipartUploadResponse::uploadId)
@@ -115,7 +175,9 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(byte[] buffer)
-		throws TimeoutException, ExecutionException, InterruptedException
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
 	{
 		var part = partNumber.incrementAndGet();
 		var result = client.uploadPart(item -> createUploadRequest(item, part),
@@ -131,7 +193,9 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(long size)
-		throws TimeoutException, ExecutionException, InterruptedException
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
 	{
 		var result = client.uploadPartCopy(this::createUploadCopyRequest)
 						   .thenApply(this::createCompletedPart)
@@ -141,7 +205,9 @@ public final class MultipartWriter
 	}
 
 	private CompletedPart createCompletedPart(long from, long to)
-		throws TimeoutException, ExecutionException, InterruptedException
+		throws TimeoutException,
+			ExecutionException,
+			InterruptedException
 	{
 		return client.uploadPartCopy(item -> createUploadCopyRequest(item, from, to))
 					 .thenApply(this::createCompletedPart)

@@ -148,6 +148,7 @@ public class Case<T>
 	/**
 	 * A <code>when</code> condition representation.
 	 *
+	 * @author mirko.scotti
 	 * @version Jun 26, 2026
 	 * @param <T>
 	 *            the type of the object to be evaluated against this <code>when</code> condition

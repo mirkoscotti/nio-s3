@@ -156,6 +156,7 @@ public class Transformer<I, O>
 	/**
 	 * A <code>when</code> condition representation.
 	 *
+	 * @author mirko.scotti
 	 * @version Jun 27, 2026
 	 * @param <I>
 	 *            the type of the object to be evaluated against this <code>when</code> condition

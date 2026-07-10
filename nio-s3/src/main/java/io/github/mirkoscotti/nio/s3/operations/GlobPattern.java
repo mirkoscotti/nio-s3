@@ -12,7 +12,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Same matching rules as in <a href="https://rapidtoolset.com/it/tool/glob-pattern-tester"/>
+ * Converts glob patterns into equivalent regular expressions, following the matching rules adopted
+ * at <a href="https://rapidtoolset.com/en/tool/glob-pattern-tester">rapidtoolset.com</a>.
  *
  * @author mirko.scotti
  * @version Dec 30, 2025
@@ -27,12 +28,28 @@ public final class GlobPattern
 		this.pattern = pattern;
 	}
 
+	/**
+	 * Creates a new instance of this class wrapping the given glob expression.
+	 *
+	 * @param glob
+	 *            the glob pattern
+	 * @return the pattern matcher
+	 * @throws NullPointerException
+	 *             if glob is undefined
+	 */
 	public static GlobPattern of(String glob)
 	{
 		Objects.requireNonNull(glob, () -> "Missing glob pattern.");
 		return new GlobPattern(glob);
 	}
 
+	/**
+	 * Translates this glob pattern into an anchored regular expression.
+	 *
+	 * @return the equivalent regex, anchored with <code>^</code> and <code>$</code>
+	 * @throws PatternSyntaxException
+	 *             if the glob pattern is malformed (example: unbalanced brackets or braces)
+	 */
 	public String toRegex()
 	{
 		var regex = toInternalRegex().map(this::appendSlash).map(this::appendPipe).orElse("");

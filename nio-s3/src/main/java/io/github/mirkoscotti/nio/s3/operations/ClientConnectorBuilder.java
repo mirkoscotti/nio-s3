@@ -3,14 +3,21 @@ package io.github.mirkoscotti.nio.s3.operations;
 import java.net.URI;
 import java.util.function.Function;
 
+import io.github.mirkoscotti.nio.s3.operations.IamConnector.IamConnectorBuilder;
+import io.github.mirkoscotti.nio.s3.operations.StsConnector.StsConnectorBuilder;
+
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.awscore.AwsClient;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.regions.Region;
 
 /**
+ * Special connector builder extension wrapping the AWS <code>AWSClientBuilder</code>
+ *
  * @author mirko.scotti
  * @version Dec 14, 2025
+ * @see IamConnectorBuilder
+ * @see StsConnectorBuilder
  */
 abstract class ClientConnectorBuilder<A extends ClientConnectorBuilder<A, B, C, W>,
 									  B extends AwsClientBuilder<B, W>,

@@ -127,6 +127,7 @@ public class Evaluator
 	/**
 	 * A <code>when</code> expression representation.
 	 *
+	 * @author mirko.scotti
 	 * @version Jun 26, 2026
 	 */
 	public static class When

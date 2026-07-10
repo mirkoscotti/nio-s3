@@ -16,6 +16,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
 /**
+ * Copies or moves an object between potentially different S3 buckets.
+ *
  * @author mirko.scotti
  * @version Feb 14, 2026
  */
@@ -28,6 +30,17 @@ public final class FileTransfer
 
 	private final String key;
 
+	/**
+	 * Creates a new transfer for the object identified by {@code bucket} and {@code key}, using the
+	 * given client as the source.
+	 *
+	 * @param client
+	 *            the source S3 async client
+	 * @param bucket
+	 *            the source bucket
+	 * @param key
+	 *            the source object key
+	 */
 	public FileTransfer(S3AsyncClient client, String bucket, String key)
 	{
 		this.client = Objects.requireNonNull(client, () -> "Missing client.");
@@ -35,6 +48,19 @@ public final class FileTransfer
 		this.key = Objects.requireNonNull(key, () -> "Missing key.");
 	}
 
+	/**
+	 * Transfers the content of the object registered in this instance to the specified bucket
+	 * assuming the specified key.
+	 *
+	 * @param client
+	 *            the target S3 client
+	 * @param bucket
+	 *            the target bucket
+	 * @param key
+	 *            the target object key
+	 * @throws IOException
+	 *             if the transfer is interrupted or fails
+	 */
 	public void transfer(S3AsyncClient client, String bucket, String key) throws IOException
 	{
 		Case.of(key)

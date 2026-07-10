@@ -47,6 +47,8 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
+ * Specific connector for operations on S3 buckets.
+ *
  * @author mirko.scotti
  * @version Oct 22, 2024
  */
@@ -63,29 +65,50 @@ public final class S3Connector
 		this.client = client;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
 		client.close();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode()
 	{
 		return client.hashCode();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof S3Connector other && Objects.equals(client, other.client);
 	}
 
+	/**
+	 * Creates a new builder for this connector.
+	 *
+	 * @return the builder object
+	 */
 	public static S3ConnectorBuilder create()
 	{
 		return new S3ConnectorBuilder();
 	}
 
+	/**
+	 * Creates a bucket according to the given descriptor
+	 *
+	 * @param bucketDescriptor
+	 *            the bucket configuration
+	 * @see BucketDescriptor
+	 */
 	public void createBucket(BucketDescriptor bucketDescriptor)
 	{
 		Try.to(() -> client.createBucket(item -> configureBucket(bucketDescriptor, item))
@@ -94,6 +117,14 @@ public final class S3Connector
 		   .run();
 	}
 
+	/**
+	 * Determines whether the given bucket is effectively read-only, based on its bucket policy or,
+	 * failing that, its ACL.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @return true if the bucket is read-only, false otherwise
+	 */
 	public boolean isBucketReadOnly(String bucketName)
 	{
 		// 1. check for user permissions
@@ -103,6 +134,13 @@ public final class S3Connector
 			|| isBucketAclReadOnly(client, bucketName);
 	}
 
+	/**
+	 * The grants of the given bucket.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @return the grants as a semicolon-separated list of permissions
+	 */
 	public String bucketAcl(String bucketName)
 	{
 		return Try.to(() -> client.getBucketAcl(item -> item.bucket(bucketName))
@@ -113,6 +151,15 @@ public final class S3Connector
 				  .get();
 	}
 
+	/**
+	 * Retrieves the basic file attributes (size, last modified time) of the given object.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 * @return the object's basic file attributes
+	 */
 	public BasicFileAttributes objectMetadata(String bucketName, String key)
 	{
 		return Try.to(() -> client.headObject(item -> item.bucket(bucketName).key(key))
@@ -128,11 +175,34 @@ public final class S3Connector
 				  .get();
 	}
 
+	/**
+	 * Lists all objects under the given key, treated as a directory prefix, excluding the key
+	 * itself.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the directory prefix
+	 * @return a map of object keys to their last modified instant
+	 */
 	public Map<String, Instant> listObjects(String bucketName, String key)
 	{
 		return listObjects(bucketName, key, null);
 	}
 
+	/**
+	 * A single page of the specified size containing objects objects under the given key, treated
+	 * as a directory prefix, excluding the key itself, paginating requests with the given page
+	 * size.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the directory prefix
+	 * @param pageSize
+	 *            the maximum number of keys per page, or an empty map to use the default
+	 * @return a map of object keys to their last modified instant
+	 */
 	public Map<String, Instant> listObjects(String bucketName, String key, Integer pageSize)
 	{
 		var separator = BucketDescriptor.PATH_SEPARATOR;
@@ -150,6 +220,16 @@ public final class S3Connector
 					 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 	}
 
+	/**
+	 * Determines whether the directory identified by the given key} contains at least one object
+	 * other than the directory marker itself.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the directory prefix
+	 * @return true if the directory is not empty, false otherwise
+	 */
 	public boolean isNotEmptyDirectory(String bucketName, String key)
 	{
 		var separator = BucketDescriptor.PATH_SEPARATOR;
@@ -164,11 +244,29 @@ public final class S3Connector
 				  .get();
 	}
 
+	/**
+	 * An iterator over the object keys found under the given prefix.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param prefix
+	 *            the key prefix to scan
+	 * @return an iterator of matching object keys
+	 */
 	public Iterator<String> scanDirectory(String bucketName, String prefix)
 	{
 		return new DirectoryIterator(client, bucketName, prefix);
 	}
 
+	/**
+	 * Reads the full content of an object.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 * @return the object's content as a byte array
+	 */
 	public byte[] readObject(String bucketName, String key)
 	{
 		return Try.to(() -> client.getObject(item -> item.bucket(bucketName).key(key),
@@ -180,6 +278,19 @@ public final class S3Connector
 				  .get();
 	}
 
+	/**
+	 * Reads the byte range of an object.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 * @param from
+	 *            the range start offset, inclusive
+	 * @param to
+	 *            the range end offset, inclusive
+	 * @return the requested byte range as a byte array
+	 */
 	public byte[] readObject(String bucketName, String key, long from, long to)
 	{
 		return Try.to(() -> client.getObject(item -> item.bucket(bucketName)
@@ -193,11 +304,29 @@ public final class S3Connector
 				  .get();
 	}
 
+	/**
+	 * Creates an empty object at the given key.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 */
 	public void writeObject(String bucketName, String key)
 	{
 		writeObject(bucketName, key, new byte[0]);
 	}
 
+	/**
+	 * Writes the given content to the specified object, using SHA-256 checksum validation.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 * @param content
+	 *            the content to write
+	 */
 	public void writeObject(String bucketName, String key, byte[] content)
 	{
 		Try.to(() -> client.putObject(item -> item.bucket(bucketName)
@@ -210,6 +339,14 @@ public final class S3Connector
 		   .run();
 	}
 
+	/**
+	 * Deletes the given object.
+	 *
+	 * @param bucketName
+	 *            the bucket name
+	 * @param key
+	 *            the object key
+	 */
 	public void deleteObject(String bucketName, String key)
 	{
 		Try.to(() -> client.deleteObject(item -> item.bucket(bucketName).key(key))
@@ -219,16 +356,46 @@ public final class S3Connector
 		   .run();
 	}
 
+	/**
+	 * Starts a new multipart upload for the given object.
+	 *
+	 * @param bucketName
+	 *            the destination bucket
+	 * @param key
+	 *            the destination object key
+	 * @return the multipart process manager
+	 */
 	public MultipartWriter startMultipartUpload(String bucketName, String key)
 	{
 		return new MultipartWriter(client, bucketName, key);
 	}
 
+	/**
+	 * Starts a file transfer for copying or moving the given object to another bucket or key.
+	 *
+	 * @param bucketName
+	 *            the source bucket
+	 * @param key
+	 *            the source object key
+	 * @return the file transfer process manager
+	 */
 	public FileTransfer fileTransfer(String bucketName, String key)
 	{
 		return new FileTransfer(client, bucketName, key);
 	}
 
+	/**
+	 * Transfers an external object into the given bucket and key.
+	 *
+	 * @param bucketName
+	 *            the destination bucket
+	 * @param key
+	 *            the destination object key
+	 * @param fileTransfer
+	 *            the transfer manager
+	 * @throws IOException
+	 *             if the transfer fails
+	 */
 	public void receiveFile(String bucketName, String key, FileTransfer fileTransfer)
 		throws IOException
 	{
@@ -335,6 +502,12 @@ public final class S3Connector
 		response.contents().forEach(item -> report.put(item.key(), item.lastModified()));
 	}
 
+	/**
+	 * The specific {@link ConnectorBuilder} implementation creating connector to access S3 buckets.
+	 *
+	 * @author mirko.scotti
+	 * @version Jun 29, 2026
+	 */
 	static class S3ConnectorBuilder
 		extends
 		AwsConnectorBuilder<S3ConnectorBuilder, S3CrtAsyncClientBuilder, S3Connector, S3AsyncClient>

@@ -23,6 +23,8 @@ import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyRequest.
 import software.amazon.awssdk.services.iam.model.SimulatePrincipalPolicyResponse;
 
 /**
+ * IAM connector used to evaluate S3 permissions for a given principal.
+ *
  * @author mirko.scotti
  * @version Dec 14, 2025
  */
@@ -39,29 +41,56 @@ public final class IamConnector
 		this.client = client;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
 		client.close();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode()
 	{
 		return client.hashCode();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof IamConnector other && Objects.equals(client, other.client);
 	}
 
+	/**
+	 * Creates a new connector builder.
+	 *
+	 * @return the builder instance
+	 */
 	public static IamConnectorBuilder create()
 	{
 		return new IamConnectorBuilder();
 	}
 
+	/**
+	 * Evaluates whether the given principal is allowed to put an object at the given key in the
+	 * specified bucket.
+	 *
+	 * @param arn
+	 *            the ARN of the principal to simulate
+	 * @param bucket
+	 *            the target bucket
+	 * @param key
+	 *            the target object key
+	 * @return the denying AWS <code>PolicyEvaluationDecisionType</code> name, or null if the action
+	 *         is allowed
+	 */
 	public String filePermission(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
@@ -70,6 +99,19 @@ public final class IamConnector
 				  .get();
 	}
 
+	/**
+	 * Evaluates whether the given principal is allowed to put and delete objects at the given in
+	 * the specified bucket, treating it as a directory.
+	 *
+	 * @param arn
+	 *            the ARN of the principal to simulate
+	 * @param bucket
+	 *            the target bucket
+	 * @param key
+	 *            the target object key
+	 * @return the denying AWS <code>PolicyEvaluationDecisionType</code> name, or null if all
+	 *         actions are allowed
+	 */
 	public String directoryPermission(String arn, String bucket, String key)
 	{
 		var simulation = new SimulationRecord(arn, bucket, key);
@@ -110,6 +152,9 @@ public final class IamConnector
 					   .orElse(null);
 	}
 
+	/**
+	 * Builder for {@link IamConnector}.
+	 */
 	public static final class IamConnectorBuilder
 		extends
 		ClientConnectorBuilder<IamConnectorBuilder, IamAsyncClientBuilder, IamConnector, IamAsyncClient>
