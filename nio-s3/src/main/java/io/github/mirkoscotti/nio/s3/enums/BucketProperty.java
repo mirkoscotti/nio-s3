@@ -7,6 +7,25 @@ import java.util.stream.Stream;
 import software.amazon.awssdk.regions.Region;
 
 /**
+ * Enumeration of the configurable properties for instantiating an S3-backed file system via
+ * {@link java.nio.file.Files#newFileSystem(java.net.URI, java.util.Map)}.
+ *
+ * <p>
+ * Each constant represents a configuration key that can be passed as an entry of the map to
+ * {@code Files.newFileSystem}, following the naming convention {@code aws.<property-name>}.
+ * Properties defining a default value are facultative.
+ *
+ * <p>
+ * Usage example:
+ *
+ * <pre>
+ * var map = new HashMap<String, Object>();
+ * map.put(BucketProperty.ACCESS_KEY.toProperty(), "myAccessKey");
+ * map.put(BucketProperty.SECRET_KEY.toProperty(), "mySecretKey");
+ * var uri = URI.create("s3://my-bucket");
+ * var fileSystem = Files.newFileSystem(uri, env);
+ * </pre>
+ *
  * @author mirko.scotti
  * @version Oct 31, 2024
  */
@@ -18,7 +37,6 @@ public enum BucketProperty
 	REGION(Region.US_EAST_1.toString()),
 	ACCESS_KEY,
 	SECRET_KEY,
-	CREDENTIALS,
 	ACL,
 	FULL_CONTROL,
 	READ,

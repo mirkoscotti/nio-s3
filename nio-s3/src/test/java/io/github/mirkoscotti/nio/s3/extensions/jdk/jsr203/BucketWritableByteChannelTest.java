@@ -1,7 +1,3 @@
-/*
- * (C) Copyright 2019 - 2025 - Add Value S.R.L - All rights reserved.
- */
-
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
 import java.io.IOException;

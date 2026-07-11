@@ -6,6 +6,8 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 
 /**
+ * The generic credentials key.
+ *
  * @author mirko.scotti
  * @version Oct 27, 2024
  */

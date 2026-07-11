@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
+ * List of effects for a bucket policy.
+ *
  * @author mirko.scotti
  * @version Oct 25, 2024
  */

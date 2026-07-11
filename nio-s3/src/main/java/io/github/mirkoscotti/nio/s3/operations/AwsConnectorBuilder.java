@@ -13,8 +13,10 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.utils.builder.SdkBuilder;
 
 /**
+ * Template based on AWS root SDK builders.
+ *
  * @author mirko.scotti
- * @version Dec 13, 2025
+ * @since Dec 13, 2025
  */
 abstract class AwsConnectorBuilder<A extends AwsConnectorBuilder<A, B, C, W>,
 								   B extends SdkBuilder<B, W>,
@@ -30,6 +32,9 @@ abstract class AwsConnectorBuilder<A extends AwsConnectorBuilder<A, B, C, W>,
 		this.builder = Objects.requireNonNull(builder, () -> "Missing connector builder.");
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public final A withEndpoint(URI endpoint)
 	{
@@ -37,6 +42,9 @@ abstract class AwsConnectorBuilder<A extends AwsConnectorBuilder<A, B, C, W>,
 		return thisBuilder();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public final A withRegion(String region)
 	{
@@ -44,6 +52,9 @@ abstract class AwsConnectorBuilder<A extends AwsConnectorBuilder<A, B, C, W>,
 		return thisBuilder();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public final A withCredentials(String accessKey, String secretKey)
 	{
@@ -54,6 +65,9 @@ abstract class AwsConnectorBuilder<A extends AwsConnectorBuilder<A, B, C, W>,
 		return thisBuilder();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public final C build()
 	{

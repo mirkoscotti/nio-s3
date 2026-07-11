@@ -7,8 +7,13 @@ import java.util.Objects;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
+ * A <code>BasicFileAttributes</code> implementation mapping the metadata available on an S3 object
+ * to the standard NIO.2 file attribute model.
+ *
  * @author mirko.scotti
  * @version Dec 26, 2024
+ * @see java.nio.file.attribute.BasicFileAttributes
+ * @see ObjectBasicFileAttributeView
  */
 public class ObjectBasicFileAttributes
 	implements BasicFileAttributes
@@ -51,12 +56,24 @@ public class ObjectBasicFileAttributes
 		return lastModifiedTime();
 	}
 
+	/**
+	 * Specifies whether the S3 object represents a file, typically if its key does not end with
+	 * <i>/</i>.
+	 *
+	 * @return <code>true</code> if this is a regular file, <code>false</code> if it is a directory
+	 */
 	@Override
 	public boolean isRegularFile()
 	{
 		return !isDirectory();
 	}
 
+	/**
+	 * Specifies whether the S3 object represents a directory, typically if its key ends with
+	 * <i>/</i>.
+	 *
+	 * @return <code>true</code> if this is a directory, <code>false</code> if it is a file
+	 */
 	@Override
 	public boolean isDirectory()
 	{
@@ -81,12 +98,18 @@ public class ObjectBasicFileAttributes
 		return false;
 	}
 
+	/**
+	 * Returns the size of the S3 object in bytes, as reported by the AWS SDK.
+	 */
 	@Override
 	public long size()
 	{
 		return object.size();
 	}
 
+	/**
+	 * The S£ object key.
+	 */
 	@Override
 	public String fileKey()
 	{

@@ -20,8 +20,36 @@ import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import io.github.mirkoscotti.nio.s3.operations.MultipartWriter;
 
 /**
+ * A <code>WritableByteChannel</code> implementation that writes the content to objects of an
+ * S3-compatible bucket.
+ * <p>
+ * Bytes are accumulated in an internal buffer. As long as the overall amount of data stays within
+ * an internal fixed threshold of 10MB, the content is uploaded to S3 with a single put operation
+ * (single-part upload) when the channel is closed; once the threshold is exceeded, the channel
+ * automatically switches to a multipart upload, delegated to a {@link MultipartWriter} instance,
+ * splitting the content into parts that are uploaded progressively as the buffer fills up.
+ * <p>
+ * The class also reproduces, for already existing S3 objects, the write semantics typical of
+ * traditional file systems with respect to NIO.2 <code>OpenOption</code> configuration set:
+ * <ul>
+ * <li><b>Creating a non-existing object</b>: behaves like <code>CREATE_NEW</code>
+ * <li><b>Writing to an existing object, without <code>TRUNCATE_EXISTING</code>, with fewer bytes
+ * written than the original content's size</b>: the resulting object will contain the bytes written
+ * followed by the remaining bytes of the original content that exceed what was written. Example: if
+ * the existing object contains <i>text123</i> and the bytes <i>abc</i> are written, the resulting
+ * object will be <i>abct123"</i>
+ * <li><b>Writing to an existing object with <code>TRUNCATE_EXISTING</code></b> (or, more generally,
+ * with a number of bytes written equal to or greater than the original size): the resulting object
+ * will contain only the bytes written. Example: if the existing object contains <i>text123</i> and
+ * the bytes <i>abc</i> are written, the resulting object will be <i>abc</i>.
+ * </ul>
+ *
  * @author mirko.scotti
  * @version May 20, 2025
+ * @see WritableByteChannel
+ * @see MultipartWriter
+ * @see AwsFacade
+ * @see BucketPath
  */
 class BucketWritableByteChannel
 	implements WritableByteChannel
@@ -43,20 +71,6 @@ class BucketWritableByteChannel
 
 	private final long oldFileSize;
 
-	/*
-	 * OpenOption behaviors:
-	 *
-	 * - CREATE NOT EXISTING FILE => same as CREATE_NEW
-	 *
-	 * - CREATE EXISTING FILE AND WRITE LESS BYTES THAN THE ORIGINAL CONTENT => the file will
-	 * contain the bytes written + the bytes of the original file that exceed the bytes written.
-	 * Example: if the existing file contains "text123" and I write "abc", at the end of the session
-	 * the file will contain "abct123". "
-	 *
-	 * - CREATE EXISTING FILE + TRUNCATE EXISTING => the file will contain only the bytes written.
-	 * Example: if the existing file contains "text123" and I write "abcd", at the end of the
-	 * session the file will contain "abcd"
-	 */
 	BucketWritableByteChannel(AwsFacade awsFacade, BucketPath path) throws IOException
 	{
 		this(awsFacade, path.getFileSystem().bucketName(), path.toString(), 0, false);
@@ -89,12 +103,18 @@ class BucketWritableByteChannel
 		Evaluator.when(() -> isAppendable).thenExecute(this::evaluateMultipart);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isOpen()
 	{
 		return isOpen;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
@@ -109,6 +129,9 @@ class BucketWritableByteChannel
 		isOpen = false;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int write(ByteBuffer src) throws IOException
 	{
@@ -117,6 +140,14 @@ class BucketWritableByteChannel
 						  .then(item -> item.writeBuffer(src))
 						  .orThrow(ClosedChannelException::new);
 	}
+
+	/**
+	 * Signals the forced cancellation of the write operation in progress, aborting any multipart
+	 * upload started on the S3 bucket, so as not to leave orphaned parts behind.
+	 * <p>
+	 * Invoked in case of abnormal interruption of the operation (for example following an unhandled
+	 * exception during a write), as an alternative to the normal closing via {@link #close()}.
+	 */
 
 	void mustAbort()
 	{

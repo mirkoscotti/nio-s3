@@ -40,75 +40,6 @@ import software.amazon.awssdk.regions.Region;
  * <li>{@code Paths.get(uri)} to work with an object within a bucket as it were a directory or a
  * file</li>
  * </ul>
- * <p>
- * The URI must be compliant with the AWS allowed
- * <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html">styles</a>,
- * but differently from what is specified in the documentation, the scheme must be {@code s3},
- * instead of {@code http} or {@code https}.
- * <p>
- * The following are valid examples:
- * <p>
- * <table border="1">
- * <caption style="text-align:left; margin-bottom:10px"><b>Compact Virtual Hosted
- * Style</b></caption>
- * <tr>
- * <th style="text-align:left">Example</th>
- * <td>{@code s3://bucket-name}</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Description</th>
- * <td>It is the compact representation of a bucket in the default region of an AWS account when
- * used with any of the Java NIO.2 APIs specified above. If it is required to refer to a custom
- * region or to access LocalStack instead of the real AWS platform, they can be configured a
- * properties.</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Java NIO APIs</th>
- * <td>{@code FileSystems.newFileSystem(uri, properties)}</td>
- * </tr>
- * </table>
- * <p>
- * <table border="1">
- * <caption style="text-align:left; margin-bottom:10px"><b>Extended Virtual Hosted
- * Style</b></caption>
- * <tr>
- * <th style="text-align:left">Example</th>
- * <td>{@code s3://bucket-name.endpoint}<br>
- * {@code s3://bucket-name.region.endpoint}</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Description</th>
- * <td>It is the extended representation of a bucket in the default or specified region at the given
- * endpoint, when used with any of the Java NIO.2 APIs specified above. If it is required to refer
- * to a custom region or to access LocalStack instead of the real AWS platform, they can be
- * configured a properties.</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Java NIO APIs</th>
- * <td>{@code FileSystems.newFileSystem(uri, properties)}</td>
- * </tr>
- * </table>
- * <p>
- * <table border="1">
- * <caption style="text-align:left; margin-bottom:10px"><b>Full Virtual Hosted Style</b></caption>
- * <tr>
- * <th style="text-align:left">Example</th>
- * <td>{@code s3://access-key:secret-key@bucket-name.endpoint}<br>
- * {@code s3://access-key:secret-key@bucket-name.region.endpoint}</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Description</th>
- * <td>It is the complete representation of a bucket in the default or specified region at the given
- * endpoint, when used with any of the Java NIO.2 APIs specified above. If it is required to refer
- * to a custom region or to access LocalStack instead of the real AWS platform, they can be
- * configured a properties.</td>
- * </tr>
- * <tr>
- * <th style="text-align:left">Java NIO APIs</th>
- * <td>{@code FileSystems.newFileSystem(uri, properties)}<br>
- * {@code Paths.get(uri)}</td>
- * </tr>
- * </table>
  *
  * @author mirko.scotti
  * @version Jan 25, 2025
@@ -202,8 +133,10 @@ public class BucketDescriptor
 
 	private void addProperty(BucketProperty property, Object object)
 	{
-		Stream.<Supplier<?>>of(() -> object, () -> System.getProperty(property.toProperty()),
-							   () -> System.getenv(property.toProperty()), property::defaultValue)
+		Stream.<Supplier<?>>of(() -> object,
+							   () -> System.getProperty(property.toProperty()),
+							   () -> System.getenv(property.toProperty()),
+							   property::defaultValue)
 			  .map(Supplier::get)
 			  .filter(Objects::nonNull)
 			  .findFirst()

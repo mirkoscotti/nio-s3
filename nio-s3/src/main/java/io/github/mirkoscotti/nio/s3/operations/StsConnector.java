@@ -14,8 +14,10 @@ import software.amazon.awssdk.services.sts.StsAsyncClientBuilder;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
 
 /**
+ * Specific connector to STS operations.
+ *
  * @author mirko.scotti
- * @version Dec 14, 2025
+ * @version Oct 22, 2024
  */
 public final class StsConnector
 	implements AwsConnector, Closeable
@@ -28,29 +30,48 @@ public final class StsConnector
 		this.client = client;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void close() throws IOException
 	{
 		client.close();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode()
 	{
 		return client.hashCode();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object obj)
 	{
 		return obj instanceof StsConnector other && Objects.equals(client, other.client);
 	}
 
+	/**
+	 * Creates a new builder for this connector.
+	 *
+	 * @return the builder object
+	 */
 	public static StsConnectorBuilder create()
 	{
 		return new StsConnectorBuilder();
 	}
 
+	/**
+	 * Returns the ARN of the caller identity associated with the current credentials.
+	 *
+	 * @return the caller identity's ARN
+	 */
 	public String arn()
 	{
 		return Try.to(() -> client.getCallerIdentity()
@@ -60,7 +81,7 @@ public final class StsConnector
 				  .get();
 	}
 
-	public static final class StsConnectorBuilder
+	static final class StsConnectorBuilder
 		extends
 		ClientConnectorBuilder<StsConnectorBuilder, StsAsyncClientBuilder, StsConnector, StsAsyncClient>
 	{

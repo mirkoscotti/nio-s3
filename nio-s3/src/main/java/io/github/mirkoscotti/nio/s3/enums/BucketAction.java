@@ -239,6 +239,28 @@ public enum BucketAction
 		return isReadOnly;
 	}
 
+	/**
+	 * Checks whether this action matches the given action string, supporting both exact matches and
+	 * wildcard patterns ending with <code>*</code>.
+	 *
+	 * <p>
+	 * If <code>action</code> ends with <code>*</code>, it is treated as a prefix pattern and this
+	 * method returns <code>true</code> if the action's {@link #tag()} starts with the given prefix.
+	 * Otherwise, an exact match against {@link #tag()} is performed.
+	 *
+	 * <p>
+	 * Examples:
+	 * <ul>
+	 * <li><code>s3:GetObject</code> matches only {@link #S3_GET_OBJECT}</li>
+	 * <li><code>s3:Get*</code> matches all actions whose tag starts with <code>s3:Get</code></li>
+	 * </ul>
+	 *
+	 * @param action
+	 *            the action string to match against, optionally ending with <code>*</code>;
+	 *            <code>null</code> always returns <code>false</code>
+	 * @return <code>true</code> if this action matches the given string or pattern,
+	 *         <code>false</code> otherwise
+	 */
 	public boolean matches(String action)
 	{
 		var wildcard = "*";
@@ -255,16 +277,34 @@ public enum BucketAction
 			|| Objects.equals(targetAction, action);
 	}
 
+	/**
+	 * Filters of all items representing read-only actions, i.e. items whose {@link #isReadOnly()}
+	 * method returns <code>true</code>.
+	 *
+	 * @return the list in the form of a stream
+	 */
 	public static Stream<BucketAction> readOnlyActions()
 	{
 		return Stream.of(values()).filter(BucketAction::isReadOnly);
 	}
 
+	/**
+	 * Filters of all items representing writable actions, i.e. items whose {@link #isReadOnly()}
+	 * method returns <code>false</code>.
+	 *
+	 * @return the list in the form of a stream
+	 */
 	public static Stream<BucketAction> writeActions()
 	{
 		return Stream.of(values()).filter(Predicate.not(BucketAction::isReadOnly));
 	}
 
+	/**
+	 * Filters of all items matching the given action, i.e. items whose {@link #matches(String)}
+	 * method returns <code>true</code>.
+	 *
+	 * @return the list in the form of a stream
+	 */
 	public static Stream<BucketAction> matchingActions(String action)
 	{
 		return Stream.of(BucketAction.values()).filter(item -> item.matches(action));

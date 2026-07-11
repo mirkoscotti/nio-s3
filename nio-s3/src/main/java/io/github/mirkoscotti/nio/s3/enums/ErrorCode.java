@@ -16,11 +16,44 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
 import io.github.mirkoscotti.nio.s3.functions.Try;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
+import io.github.mirkoscotti.nio.s3.operations.S3Connector;
 
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 
+/**
+ * A mapper between AWS S3 error codes and semantically equivalent Java NIO.2 exceptions.
+ * <p>
+ * This enumeration provides a bridge between AWS SDK exceptions thrown during S3 operations and the
+ * standard Java NIO.2 exception hierarchy. Each item represents a specific AWS error code that can
+ * occur when interacting with S3 buckets or objects, and maps it to an appropriate NIO.2 exception
+ * type (e.g., {@link NoSuchFileException}, {@link AccessDeniedException}).
+ * <p>
+ * The error handling flow follows this pattern:
+ *
+ * <pre>
+ * {@link S3Connector} (facade invoking AWS APIs)
+ *     → throws AWS SDK exception with {@link software.amazon.awssdk.awscore.exception.AwsErrorDetails}
+ *     → wrapped in TransportException
+ *     → TransportException delegates to {@link #of(AwsErrorDetails)} to resolve the corresponding ErrorCode
+ *     → {@link #nioException(String...)} creates the appropriate NIO.2 exception instance
+ * </pre>
+ * <p>
+ * For AWS error codes that do not have a direct NIO.2 semantic equivalent, the mapping may be
+ * <code>null</code>, indicating that the raw AWS exception should be propagated or handled
+ * separately.
+ * <p>
+ * The naming convention for items follows the AWS error code pattern converted to a standard Java
+ * <i>enum</i> format: lower-to-upper case transitions are marked with underscores. For example, AWS
+ * error code "NoSuchKey" becomes <code>NO_SUCH_KEY</code>.
+ *
+ * @author mirko.scotti
+ * @version May 23, 2026
+ * @see S3Connector
+ * @see TransportException
+ */
 public enum ErrorCode
 {
 
@@ -32,7 +65,6 @@ public enum ErrorCode
 	NO_SUCH_BUCKET_POLICY(null),
 	NO_SUCH_KEY(NoSuchFileException.class),
 	NO_SUCH_UPLOAD(null),
-	// ---- GESTITO FINO QUA ----
 	ACCESS_DENIED(AccessDeniedException.class),
 	ACCOUNT_PROBLEM(null),
 	ALL_ACCESS_DISABLED(AccessDeniedException.class),
@@ -99,11 +131,21 @@ public enum ErrorCode
 
 	private final Class<? extends Exception> nioException;
 
-	ErrorCode(Class<? extends Exception> nioException)
+	private ErrorCode(Class<? extends Exception> nioException)
 	{
 		this.nioException = nioException;
 	}
 
+	/**
+	 * Create an instance of the mapped NIO.2 exception using the given parameters to compose the
+	 * message.
+	 *
+	 * @param parameters
+	 *            arguments for the exception constructor (may be null or empty)
+	 * @return the NIO.2 exception
+	 * @throws IllegalStateException
+	 *             if the instantiation fails
+	 */
 	public Exception nioException(String... parameters)
 	{
 		var parameterCount = parameters == null ? 0 : parameters.length;
@@ -113,6 +155,13 @@ public enum ErrorCode
 		return (Exception) result;
 	}
 
+	/**
+	 * Finds the item matching the given <code>AwsErrorDetails</code>.
+	 *
+	 * @param awsErrorDetails
+	 *            the AWS error details (must not be null)
+	 * @return an Optional containing the matching ErrorCode, or empty if not found
+	 */
 	public static Optional<ErrorCode> of(AwsErrorDetails awsErrorDetails)
 	{
 		var errorCode = awsErrorDetails.errorCode();

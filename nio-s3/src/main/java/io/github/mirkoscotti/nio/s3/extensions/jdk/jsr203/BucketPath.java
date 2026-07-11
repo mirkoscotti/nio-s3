@@ -59,6 +59,17 @@ import io.github.mirkoscotti.nio.s3.enums.BucketModifier;
  * According to the POSIX rules, even if such a key is forbidden, a path representing this key will
  * be normalized to <code>file.txt</code>.
  *
+ * Main rules for the object keys defining a path:
+ * <ul>
+ * <li>keys cannot be empty.
+ * <li>keys cannot be longer than 1kB
+ * <li>keys cannot contain consecutive slashes (<code>//</code>)
+ * <li>keys cannot end with dot
+ * <li>keys cannot contain any extended ASCII characters (from decimal 128 to 255)
+ * <li>keys cannot contain non-printable characters
+ * <li>the following characters are forbidden: <code>\{^}%`]">[~<#|</code>
+ * </ul>
+ *
  * @author mirko.scotti
  * @version Jul 14, 2024
  */
@@ -82,22 +93,6 @@ public class BucketPath
 
 	private final String objectKey;
 
-	/**
-	 * Main rules for the object keys defining a path:
-	 * <ul>
-	 * <li>keys cannot be empty.
-	 * <li>keys cannot be longer than 1kB
-	 * <li>keys cannot contain consecutive slashes (<code>//</code>)
-	 * <li>keys cannot end with dot
-	 * <li>keys cannot contain any extended ASCII characters (from decimal 128 to 255)
-	 * <li>keys cannot contain non-printable characters
-	 * <li>the following characters are forbidden: <code>\{^}%`]">[~<#|</code>
-	 * </ul>
-	 *
-	 * @param fileSystem
-	 * @param first
-	 * @param more
-	 */
 	BucketPath(BucketFileSystem fileSystem, String first, String... more)
 	{
 		var separator = BucketDescriptor.PATH_SEPARATOR;
@@ -122,24 +117,36 @@ public class BucketPath
 		objectKey = null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketFileSystem getFileSystem()
 	{
 		return fileSystem;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean isAbsolute()
 	{
 		return root != null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath getRoot()
 	{
 		return root;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath getFileName()
 	{
@@ -153,6 +160,9 @@ public class BucketPath
 					   .orElse(null);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath getParent()
 	{
@@ -167,6 +177,9 @@ public class BucketPath
 		return fileSystem.getPath(path);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int getNameCount()
 	{
@@ -176,6 +189,9 @@ public class BucketPath
 					   .orElse(0);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath getName(int index)
 	{
@@ -191,6 +207,9 @@ public class BucketPath
 					   .orElseThrow(() -> new IllegalArgumentException("Index greater than the number of elements."));
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Path subpath(int beginIndex, int endIndex)
 	{
@@ -219,6 +238,9 @@ public class BucketPath
 									.toArray(String[]::new));
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean startsWith(Path other)
 	{
@@ -233,6 +255,9 @@ public class BucketPath
 		return result;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean endsWith(Path other)
 	{
@@ -248,6 +273,9 @@ public class BucketPath
 		return result;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath normalize()
 	{
@@ -262,7 +290,8 @@ public class BucketPath
 								 ? BucketDescriptor.PATH_SEPARATOR
 								 : "";
 		var result = stack.stream()
-						  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR, prefix,
+						  .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR,
+													  prefix,
 													  suffix));
 		return fileSystem.getPath(result);
 	}
@@ -294,6 +323,9 @@ public class BucketPath
 		};
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath relativize(Path other)
 	{
@@ -314,6 +346,9 @@ public class BucketPath
 		return new BucketPath(fileSystem, first);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public URI toUri()
 	{
@@ -334,6 +369,9 @@ public class BucketPath
 			: new BucketPath(fileSystem, BucketDescriptor.PATH_SEPARATOR.concat(objectKey));
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public BucketPath toRealPath(LinkOption... options) throws IOException
 	{
@@ -343,6 +381,9 @@ public class BucketPath
 					   .orElseThrow(() -> fileNotFoundInBucket(path));
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public WatchKey register(WatchService watcher, Kind<?>[] events, Modifier... modifiers)
 		throws IOException
@@ -361,7 +402,8 @@ public class BucketPath
 							  .map("Invalid event: %s"::formatted)
 							  .map(IllegalArgumentException::new)
 							  .collect(() -> new UnsupportedOperationException("Unsupported events."),
-									   Throwable::addSuppressed, Throwable::addSuppressed);
+									   Throwable::addSuppressed,
+									   Throwable::addSuppressed);
 		if (exception.getSuppressed().length > 0)
 		{
 			throw exception;
@@ -372,7 +414,8 @@ public class BucketPath
 						  .map("Invalid modifier: %s"::formatted)
 						  .map(IllegalArgumentException::new)
 						  .collect(() -> new UnsupportedOperationException("Only %s's items are supported.".formatted(BucketModifier.class.getName())),
-								   Throwable::addSuppressed, Throwable::addSuppressed);
+								   Throwable::addSuppressed,
+								   Throwable::addSuppressed);
 		if (exception.getSuppressed().length > 0)
 		{
 			throw exception;
@@ -384,6 +427,9 @@ public class BucketPath
 		throw new ProviderMismatchException("Watcher missing or not working with S3 buckets.");
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int compareTo(Path other)
 	{
@@ -421,6 +467,9 @@ public class BucketPath
 		return Objects.hash(fileSystem, objectKey, isAbsolute());
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString()
 	{

@@ -14,8 +14,13 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
+ * A <code>DirectoryStream</code> implementation that provides iteration over a set of objects
+ * having the same prefix represented by the configured {@link BucketPath}, eventually filtered by
+ * the <code>DirectoryStream.Filter</code> supplied at the instantiation time.
+ *
  * @author mirko.scotti
  * @version Dec 27, 2025
+ * @see BucketPath
  */
 class BucketDirectoryStream
 	implements DirectoryStream<Path>

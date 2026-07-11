@@ -58,7 +58,7 @@ import io.github.mirkoscotti.nio.s3.records.AwsRecord;
 import io.github.mirkoscotti.nio.s3.records.BucketRecord;
 
 /**
- * * This provider manages one file system for each S3 bucket on an AWS account or its emulator
+ * This provider manages one file system for each S3 bucket on an AWS account or its emulator
  * LocalStack. Each file system is created at most once during the JVM life and internally cached,
  * so that it cannot be created twice. It can be created from URI and credentials for accessing the
  * bucket. Region is mandatory but, if not specified, <code>us-east-1</code> is assumed. URIs must
@@ -72,14 +72,14 @@ import io.github.mirkoscotti.nio.s3.records.BucketRecord;
  * If the property {@link S3Property#ENDPOINT} is also specified in the same map, the bucket is
  * created, or it is required to be existing, on the specific LocalStack instance instead of an AWS
  * account.
- * <li><code>s3://access-key:secret-key@bucket-name/<code>
+ * <li><code>s3://access-key:secret-key@bucket-name<code>
  * <p>
  * In this case, since credentials are directly provided within the URI, the file system can be
  * created either invoking {@link FileSystems#newFileSystem(URI, Map)} or {@link Paths#get(URI)}. If
  * this last API is used, necessarily it is not possible to access LocalStack. If the first one is
  * invoked, credentials eventually specified in the environment properties are ignored because the
  * ones specified in the URI are used.
- * <li><code>s3://access-key:secret-key@host-name/bucket-name/<code>
+ * <li><code>s3://access-key:secret-key@host-name/bucket-name<code>
  * <p>
  * This is for accessing LocalStack from the {@link Paths#get(URI)} API. If
  * {@link FileSystems#newFileSystem(URI, Map)} is invoked and the {@link S3Property#ENDPOINT}
@@ -156,6 +156,18 @@ public class S3FileSystemProvider
 		return createFileSystem(bucketDescriptor);
 	}
 
+	/**
+	 * Retrieves an existing file system previously created for the bucket identified by the given
+	 * URI. The bucket is resolved from the URI authority or from its first path segment, depending
+	 * on whether the target platform is AWS or LocalStack.
+	 *
+	 * @param uri
+	 *            the URI whose authority or first path segment identifies the target bucket; must
+	 *            not be {@code null}
+	 * @return the {@link BucketFileSystem} associated with the given bucket
+	 * @throws FileSystemNotFoundException
+	 *             if no file system for the given bucket has been created yet within this JVM
+	 */
 	@Override
 	public FileSystem getFileSystem(URI uri)
 	{
@@ -165,6 +177,18 @@ public class S3FileSystemProvider
 					   .orElseThrow(() -> new FileSystemNotFoundException("File system for bucket %s not loaded yet.".formatted(bucketKey.bucketName())));
 	}
 
+	/**
+	 * Creates a path from the given URI. If the file system this path belongs to still has not been
+	 * created before in the current JVM, it is created too. In this case, the given URI must
+	 * contain all the required information such as host name and credentials.
+	 *
+	 * @param uri
+	 *            the URI identifying both the target bucket and the object path within it; must not
+	 *            be {@code null}
+	 * @return the {@link BucketPath} representing the S3 object identified by the given URI
+	 * @throws IllegalArgumentException
+	 *             if the URI does not contain the credentials required to access the bucket
+	 */
 	@Override
 	public Path getPath(URI uri)
 	{
@@ -174,6 +198,26 @@ public class S3FileSystemProvider
 					   .getPath(uri.getPath());
 	}
 
+	/**
+	 * Opens a channel to access or create an S3 object corresponding to the given path. The channel
+	 * is registered as an open resource on the owning file system so that it can be properly closed
+	 * when the file system itself is closed.
+	 *
+	 * @param path
+	 *            the path to the S3 object to open or create
+	 * @param options
+	 *            options specifying how the object is opened
+	 * @param attrs
+	 *            an optional list of file attributes to set atomically when creating the object;
+	 *            currently ignored because S3 object metadata cannot be set after creation
+	 * @return a new channel instance connected to the given S3 object
+	 * @throws IOException
+	 *             if an I/O error occurs opening or creating the object
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 * @throws NullPointerException
+	 *             if the path is not specified
+	 */
 	@Override
 	public SeekableByteChannel newByteChannel(Path path,
 											  Set<? extends OpenOption> options,
@@ -186,6 +230,24 @@ public class S3FileSystemProvider
 		return result;
 	}
 
+	/**
+	 * Opens a stream on the given directory to iterate over the entries it contains. Each entry
+	 * that passes the given filter is included in the stream. The stream is registered as an open
+	 * resource on the owning file system so that it can be properly closed when the file system
+	 * itself is closed.
+	 *
+	 * @param dir
+	 *            the path to the directory to open
+	 * @param filter
+	 *            the filter to exclude some of the files in the directory
+	 * @return a new stream instance for the given directory
+	 * @throws IOException
+	 *             if an I/O error occurs opening the directory
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 * @throws NullPointerException
+	 *             if the path is not specified
+	 */
 	@Override
 	public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter)
 		throws IOException
@@ -196,6 +258,26 @@ public class S3FileSystemProvider
 		return result;
 	}
 
+	/**
+	 * Creates a new directory at the given path by writing an empty object whose key ends with the
+	 * S3 path separator. The root directory of a bucket cannot be created because it is implicitly
+	 * represented by the bucket itself. All parent directories in the path must exist before this
+	 * method is called.
+	 *
+	 * @param dir
+	 *            the path of the directory to create; must be a {@link BucketPath} and must not
+	 *            refer to the root of the bucket
+	 * @param attrs
+	 *            an optional list of file attributes to set atomically when creating the directory;
+	 *            currently ignored because S3 object metadata cannot be set after creation
+	 * @throws IOException
+	 *             if an I/O error occurs
+	 * @throws FileAlreadyExistsException
+	 *             if a directory or object already exists at the given path, or if the given path
+	 *             is the root directory of the bucket
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException
 	{
@@ -224,6 +306,24 @@ public class S3FileSystemProvider
 							   bucketPath.toString());
 	}
 
+	/**
+	 * Deletes the S3 object or virtual directory identified by the given path. The root directory
+	 * of a bucket cannot be deleted. If the path refers to a non-empty directory, the deletion is
+	 * refused to avoid accidental data loss.
+	 *
+	 * @param path
+	 *            the path of the object or directory to delete; must be a {@link BucketPath}
+	 * @throws IOException
+	 *             if an I/O error occurs during deletion
+	 * @throws UnsupportedOperationException
+	 *             if the path refers to the root directory of the bucket
+	 * @throws DirectoryNotEmptyException
+	 *             if the path refers to a non-empty virtual directory
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 * @throws NullPointerException
+	 *             if the path is not specified
+	 */
 	@Override
 	public void delete(Path path) throws IOException
 	{
@@ -241,6 +341,25 @@ public class S3FileSystemProvider
 		awsFacade.deleteObject(bucketName, key);
 	}
 
+	/**
+	 * Copies an S3 object from the source path to the target path. If source and target refer to
+	 * the same object , this method does nothing. By default, the copy fails if the target already
+	 * exists unless <code>REPLACE_EXISTING</code> is configured to overwrite it.
+	 *
+	 * @param source
+	 *            the path to the source object
+	 * @param target
+	 *            the path to the target object
+	 * @param options
+	 *            options specifying how the copy should be performed
+	 * @throws IOException
+	 *             if an I/O error occurs during the copy
+	 * @throws FileAlreadyExistsException
+	 *             if the target already exists and <code>REPLACE_EXISTING</code> option is not
+	 *             specified
+	 * @throws ProviderMismatchException
+	 *             if either path is not a {@link BucketPath}
+	 */
 	@Override
 	public void copy(Path source, Path target, CopyOption... options) throws IOException
 	{
@@ -248,6 +367,24 @@ public class S3FileSystemProvider
 				 .thenExecute(() -> executeCopy(source, target, options));
 	}
 
+	/**
+	 * Moves an S3 object from the source path to the target path. This operation is implemented as
+	 * a {@link #copy(Path, Path, CopyOption...) copy} followed by a {@link #delete(Path) delete} of
+	 * the source. The same options and constraints that apply to {@link #copy} apply here as well.
+	 *
+	 * @param source
+	 *            the path to the source object
+	 * @param target
+	 *            the path to the target object
+	 * @param options
+	 *            options specifying how the move should be performed
+	 * @throws IOException
+	 *             if an I/O error occurs during the copy or the delete
+	 * @throws FileAlreadyExistsException
+	 *             if the target already exists and <code>REPLACE_EXISTING</code> is not specified
+	 * @throws ProviderMismatchException
+	 *             if either path is not a {@link BucketPath}
+	 */
 	@Override
 	public void move(Path source, Path target, CopyOption... options) throws IOException
 	{
@@ -255,6 +392,23 @@ public class S3FileSystemProvider
 		delete(source);
 	}
 
+	/**
+	 * Tells whether two paths locate the same S3 object. Two paths are considered to refer to the
+	 * same object if they are equal or if the absolute form of the first path is equal to the
+	 * absolute form of the second path.
+	 *
+	 * @param path
+	 *            the source path
+	 * @param path2
+	 *            the target path
+	 * @return true if and only if both paths locate the same S3 object
+	 * @throws IOException
+	 *             if an I/O error occurs
+	 * @throws ProviderMismatchException
+	 *             if path is not a {@link BucketPath}
+	 * @throws NullPointerException
+	 *             if the target path is not specified
+	 */
 	@Override
 	public boolean isSameFile(Path path, Path path2) throws IOException
 	{
@@ -264,6 +418,17 @@ public class S3FileSystemProvider
 			|| source.toRealPath(LinkOption.NOFOLLOW_LINKS).equals(target.toAbsolutePath());
 	}
 
+	/**
+	 * S3 does not have a native concept of hidden.
+	 *
+	 * @param path
+	 *            the path to the S3 object
+	 * @return false
+	 * @throws IOException
+	 *             if an I/O error occurs
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	public boolean isHidden(Path path) throws IOException
 	{
@@ -271,6 +436,17 @@ public class S3FileSystemProvider
 		return false;
 	}
 
+	/**
+	 * Returns the unique file store of the file system the given path belongs to.
+	 *
+	 * @param path
+	 *            the path whose containing bucket is to be returned
+	 * @return the {@link FileStore} for the bucket that contains the given path
+	 * @throws IOException
+	 *             if an I/O error occurs
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	public FileStore getFileStore(Path path) throws IOException
 	{
@@ -278,6 +454,22 @@ public class S3FileSystemProvider
 		return bucketPath.getFileSystem().getFileStores().iterator().next();
 	}
 
+	/**
+	 * Checks whether the current credentials have the permission corresponding to the given access
+	 * modes on the S3 object identified by the given path.
+	 *
+	 * @param path
+	 *            the path to the S3 object to check
+	 * @param modes
+	 *            the access modes to check; an empty array checks only for the existence of the
+	 *            object
+	 * @throws IOException
+	 *             if an I/O error occurs or access is denied
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 * @throws NullPointerException
+	 *             if the path is not specified
+	 */
 	@Override
 	public void checkAccess(Path path, AccessMode... modes) throws IOException
 	{
@@ -289,6 +481,23 @@ public class S3FileSystemProvider
 		ObjectAccess.check(awsFacade, bucketName, objectKey, modes);
 	}
 
+	/**
+	 * Returns a file attribute view of a given type for the S3 object identified by the given path.
+	 *
+	 * @param <V>
+	 *            the type of the file attribute view
+	 * @param path
+	 *            the path to the S3 object
+	 * @param type
+	 *            the class of the desired attribute view
+	 * @param options
+	 *            options indicating how symbolic links are handled; currently unused because S3
+	 *            does not support symbolic links
+	 * @return a file attribute view of the specified type, or null if the view type is not
+	 *         supported
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	public <V extends FileAttributeView> V getFileAttributeView(Path path,
 																Class<V> type,
@@ -307,6 +516,25 @@ public class S3FileSystemProvider
 		return result;
 	}
 
+	/**
+	 * Reads the attributes of an S3 object as a bulk operation.
+	 *
+	 * @param <A>
+	 *            the type of the file attributes
+	 * @param path
+	 *            the path to the S3 object
+	 * @param type
+	 *            the class of the desired attribute object
+	 * @param options
+	 *            currently unused
+	 * @return the file attributes of the given S3 object
+	 * @throws IOException
+	 *             if an I/O error occurs reading the attributes
+	 * @throws UnsupportedOperationException
+	 *             if the requested attribute type is not supported
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	@SuppressWarnings("unchecked")
 	public <A extends BasicFileAttributes> A readAttributes(Path path,
@@ -326,6 +554,30 @@ public class S3FileSystemProvider
 		return (A) fileAttributeView.readAttributes();
 	}
 
+	/**
+	 * Reads a set of file attributes of an S3 object as a bulk operation, returning them as a
+	 * name-to-value map. The attributes string specifies the desired attribute names, optionally
+	 * preceded by the view name separated by a colon (e.g. <code>"basic:size,isDirectory"<code> or
+	 * simply <code>"size,isDirectory"<code>). The wildcard selects all available attributes. Only
+	 * the basic view is currently supported.
+	 *
+	 * @param path
+	 *            the path to the S3 object
+	 * @param attributes
+	 *            a comma-separated list of attribute names, optionally prefixed by the view name
+	 *            followed by a colon; use "*" to request all attributes
+	 * @param options
+	 *            options indicating how symbolic links are handled; currently unused
+	 * @return a map from attribute name to attribute value
+	 * @throws IOException
+	 *             if an I/O error occurs reading the attributes
+	 * @throws IllegalArgumentException
+	 *             if the attributes string is malformed (e.g. contains more than one colon)
+	 * @throws UnsupportedOperationException
+	 *             if the requested view is not supported
+	 * @throws ProviderMismatchException
+	 *             if the given path is not a {@link BucketPath}
+	 */
 	@Override
 	public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options)
 		throws IOException
@@ -378,6 +630,12 @@ public class S3FileSystemProvider
 		return result;
 	}
 
+	/**
+	 * S3 object metadata is immutable
+	 *
+	 * @throws UnsupportedOperationException
+	 *             always
+	 */
 	@Override
 	public void setAttribute(Path path, String attribute, Object value, LinkOption... options)
 		throws IOException
@@ -385,6 +643,21 @@ public class S3FileSystemProvider
 		throw new UnsupportedOperationException("Metadata of an S3 object cannot be modified once it has been created.");
 	}
 
+	/**
+	 * Removes the given file system from the internal cache, effectively closing it. If the
+	 * underlying {@link AwsFacade} is no longer referenced by any other open file system, it is
+	 * also removed from the facades cache to release the associated AWS client resources.
+	 * <p>
+	 * This method is intended to be called only by {@link BucketFileSystem#close()} and must not be
+	 * invoked directly by client code.
+	 *
+	 * @param fileSystem
+	 *            the file system to close
+	 * @throws IOException
+	 *             if an I/O error occurs during the close operation
+	 * @throws ClosedFileSystemException
+	 *             if the file system has already been closed
+	 */
 	void closeFileSystem(BucketFileSystem fileSystem) throws IOException
 	{
 		var awsFacade = fileSystem.awsFacade();
@@ -398,9 +671,23 @@ public class S3FileSystemProvider
 						  .map(BucketFileSystem::awsFacade)
 						  .filter(awsFacade::equals)
 						  .findAny()
-						  .ifPresentOrElse(item -> {}, () -> FACADES_CACHE.remove(awsRecord));
+						  .ifPresentOrElse(item ->
+						  {
+						  }, () -> FACADES_CACHE.remove(awsRecord));
 	}
 
+	/**
+	 * Tells whether the given file system is still open, i.e. whether it is currently present in
+	 * the internal cache. A file system is considered open from the moment it is successfully
+	 * created until {@link #closeFileSystem(BucketFileSystem)} is called on it.
+	 * <p>
+	 * This method is intended to be called only by {@link BucketFileSystem#isOpen()} and must not
+	 * be invoked directly by client code.
+	 *
+	 * @param fileSystem
+	 *            the file system whose open state is to be checked
+	 * @return true if the file system is open, false otherwise
+	 */
 	boolean isFileSystemOpen(BucketFileSystem fileSystem)
 	{
 		var awsRecord = fileSystem.awsFacade().awsRecord();
@@ -434,7 +721,8 @@ public class S3FileSystemProvider
 					   Predicate.not(BucketPath::isRootDirectory)
 								.and(item -> reference.get() == null),
 					   BucketPath::getParent)
-			  .forEach(item -> Try.to(() -> readAttributes(item, BasicFileAttributes.class,
+			  .forEach(item -> Try.to(() -> readAttributes(item,
+														   BasicFileAttributes.class,
 														   LinkOption.NOFOLLOW_LINKS))
 								  .onCatch(reference::set)
 								  .run());

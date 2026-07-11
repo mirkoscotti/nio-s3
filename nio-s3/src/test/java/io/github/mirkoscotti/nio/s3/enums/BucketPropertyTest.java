@@ -23,8 +23,6 @@ class BucketPropertyTest
 
 	private static final String AWS_SECRET_KEY = "aws.secret-key";
 
-	private static final String AWS_CREDENTIALS = "aws.credentials";
-
 	private static final String AWS_ACL = "aws.acl";
 
 	private static final String AWS_FULL_CONTROL = "aws.full-control";
@@ -44,7 +42,6 @@ class BucketPropertyTest
 		Assertions.assertEquals(AWS_REGION, BucketProperty.REGION.toProperty());
 		Assertions.assertEquals(AWS_ACCESS_KEY, BucketProperty.ACCESS_KEY.toProperty());
 		Assertions.assertEquals(AWS_SECRET_KEY, BucketProperty.SECRET_KEY.toProperty());
-		Assertions.assertEquals(AWS_CREDENTIALS, BucketProperty.CREDENTIALS.toProperty());
 		Assertions.assertEquals(AWS_ACL, BucketProperty.ACL.toProperty());
 		Assertions.assertEquals(AWS_FULL_CONTROL, BucketProperty.FULL_CONTROL.toProperty());
 		Assertions.assertEquals(AWS_READ, BucketProperty.READ.toProperty());
@@ -76,8 +73,6 @@ class BucketPropertyTest
 								BucketProperty.of(AWS_ACCESS_KEY));
 		Assertions.assertEquals(Optional.of(BucketProperty.SECRET_KEY),
 								BucketProperty.of(AWS_SECRET_KEY));
-		Assertions.assertEquals(Optional.of(BucketProperty.CREDENTIALS),
-								BucketProperty.of(AWS_CREDENTIALS));
 		Assertions.assertEquals(Optional.of(BucketProperty.ACL), BucketProperty.of(AWS_ACL));
 		Assertions.assertEquals(Optional.of(BucketProperty.FULL_CONTROL),
 								BucketProperty.of(AWS_FULL_CONTROL));

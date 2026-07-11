@@ -9,6 +9,8 @@ import java.util.function.Supplier;
 import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 
 /**
+ * The try-catch pattern with functional programming.
+ *
  * @author mirko.scotti
  * @version Oct 24, 2024
  */
@@ -31,23 +33,48 @@ public class Try<T>
 		this.tryBlock = tryBlock;
 	}
 
+	/**
+	 * Starts a new try-catch process evaluating a <code>callable</code> object functionally working
+	 * as a try block.
+	 *
+	 * @param callable
+	 *            the try block
+	 * @return the try instance
+	 */
 	public static <T> Try<T> to(Callable<T> callable)
 	{
 		return new Try<>(callable);
 	}
 
+	/**
+	 * Configures the catch block in the current try-catch process.
+	 *
+	 * @param catchBlock
+	 *            the exception supplier
+	 * @return the current try instance
+	 */
 	public Try<T> onCatch(Consumer<? super Exception> catchBlock)
 	{
 		this.catchBlock = Objects.requireNonNull(catchBlock, () -> "Missing catch block.");
 		return this;
 	}
 
+	/**
+	 * Configures the finally block in the current try-catch process.
+	 *
+	 * @param catchBlock
+	 *            the finally block in the form of a callable object
+	 * @return the current try instance
+	 */
 	public Try<T> onFinally(Callable<Void> finallyBlock)
 	{
 		this.finallyBlock = Objects.requireNonNull(finallyBlock, () -> "Missing finally block.");
 		return this;
 	}
 
+	/**
+	 * The result of the try block when no errors occur.
+	 */
 	@Override
 	public T get()
 	{
@@ -69,6 +96,9 @@ public class Try<T>
 		return result;
 	}
 
+	/**
+	 * Performs the try-catch process when no results are expected.
+	 */
 	@Override
 	public void run()
 	{

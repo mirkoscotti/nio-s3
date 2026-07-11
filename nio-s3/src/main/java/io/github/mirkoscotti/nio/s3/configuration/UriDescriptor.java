@@ -12,6 +12,115 @@ import io.github.mirkoscotti.nio.s3.exceptions.BucketUriException;
 import io.github.mirkoscotti.nio.s3.records.CredentialsRecord;
 
 /**
+ * A simple S3 URI parser. The URI must be compliant with the AWS
+ * <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html">styles</a>,
+ * but differently from what is specified in the documentation, the scheme must be <code>s3</code>,
+ * instead of <code>http</code> or <code>https</code>.
+ * <p>
+ * The following are valid examples:
+ * <p>
+ * <table border="1">
+ * <caption style="text-align:left; margin-bottom:10px"><b>Compact Virtual Hosted
+ * Style</b></caption>
+ * <tr>
+ * <th style="text-align:left">Example</th>
+ * <td><code>s3://bucket-name</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Description</th>
+ * <td>It is the compact representation of a bucket in the default region of an AWS account when
+ * used with any of the Java NIO.2 APIs specified below. If it is required to refer to a custom
+ * region or to access LocalStack instead of the real AWS platform, they can be configured via
+ * properties.</td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Java NIO APIs</th>
+ * <td><code>FileSystems.newFileSystem(uri, properties)</code></td>
+ * </tr>
+ * </table>
+ * <p>
+ * <table border="1">
+ * <caption style="text-align:left; margin-bottom:10px"><b>Extended Virtual Hosted
+ * Style</b></caption>
+ * <tr>
+ * <th style="text-align:left">Example</th>
+ * <td><code>s3://bucket-name.endpoint</code><br>
+ * <code>s3://bucket-name.region.endpoint}</td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Description</th>
+ * <td>It is the extended representation of a bucket in the default or specified region at the given
+ * endpoint, when used with any of the Java NIO.2 APIs specified below. If it is required to refer
+ * to a custom region or to access LocalStack instead of the real AWS platform, they can be
+ * configured via properties.</td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Java NIO APIs</th>
+ * <td><code>FileSystems.newFileSystem(uri, properties)</code></td>
+ * </tr>
+ * </table>
+ * <p>
+ * <table border="1">
+ * <caption style="text-align:left; margin-bottom:10px"><b>Authenticated Virtual Hosted
+ * Style</b></caption>
+ * <tr>
+ * <th style="text-align:left">Example</th>
+ * <td><code>s3://access-key:secret-key@bucket-name.endpoint</code><br>
+ * <code>s3://access-key:secret-key@bucket-name.region.endpoint</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Description</th>
+ * <td>It is the complete representation of a bucket in the default or specified region at the given
+ * endpoint, when used with any of the Java NIO.2 APIs specified above. If it is required to refer
+ * to a custom region or to access LocalStack instead of the real AWS platform, they can be
+ * configured via properties.</td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Java NIO APIs</th>
+ * <td><code>FileSystems.newFileSystem(uri, properties)</code><br>
+ * <code>Paths.get(uri)}</td>
+ * </tr>
+ * </table>
+ * <p>
+ * <table border="1">
+ * <caption style="text-align:left; margin-bottom:10px"><b>Path Style</b></caption>
+ * <tr>
+ * <th style="text-align:left">Example</th>
+ * <td><code>s3://endpoint/bucket-name</code><br>
+ * <code>s3://region.endpoint/bucket-name</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Java NIO APIs</th>
+ * <td><code>FileSystems.newFileSystem(uri, properties)</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Description</th>
+ * <td>It is the path-style representation of a bucket at the given endpoint, when used with the
+ * Java NIO.2 APIs listed below. If it is required to refer to a custom region or to access
+ * LocalStack instead of the real AWS platform, they can be configured via properties.</td>
+ * </tr>
+ * </table>
+ * <p>
+ * <table border="1">
+ * <caption style="text-align:left; margin-bottom:10px"><b>Authenticated Path Style</b></caption>
+ * <tr>
+ * <th style="text-align:left">Example</th>
+ * <td><code>s3://access-key:secret-key@endpoint/bucket-name</code><br>
+ * <code>s3://access-key:secret-key@region.endpoint/bucket-name</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Java NIO APIs</th>
+ * <td><code>FileSystems.newFileSystem(uri, properties)</code><br>
+ * <code>Paths.get(uri)</code></td>
+ * </tr>
+ * <tr>
+ * <th style="text-align:left">Description</th>
+ * <td>It is the complete path-style representation of a bucket at the given endpoint, when used
+ * with the Java NIO.2 APIs listed below. If it is required to refer to a custom region or to access
+ * LocalStack instead of the real AWS platform, they can be configured via properties.</td>
+ * </tr>
+ * </table>
+ *
  * @author mirko.scotti
  * @version Mar 03, 2025
  */
