@@ -14,6 +14,8 @@ import io.github.mirkoscotti.nio.s3.enums.BucketAction;
 import io.github.mirkoscotti.nio.s3.enums.BucketEffect;
 
 /**
+ * The generic object access policy descriptor.
+ *
  * @author mirko.scotti
  * @version Oct 25, 2024
  */

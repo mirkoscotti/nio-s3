@@ -5,6 +5,8 @@ import java.util.List;
 import jakarta.json.bind.annotation.JsonbProperty;
 
 /**
+ * The generic statement descriptor.
+ *
  * @author mirko.scotti
  * @version Oct 25, 2024
  */

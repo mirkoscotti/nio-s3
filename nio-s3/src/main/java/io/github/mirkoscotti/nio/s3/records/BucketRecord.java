@@ -4,6 +4,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
+ * The generic bucket key.
+ *
  * @author mirko.scotti
  * @version Jan 25, 2025
  */
