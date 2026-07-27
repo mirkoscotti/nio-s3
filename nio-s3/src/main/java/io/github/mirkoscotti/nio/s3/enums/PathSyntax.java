@@ -20,6 +20,9 @@ import io.github.mirkoscotti.nio.s3.operations.GlobPattern;
 public enum PathSyntax
 {
 
+	/**
+	 * Glob syntax, following the pattern language defined by the Java NIO.2 specification.
+	 */
 	GLOB
 	{
 
@@ -30,6 +33,9 @@ public enum PathSyntax
 			return super.pattern(regex);
 		}
 	},
+	/**
+	 * Regular-expression syntax, following the <code>regex</code> pattern language.
+	 */
 	REGEX;
 
 	/**

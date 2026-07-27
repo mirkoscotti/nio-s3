@@ -15,5 +15,8 @@ public enum BucketModifier
 	implements Modifier
 {
 
+	/**
+	 * The specific event modifier to watch directories recursively.
+	 */
 	RECURSIVE;
 }

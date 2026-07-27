@@ -67,7 +67,7 @@ import io.github.mirkoscotti.nio.s3.enums.BucketModifier;
  * <li>keys cannot end with dot
  * <li>keys cannot contain any extended ASCII characters (from decimal 128 to 255)
  * <li>keys cannot contain non-printable characters
- * <li>the following characters are forbidden: <code>\{^}%`]">[~<#|</code>
+ * <li>the following characters are forbidden: <code>\{^}%`]">[~&lt;#|</code>
  * </ul>
  *
  * @author mirko.scotti

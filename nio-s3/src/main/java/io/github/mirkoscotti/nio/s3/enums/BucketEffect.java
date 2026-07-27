@@ -13,9 +13,21 @@ import java.util.stream.Stream;
 public enum BucketEffect
 {
 
+	/**
+	 * Grants access when the associated bucket policy statement matches.
+	 */
 	ALLOW,
+	/**
+	 * Denies access when the associated bucket policy statement matches.
+	 */
 	DENY;
 
+	/**
+	 * Builds the tag name of this effect, as expected in a bucket policy document (e.g.
+	 * <code>Allow</code>, <code>Deny</code>).
+	 *
+	 * @return the effect tag name
+	 */
 	@Override
 	public String toString()
 	{
@@ -23,6 +35,14 @@ public enum BucketEffect
 		return name.substring(0, 1).concat(name.substring(1).toLowerCase());
 	}
 
+	/**
+	 * Resolves the effect matching the given name, case-insensitively.
+	 *
+	 * @param effect
+	 *            the name of the effect to resolve
+	 * @return the item of this <i>enum</i> corresponding to the given tag name or an empty optional
+	 *         if there is no matching
+	 */
 	public static Optional<BucketEffect> of(String effect)
 	{
 		return Stream.of(BucketEffect.values())

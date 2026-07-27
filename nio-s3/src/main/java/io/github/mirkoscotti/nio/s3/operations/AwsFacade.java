@@ -231,6 +231,10 @@ public class AwsFacade
 	 *            the name of the S3 bucket
 	 * @param key
 	 *            the object key
+	 * @param from
+	 *            the start offset
+	 * @param to
+	 *            the end offset
 	 * @return the raw bytes of the object included in the byte range
 	 */
 	public byte[] readObject(String bucketName, String key, long from, long to)

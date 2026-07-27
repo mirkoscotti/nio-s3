@@ -7,6 +7,8 @@ import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 /**
  * The equivalent of a consumer managing I/O exceptions
  *
+ * @param <T>
+ *            any type
  * @author mirko.scotti
  * @version Feb 12, 2026
  */
@@ -14,6 +16,9 @@ import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 public interface Handler<T>
 {
 
+	/**
+	 * The trivial handler doing nothing.
+	 */
 	static final Handler<?> DO_NOTHING = item ->
 	{
 	};

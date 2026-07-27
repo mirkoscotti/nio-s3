@@ -39,10 +39,10 @@
 		<maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
 		<maven-failsafe-plugin.version>3.5.6</maven-failsafe-plugin.version>
 		<maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
-		<central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+		<central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>11.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.47.1</bom.version>
+		<bom.version>2.47.2</bom.version>
 		<aws-crt.version>0.47.2</aws-crt.version>
 		<junit-bom.version>6.1.1</junit-bom.version>
 		<mockito-bom.version>5.23.0</mockito-bom.version>

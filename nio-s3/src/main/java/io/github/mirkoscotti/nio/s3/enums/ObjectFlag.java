@@ -16,12 +16,10 @@ import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 /**
  * The set of access modes applicable to an S3 object, each corresponding to a specific
  * <code>OpenOption</code> declared by the NIO.2 API.
- *
  * <p>
  * Each constant acts as a named predicate that determines whether a given set of open options
  * activates that particular mode. Constants can be queried individually or validated collectively
  * enforcing the mutual-exclusion rules imposed by the S3 protocol.
- *
  * <p>
  * <strong>Mutual-exclusion rules:</strong>
  * <ul>
@@ -35,6 +33,10 @@ import io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203.BucketPath;
 public enum ObjectFlag
 {
 
+	/**
+	 * The object is opened for reading. This is the implicit mode when neither write nor append is
+	 * requested.
+	 */
 	IS_READABLE(item -> item.contains(StandardOpenOption.READ))
 	{
 
@@ -49,8 +51,17 @@ public enum ObjectFlag
 				|| super.matches(options);
 		}
 	},
+	/**
+	 * The object is opened for appending to its existing content.
+	 */
 	IS_APPENDABLE(item -> item.contains(StandardOpenOption.APPEND)),
+	/**
+	 * The object's existing content is discarded before writing.
+	 */
 	IS_TRUNCATABLE(item -> item.contains(StandardOpenOption.TRUNCATE_EXISTING)),
+	/**
+	 * The object is opened for writing, including when opened for appending.
+	 */
 	IS_WRITABLE(item -> item.contains(StandardOpenOption.WRITE))
 	{
 
@@ -60,7 +71,13 @@ public enum ObjectFlag
 			return IS_APPENDABLE.matches(options) || super.matches(options);
 		}
 	},
+	/**
+	 * The object must be created before writing.
+	 */
 	IS_CREATABLE(item -> item.contains(StandardOpenOption.CREATE_NEW)),
+	/**
+	 * The object is created if missing.
+	 */
 	IS_CREATABLE_IF_NOT_EXISTS(item -> item.contains(StandardOpenOption.CREATE));
 
 	private final Predicate<Set<? extends OpenOption>> predicate;

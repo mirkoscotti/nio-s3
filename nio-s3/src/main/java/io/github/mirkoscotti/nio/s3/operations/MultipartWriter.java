@@ -91,6 +91,7 @@ public final class MultipartWriter
 	 * <li>an error occurred during the process
 	 * <li>the process is forced to stop by an external trigger was called or
 	 * <li>no parts were written.
+	 * </ul>
 	 *
 	 * @throws IOException
 	 *             if completing or aborting the upload fails

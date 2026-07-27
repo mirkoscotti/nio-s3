@@ -14,6 +14,9 @@ import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 public interface Action
 {
 
+	/**
+	 * Dummy action doing nothing.
+	 */
 	Action DO_NOTHING = () ->
 	{
 	};

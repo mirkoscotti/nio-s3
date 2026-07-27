@@ -7,6 +7,10 @@ import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 /**
  * The equivalent of a function managing I/O exceptions
  *
+ * @param <I>
+ *            any type for input
+ * @param <O>
+ *            any type for output
  * @author mirko.scotti
  * @version Mar 11, 2026
  */

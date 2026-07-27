@@ -11,6 +11,10 @@ import java.util.function.Supplier;
 /**
  * The if/else pattern with functional programming, yielding a transformed value.
  *
+ * @param <I>
+ *            any type for input
+ * @param <O>
+ *            any type for output
  * @author mirko.scotti
  * @version Mar 12, 2026
  */
@@ -70,6 +74,8 @@ public class Transformer<I, O>
 	 *
 	 * @param mapper
 	 *            the fall back mapper
+	 * @return the result of the embedded mapper or, if the when condition is not satisfied, the
+	 *         result of the given fall back mapper
 	 * @throws IOException
 	 *             when an I/O error occurs
 	 */
@@ -96,8 +102,9 @@ public class Transformer<I, O>
 	 * to the first matching <code>when</code> condition, throwing an exception if no conditions
 	 * match.
 	 *
-	 * @param mapper
+	 * @param supplier
 	 *            the exception supplier
+	 * @return the result of the embedded mapper
 	 * @throws IOException
 	 *             when an I/O error occurs
 	 */
@@ -188,6 +195,16 @@ public class Transformer<I, O>
 			return transformer.addBranch(condition, mapper);
 		}
 
+		/**
+		 * Performs the if/else pattern processing the internal object through the mapper
+		 * corresponding to the first matching <code>when</code> condition.
+		 *
+		 * @param mapper
+		 *            the mapper
+		 * @return the result of the mapper
+		 * @throws IOException
+		 *             when an I/O error occurs
+		 */
 		public O thenReturn(Mapper<I, O> mapper) throws IOException
 		{
 			return then(mapper).transform();

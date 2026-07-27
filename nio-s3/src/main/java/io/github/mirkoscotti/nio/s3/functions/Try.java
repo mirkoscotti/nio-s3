@@ -11,6 +11,8 @@ import io.github.mirkoscotti.nio.s3.helpers.ExceptionHelper;
 /**
  * The try-catch pattern with functional programming.
  *
+ * @param <T>
+ *            any type
  * @author mirko.scotti
  * @version Oct 24, 2024
  */
@@ -37,6 +39,8 @@ public class Try<T>
 	 * Starts a new try-catch process evaluating a <code>callable</code> object functionally working
 	 * as a try block.
 	 *
+	 * @param <T>
+	 *            any type
 	 * @param callable
 	 *            the try block
 	 * @return the try instance
@@ -62,7 +66,7 @@ public class Try<T>
 	/**
 	 * Configures the finally block in the current try-catch process.
 	 *
-	 * @param catchBlock
+	 * @param finallyBlock
 	 *            the finally block in the form of a callable object
 	 * @return the current try instance
 	 */

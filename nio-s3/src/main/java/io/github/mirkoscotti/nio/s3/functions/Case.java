@@ -11,6 +11,8 @@ import java.util.function.Supplier;
 /**
  * The switch/case pattern with functional programming.
  *
+ * @param <T>
+ *            any type
  * @author mirko.scotti
  * @version Feb 12, 2026
  */
@@ -196,8 +198,8 @@ public class Case<T>
 		 * Creates a case process throwing an exception if the <code>when</code> condition is
 		 * satisfied and directly performs it.
 		 *
-		 * @param handler
-		 *            the object handler
+		 * @param supplier
+		 *            the exception supplier
 		 * @throws IOException
 		 *             when an I/O error occurs
 		 */
