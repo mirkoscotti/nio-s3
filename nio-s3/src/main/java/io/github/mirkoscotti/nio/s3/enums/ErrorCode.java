@@ -13,6 +13,7 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.NoSuchFileException;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -361,6 +362,7 @@ public enum ErrorCode
 	 */
 	public static Optional<ErrorCode> of(AwsErrorDetails awsErrorDetails)
 	{
+		Objects.requireNonNull(awsErrorDetails, () -> "Missing AWS error details.");
 		var errorCode = awsErrorDetails.errorCode();
 		var length = Optional.ofNullable(errorCode.length()).orElse(0);
 		var result = IntStream.range(0, length)
