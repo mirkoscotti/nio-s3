@@ -362,7 +362,8 @@ public enum ErrorCode
 	public static Optional<ErrorCode> of(AwsErrorDetails awsErrorDetails)
 	{
 		var errorCode = awsErrorDetails.errorCode();
-		var result = IntStream.range(0, errorCode.length())
+		var length = Optional.ofNullable(errorCode.length()).orElse(0);
+		var result = IntStream.range(0, length)
 							  .mapToObj(i -> transformCharacter(errorCode, i))
 							  .reduce("", String::concat)
 							  .toUpperCase();
