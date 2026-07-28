@@ -23,7 +23,7 @@
 		</developer>
 	</developers>
 	<scm>
-		<connection>scm:git:git://github.com/mirkoscotti/nio-s3.git</connection>
+		<connection>scm:git:https://github.com/mirkoscotti/nio-s3.git</connection>
 		<developerConnection>scm:git:ssh://github.com/mirkoscotti/nio-s3.git</developerConnection>
 		<url>https://github.com/mirkoscotti/nio-s3</url>
 		<tag>HEAD</tag>
