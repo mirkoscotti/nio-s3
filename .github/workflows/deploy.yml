@@ -1,0 +1,54 @@
+name: Maven Central
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+jobs:
+  deploy:
+    name: Deploy to Maven Central
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./nio-s3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate Tag
+        run: |
+          echo "Detected tag ${{ github.ref_name }}"
+          git fetch origin
+          BRANCH_HEAD=$(git rev-parse origin/main)
+          if [ "${{ github.sha }}" != "$BRANCH_HEAD" ]; then
+            echo "ERROR: the tag must be on the HEAD of branch main"
+            exit 1
+          fi
+          echo "Pipeline started."
+      - name: Import GPG Key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Set Release Version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mvn versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+      - name: Maven Settings
+        uses: s4u/maven-settings-action@v4.0.0
+        with:
+          servers: |
+            [{
+              "id": "central",
+              "username": "${{ secrets.CENTRAL_USERNAME }}",
+              "password": "${{ secrets.CENTRAL_PASSWORD }}"
+            }]
+      - name: Build and Test
+        run: mvn clean verify -Pmaven-central -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
+#      - name: Deploy to Maven Central
+#        run: mvn deploy -Pmaven-central -DskipTests -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
