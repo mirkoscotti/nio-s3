@@ -1,5 +1,12 @@
 # NIO-S3 - Java NIO.2 implementation for AWS S3
 
+[![Build](https://github.com/mirkoscotti/nio-s3/actions/workflows/build.yml/badge.svg)](https://github.com/mirkoscotti/nio-s3/actions/workflows/build.yml)
+[![Java](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://openjdk.org/)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mirkoscotti/nio-s3.svg)](https://central.sonatype.com/artifact/io.github.mirkoscotti/nio-s3)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/mirkoscotti/nio-s3/blob/main/LICENSE)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mirkoscotti_nio-s3&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mirkoscotti_nio-s3&branch=main)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mirkoscotti_nio-s3&metric=coverage)](https://sonarcloud.io/component_measures?id=mirkoscotti_nio-s3&metric=coverage&view=list)
+
 ## 🔭 Overview
 This is a [JSR-203](https://jcp.org/en/jsr/detail?id=203) implementation of Amazon Simple Storage Service, a.k.a. S3, allowing operations on buckets as if they were file systems. This approach decouples the business logic from the underlying infrastructure chosen for I/O operations, making it straightforward to swap out the storage provider without affecting the rest of the codebase.
 
@@ -25,7 +32,7 @@ For this reason, after leaving the company, I decided to develop my own solution
 | Component | Version |
 |---|---|
 | JDK | 21+ |
-| AWS SDK | 2.44.4 |
+| AWS SDK | 2.47.6 |
 
 #### Maven
 ```
@@ -40,6 +47,8 @@ For this reason, after leaving the company, I decided to develop my own solution
 ```
 implementation 'io.github.mirkoscotti:nio-s3:1.0.0'
 ```
+
+📖 Full API documentation: [javadoc.io/doc/io.github.mirkoscotti/nio-s3](https://javadoc.io/doc/io.github.mirkoscotti/nio-s3)
 
 ### ⚙️ Configuration
 
@@ -123,16 +132,26 @@ In all other use cases, the behaviour of the channel implementation is exactly t
   - *creation time* - Not available, falls back to to *last modified time*
   - *symbolic link* - Not supported by AWS S3, always returns `false`
 - **BasicFileAttributeView** - Supported only for reading metadata. It is not possible to modify them because because AWS S3 does not support it
-- **DirectoryStream** - 
-- **WatchService** - 
-  
+- **DirectoryStream** - Glob syntax is fully supported over the POSIX Portable Filename Character Set: `*`, `**`, `?`, `[abc]`, `[!abc]`, `{a,b,c}` and their combinations
+- **WatchService** - Emulates directory monitoring via polling. In details:
+  - *What the service does* - A background daemon thread lists the objects of every registered path at a fixed interval and compares the result against the previous snapshot to synthesize differences 
+  - *Why this approach* - It requires no permissions beyond those already needed for standard file system operations (`s3:ListBucket`), whereas relying on native S3 event notifications would require provisioning and granting access to additional AWS resources (SNS, SQS, EventBridge) outside of the library's control
 
-## 📚 Usage examples
-- Esempi progressivi: base → avanzato
-- Focus sui casi d'uso che le altre librerie non coprono
+## AWS Permissions
 
-## ⚠️ Limitations / Not supported
-- Onestà intellettuale: cosa *non* è supportato (es. watch service, file lock, ecc.)
-- Aiuta a gestire le aspettative e riduce issue inutili
+| Permission | Required for | Java NIO.2 API |
+|---|---|---|
+| `s3:CreateBucket` | Creating a bucket | `FileSystems#newFileSystem` |
+| `s3:GetBucketPolicy` | Checking whether a bucket is read-only, based on its bucket policy | `FileSystem#isReadOnly` |
+| `s3:GetBucketAcl` | Checking whether a bucket is read-only, based on its ACL; reading a bucket's ACL | `FileSystem#isReadOnly` |
+| `s3:ListBucket` | Listing the objects under a directory; checking whether a directory is empty; scanning a directory | `Files#newDirectoryStream` |
+| `s3:GetObject` | Reading an object's metadata or content; copying/moving an object to another bucket (reading the source); copying a byte range as a multipart upload part (reading the source) | `Files#readAttributes`<br>`Files#newByteChannel` (read)<br>`Files#copy`<br>`Files#move` |
+| `s3:PutObject` | Writing an object; copying/moving an object to another bucket (writing the destination); performing a multipart upload (starting, uploading, and completing parts) | `Files#newByteChannel` (write)<br>`Files#copy`<br>`Files#move` |
+| `s3:DeleteObject` | Deleting an object | `Files#delete`<br>`Files#deleteIfExists` |
+| `s3:AbortMultipartUpload` | Aborting an incomplete multipart upload, triggered on error or premature closing of the write channel | `Files#newByteChannel` (write) |
+| `sts:GetCallerIdentity` | Retrieving the ARN of the caller identity, required as input for the IAM policy simulation used to determine permissions on a file or directory | `FileSystemProvider#checkAccess` |
+| `iam:SimulatePrincipalPolicy` | Simulating whether a given principal is allowed to write/delete an object or a directory | `FileSystemProvider#checkAccess` |
 
 ## 📄 License
+
+This project is licensed under the [Apache License 2.0](LICENSE).

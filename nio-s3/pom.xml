@@ -42,8 +42,8 @@
 		<central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
 		<jakarta.jakartaee-bom.version>11.0.0</jakarta.jakartaee-bom.version>
-		<bom.version>2.47.2</bom.version>
-		<aws-crt.version>0.47.2</aws-crt.version>
+		<bom.version>2.47.6</bom.version>
+		<aws-crt.version>0.47.3</aws-crt.version>
 		<junit-bom.version>6.1.1</junit-bom.version>
 		<mockito-bom.version>5.23.0</mockito-bom.version>
 		<testcontainers-bom.version>2.0.5</testcontainers-bom.version>
