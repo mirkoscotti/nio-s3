@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
@@ -54,8 +56,8 @@ class ObjectBasicFileSAttributeViewTest
 	@Test
 	void s3exceptionWhileReadAttributesTest()
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenThrow(S3Exception.class);
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenThrow(S3Exception.class);
 		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		Assertions.assertThrows(S3Exception.class, view::readAttributes);
 	}
@@ -63,8 +65,8 @@ class ObjectBasicFileSAttributeViewTest
 	@Test
 	void readAttributesTest(@Mock BasicFileAttributes basicFileAttributes)
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(basicFileAttributes);
 		var view = new ObjectBasicFileAttributeView(awsFacade, BUCKET_NAME, KEY);
 		var result = JunitHelper.tryCall(view::readAttributes);
 		Assertions.assertEquals(basicFileAttributes, result);

@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.nio.file.FileStore;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
@@ -61,7 +63,7 @@ class BucketFileStoreTest
 	@Test
 	void isReadOnlyTest()
 	{
-		Mockito.when(awsFacade.isBucketReadOnly(BUCKET_NAME)).thenReturn(true);
+		when(awsFacade.isBucketReadOnly(BUCKET_NAME)).thenReturn(true);
 		var fileStore = new BucketFileStore(awsFacade, BUCKET_NAME);
 		Assertions.assertTrue(fileStore.isReadOnly());
 	}

@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Iterator;
@@ -55,27 +58,26 @@ class AwsFacadeTest
 						  @Mock S3Connector connector,
 						  @Mock S3ConnectorBuilder builder)
 	{
-		Mockito.when(awsRecord.credentials()).thenReturn(credentials);
-		Mockito.when(credentials.accessKey()).thenReturn(TEST_KEY);
-		Mockito.when(credentials.secretKey()).thenReturn(TEST_KEY);
-		Mockito.when(builder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(builder);
-		Mockito.when(builder.build()).thenReturn(connector);
+		when(awsRecord.credentials()).thenReturn(credentials);
+		when(credentials.accessKey()).thenReturn(TEST_KEY);
+		when(credentials.secretKey()).thenReturn(TEST_KEY);
+		when(builder.withCredentials(Mockito.anyString(), Mockito.anyString())).thenReturn(builder);
+		when(builder.build()).thenReturn(connector);
 		try (var referenceMock = Mockito.mockStatic(LazyReference.class);
 			 var s3Mock = Mockito.mockStatic(S3Connector.class))
 		{
 			referenceMock.when(() -> LazyReference.of(Mockito.any())).thenCallRealMethod();
 			s3Mock.when(S3Connector::create).thenReturn(builder);
 			AwsFacade.create(awsRecord).createBucket(bucketDescriptor);
-			Mockito.verify(connector, Mockito.atLeastOnce()).createBucket(bucketDescriptor);
+			verify(connector, Mockito.atLeastOnce()).createBucket(bucketDescriptor);
 		}
 	}
 
 	@Test
 	void bucketAclTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.bucketAcl(Mockito.anyString())).thenReturn(RESULT);
+		when(s3.get()).thenReturn(connector);
+		when(connector.bucketAcl(Mockito.anyString())).thenReturn(RESULT);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -87,8 +89,8 @@ class AwsFacadeTest
 	@Test
 	void isBucketReadOnlyTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.isBucketReadOnly(Mockito.anyString())).thenReturn(true);
+		when(s3.get()).thenReturn(connector);
+		when(connector.isBucketReadOnly(Mockito.anyString())).thenReturn(true);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -103,22 +105,22 @@ class AwsFacadeTest
 							@Mock StsConnector stsConnector,
 							@Mock StsConnectorBuilder stsBuilder)
 	{
-		Mockito.when(awsRecord.credentials()).thenReturn(credentials);
-		Mockito.when(awsRecord.endpoint()).thenReturn(Optional.of("scheme://host"));
-		Mockito.when(credentials.accessKey()).thenReturn(TEST_KEY);
-		Mockito.when(credentials.secretKey()).thenReturn(TEST_KEY);
-		Mockito.when(iamBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(iamBuilder);
-		Mockito.when(iamBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(iamBuilder);
-		Mockito.when(iamBuilder.build()).thenReturn(iamConnector);
-		Mockito.when(stsBuilder.withCredentials(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(stsBuilder);
-		Mockito.when(stsBuilder.build()).thenReturn(stsConnector);
-		Mockito.when(iamConnector.filePermission(Mockito.anyString(), Mockito.anyString(),
-												 Mockito.anyString()))
-			   .thenReturn(RESULT);
-		Mockito.when(stsConnector.arn()).thenReturn(ARN);
+		when(awsRecord.credentials()).thenReturn(credentials);
+		when(awsRecord.endpoint()).thenReturn(Optional.of("scheme://host"));
+		when(credentials.accessKey()).thenReturn(TEST_KEY);
+		when(credentials.secretKey()).thenReturn(TEST_KEY);
+		when(iamBuilder.withCredentials(Mockito.anyString(),
+										Mockito.anyString())).thenReturn(iamBuilder);
+		when(iamBuilder.withCredentials(Mockito.anyString(),
+										Mockito.anyString())).thenReturn(iamBuilder);
+		when(iamBuilder.build()).thenReturn(iamConnector);
+		when(stsBuilder.withCredentials(Mockito.anyString(),
+										Mockito.anyString())).thenReturn(stsBuilder);
+		when(stsBuilder.build()).thenReturn(stsConnector);
+		when(iamConnector.filePermission(Mockito.anyString(),
+										 Mockito.anyString(),
+										 Mockito.anyString())).thenReturn(RESULT);
+		when(stsConnector.arn()).thenReturn(ARN);
 		try (var referenceMock = Mockito.mockStatic(LazyReference.class);
 			 var iamMock = Mockito.mockStatic(IamConnector.class);
 			 var stsMock = Mockito.mockStatic(StsConnector.class))
@@ -137,12 +139,12 @@ class AwsFacadeTest
 								 @Mock IamConnector iamConnector,
 								 @Mock StsConnector stsConnector)
 	{
-		Mockito.when(iam.get()).thenReturn(iamConnector);
-		Mockito.when(sts.get()).thenReturn(stsConnector);
-		Mockito.when(iamConnector.directoryPermission(Mockito.anyString(), Mockito.anyString(),
-													  Mockito.anyString()))
-			   .thenReturn(RESULT);
-		Mockito.when(stsConnector.arn()).thenReturn(ARN);
+		when(iam.get()).thenReturn(iamConnector);
+		when(sts.get()).thenReturn(stsConnector);
+		when(iamConnector.directoryPermission(Mockito.anyString(),
+											  Mockito.anyString(),
+											  Mockito.anyString())).thenReturn(RESULT);
+		when(stsConnector.arn()).thenReturn(ARN);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(iam).thenReturn(sts);
@@ -156,9 +158,9 @@ class AwsFacadeTest
 							@Mock S3Connector connector,
 							@Mock BasicFileAttributes attributes)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(attributes);
+		when(s3.get()).thenReturn(connector);
+		when(connector.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(attributes);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -172,9 +174,9 @@ class AwsFacadeTest
 						 @Mock S3Connector connector,
 						 @Mock Instant instant)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.listObjects(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(Map.of(RESULT, instant));
+		when(s3.get()).thenReturn(connector);
+		when(connector.listObjects(Mockito.anyString(),
+								   Mockito.anyString())).thenReturn(Map.of(RESULT, instant));
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -191,10 +193,10 @@ class AwsFacadeTest
 								  @Mock S3Connector connector,
 								  @Mock Instant instant)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.listObjects(Mockito.anyString(), Mockito.anyString(),
-										   Mockito.anyInt()))
-			   .thenReturn(Map.of(RESULT, instant));
+		when(s3.get()).thenReturn(connector);
+		when(connector.listObjects(Mockito.anyString(),
+								   Mockito.anyString(),
+								   Mockito.anyInt())).thenReturn(Map.of(RESULT, instant));
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -211,9 +213,9 @@ class AwsFacadeTest
 						   @Mock S3Connector connector,
 						   @Mock Iterator<String> iterator)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.scanDirectory(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(iterator);
+		when(s3.get()).thenReturn(connector);
+		when(connector.scanDirectory(Mockito.anyString(),
+									 Mockito.anyString())).thenReturn(iterator);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -226,9 +228,8 @@ class AwsFacadeTest
 	void readObjectTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
 		var result = RESULT.getBytes();
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.readObject(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(result);
+		when(s3.get()).thenReturn(connector);
+		when(connector.readObject(Mockito.anyString(), Mockito.anyString())).thenReturn(result);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -241,10 +242,11 @@ class AwsFacadeTest
 	void readObjectFragmentTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
 		var result = RESULT.getBytes();
-		Mockito.when(s3.get()).thenReturn(connector);
-		Mockito.when(connector.readObject(Mockito.anyString(), Mockito.anyString(),
-										  Mockito.anyLong(), Mockito.anyLong()))
-			   .thenReturn(result);
+		when(s3.get()).thenReturn(connector);
+		when(connector.readObject(Mockito.anyString(),
+								  Mockito.anyString(),
+								  Mockito.anyLong(),
+								  Mockito.anyLong())).thenReturn(result);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
@@ -256,26 +258,26 @@ class AwsFacadeTest
 	@Test
 	void writeObjectTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
+		when(s3.get()).thenReturn(connector);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
 			AwsFacade.create(awsRecord).writeObject(TEST_BUCKET, TEST_KEY, RESULT.getBytes());
-			Mockito.verify(connector, Mockito.atLeastOnce())
-				   .writeObject(TEST_BUCKET, TEST_KEY, RESULT.getBytes());
+			verify(connector, Mockito.atLeastOnce()).writeObject(TEST_BUCKET,
+																 TEST_KEY,
+																 RESULT.getBytes());
 		}
 	}
 
 	@Test
 	void startMultipartUploadTest(@Mock LazyReference<S3Connector> s3, @Mock S3Connector connector)
 	{
-		Mockito.when(s3.get()).thenReturn(connector);
+		when(s3.get()).thenReturn(connector);
 		try (var mock = Mockito.mockStatic(LazyReference.class))
 		{
 			mock.when(() -> LazyReference.of(Mockito.any())).thenReturn(s3);
 			AwsFacade.create(awsRecord).startMultipartUpload(TEST_BUCKET, TEST_KEY);
-			Mockito.verify(connector, Mockito.atLeastOnce())
-				   .startMultipartUpload(TEST_BUCKET, TEST_KEY);
+			verify(connector, Mockito.atLeastOnce()).startMultipartUpload(TEST_BUCKET, TEST_KEY);
 		}
 	}
 }

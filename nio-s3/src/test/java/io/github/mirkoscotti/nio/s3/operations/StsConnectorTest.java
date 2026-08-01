@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 
 import org.junit.jupiter.api.Assertions;
@@ -22,18 +25,15 @@ class StsConnectorTest
 
 	@Test
 	void closeTest(@Mock StsAsyncClientBuilder builder, @Mock StsAsyncClient client)
+		throws IOException
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
 			var connector = StsConnector.create().build();
 			connector.close();
-			Mockito.verify(client, Mockito.atLeastOnce()).close();
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
+			verify(client, Mockito.atLeastOnce()).close();
 		}
 	}
 
@@ -41,7 +41,7 @@ class StsConnectorTest
 	void hashCodeWithSameInstancesTest(@Mock StsAsyncClientBuilder builder,
 									   @Mock StsAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
@@ -56,7 +56,7 @@ class StsConnectorTest
 											@Mock StsAsyncClient client1,
 											@Mock StsAsyncClient client2)
 	{
-		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		when(builder.build()).thenReturn(client1).thenReturn(client2);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
@@ -69,7 +69,7 @@ class StsConnectorTest
 	@Test
 	void equalsToNullTest(@Mock StsAsyncClientBuilder builder, @Mock StsAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
@@ -84,7 +84,7 @@ class StsConnectorTest
 									 @Mock StsAsyncClient client,
 									 @Mock Object object)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
@@ -99,7 +99,7 @@ class StsConnectorTest
 												  @Mock StsAsyncClient client1,
 												  @Mock StsAsyncClient client2)
 	{
-		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		when(builder.build()).thenReturn(client1).thenReturn(client2);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);
@@ -113,7 +113,7 @@ class StsConnectorTest
 	@Test
 	void equalsTest(@Mock StsAsyncClientBuilder builder, @Mock StsAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(StsAsyncClient.class))
 		{
 			mock.when(StsAsyncClient::builder).thenReturn(builder);

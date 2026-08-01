@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.function.Function;
@@ -33,8 +37,8 @@ class AwsConnectorBuilderTest
 								  .useConstructor((SdkBuilder<?, AwsClient>) null)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
 		Exception exception = Assertions.assertThrows(MockitoException.class,
-													  () -> Mockito.mock(AwsConnectorBuilder.class,
-																		 mockSettings));
+													  () -> mock(AwsConnectorBuilder.class,
+																 mockSettings));
 		exception = Assertions.assertInstanceOf(InstantiationException.class, exception.getCause());
 		exception = Assertions.assertInstanceOf(InvocationTargetException.class,
 												exception.getCause());
@@ -48,10 +52,10 @@ class AwsConnectorBuilderTest
 		var mockSettings = Mockito.withSettings()
 								  .useConstructor(sdkBuilder)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
-		var builder = Mockito.mock(AwsConnectorBuilder.class, mockSettings);
+		var builder = mock(AwsConnectorBuilder.class, mockSettings);
 		builder.withEndpoint(uri);
-		Mockito.verify(builder, Mockito.atLeastOnce()).endpointOverride(sdkBuilder, uri);
-		Mockito.verify(builder, Mockito.atLeastOnce()).thisBuilder();
+		verify(builder, Mockito.atLeastOnce()).endpointOverride(sdkBuilder, uri);
+		verify(builder, Mockito.atLeastOnce()).thisBuilder();
 	}
 
 	@Test
@@ -61,11 +65,11 @@ class AwsConnectorBuilderTest
 		var mockSettings = Mockito.withSettings()
 								  .useConstructor(sdkBuilder)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
-		var builder = Mockito.mock(AwsConnectorBuilder.class, mockSettings);
+		var builder = mock(AwsConnectorBuilder.class, mockSettings);
 		builder.withRegion("region");
-		Mockito.verify(builder, Mockito.atLeastOnce())
-			   .region(Mockito.any(SdkBuilder.class), Mockito.any(Region.class));
-		Mockito.verify(builder, Mockito.atLeastOnce()).thisBuilder();
+		verify(builder, Mockito.atLeastOnce()).region(Mockito.any(SdkBuilder.class),
+													  Mockito.any(Region.class));
+		verify(builder, Mockito.atLeastOnce()).thisBuilder();
 	}
 
 	@Test
@@ -75,12 +79,12 @@ class AwsConnectorBuilderTest
 		var mockSettings = Mockito.withSettings()
 								  .useConstructor(sdkBuilder)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
-		var builder = Mockito.mock(AwsConnectorBuilder.class, mockSettings);
+		var builder = mock(AwsConnectorBuilder.class, mockSettings);
 		builder.withCredentials("access-key", "secret-key");
-		Mockito.verify(builder, Mockito.atLeastOnce())
-			   .credentialsProvider(Mockito.any(SdkBuilder.class),
-									Mockito.any(AwsCredentialsProvider.class));
-		Mockito.verify(builder, Mockito.atLeastOnce()).thisBuilder();
+		verify(builder,
+			   Mockito.atLeastOnce()).credentialsProvider(Mockito.any(SdkBuilder.class),
+														  Mockito.any(AwsCredentialsProvider.class));
+		verify(builder, Mockito.atLeastOnce()).thisBuilder();
 	}
 
 	@Test
@@ -91,11 +95,11 @@ class AwsConnectorBuilderTest
 		var mockSettings = Mockito.withSettings()
 								  .useConstructor(sdkBuilder)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
-		var builder = Mockito.mock(AwsConnectorBuilder.class, mockSettings);
-		Mockito.when(builder.connectorCreator()).thenReturn(connectorCreator);
-		Mockito.when(sdkBuilder.build()).thenReturn(awsClient);
+		var builder = mock(AwsConnectorBuilder.class, mockSettings);
+		when(builder.connectorCreator()).thenReturn(connectorCreator);
+		when(sdkBuilder.build()).thenReturn(awsClient);
 		builder.build();
-		Mockito.verify(builder, Mockito.atLeastOnce()).connectorCreator();
-		Mockito.verify(connectorCreator, Mockito.atLeastOnce()).apply(Mockito.any(AwsClient.class));
+		verify(builder, Mockito.atLeastOnce()).connectorCreator();
+		verify(connectorCreator, Mockito.atLeastOnce()).apply(Mockito.any(AwsClient.class));
 	}
 }

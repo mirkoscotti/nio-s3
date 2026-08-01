@@ -1,5 +1,10 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,15 +41,15 @@ class BucketFileStoreAttributeViewTest
 	{
 		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(awsFacade, BUCKET_NAME);
 		Assertions.assertNull(bucketFileStoreAttributeView.get(bucketProperty));
-		Mockito.verify(awsFacade, Mockito.never()).bucketAcl(Mockito.anyString());
+		verify(awsFacade, never()).bucketAcl(Mockito.anyString());
 	}
 
 	@Test
 	void getAclPropertyTest()
 	{
-		Mockito.when(awsFacade.bucketAcl(Mockito.anyString())).thenReturn("value");
+		when(awsFacade.bucketAcl(Mockito.anyString())).thenReturn("value");
 		var bucketFileStoreAttributeView = new BucketFileStoreAttributeView(awsFacade, BUCKET_NAME);
 		Assertions.assertNotNull(bucketFileStoreAttributeView.get(BucketProperty.ACL));
-		Mockito.verify(awsFacade, Mockito.atLeastOnce()).bucketAcl(Mockito.anyString());
+		verify(awsFacade, atLeastOnce()).bucketAcl(Mockito.anyString());
 	}
 }

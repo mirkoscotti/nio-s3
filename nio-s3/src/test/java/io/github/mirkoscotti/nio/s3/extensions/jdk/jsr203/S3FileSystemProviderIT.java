@@ -131,7 +131,7 @@ class S3FileSystemProviderIT
 	}
 
 	@Test
-	void deleteDirectoryTest()
+	void deleteDirectoryTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, A);
 		CONTAINER.createObject(TEST_BUCKET, A_B);
@@ -142,14 +142,14 @@ class S3FileSystemProviderIT
 			Assertions.assertFalse(CONTAINER.objectExists(TEST_BUCKET, A_B));
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A));
 		}
-		catch (IOException x)
+		finally
 		{
-			Assertions.fail(x);
+			// Nothing to do
 		}
 	}
 
 	@Test
-	void deleteFileTest()
+	void deleteFileTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, A);
 		CONTAINER.createObject(TEST_BUCKET, A.concat(SOURCE_FILE));
@@ -160,14 +160,14 @@ class S3FileSystemProviderIT
 			Assertions.assertFalse(CONTAINER.objectExists(TEST_BUCKET, SOURCE_FILE));
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A));
 		}
-		catch (IOException x)
+		finally
 		{
-			Assertions.fail(x);
+			// Nothing to do
 		}
 	}
 
 	@Test
-	void copyDirectoryTest()
+	void copyDirectoryTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, A);
 		CONTAINER.createObject(TEST_BUCKET, A_B);
@@ -179,9 +179,9 @@ class S3FileSystemProviderIT
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_B));
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_C));
 		}
-		catch (IOException x)
+		finally
 		{
-			Assertions.fail(x);
+			// Nothing to do
 		}
 	}
 
@@ -197,7 +197,7 @@ class S3FileSystemProviderIT
 	}
 
 	@Test
-	void copyReplacingDirectoryTest()
+	void copyReplacingDirectoryTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, A);
 		CONTAINER.createObject(TEST_BUCKET, A_B);
@@ -210,14 +210,14 @@ class S3FileSystemProviderIT
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_B));
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, A_C));
 		}
-		catch (IOException x)
+		finally
 		{
-			Assertions.fail(x);
+			// Nothing to do
 		}
 	}
 
 	@Test
-	void copyFileTest()
+	void copyFileTest() throws IOException
 	{
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
 		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
@@ -229,14 +229,10 @@ class S3FileSystemProviderIT
 			CONTAINER.checksum(TEST_BUCKET, TARGET_FILE)
 					 .forEach((item1, item2) -> assertChecksum(stream, item2.intValue(), item1));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void copyReplacingFileTest()
+	void copyReplacingFileTest() throws IOException
 	{
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, TARGET_FILE, targetFile);
@@ -249,14 +245,10 @@ class S3FileSystemProviderIT
 			CONTAINER.checksum(TEST_BUCKET, TARGET_FILE)
 					 .forEach((item1, item2) -> assertChecksum(stream, item2.intValue(), item1));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void moveFileTest()
+	void moveFileTest() throws IOException
 	{
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
 		var source = fileSystem.getPath("/".concat(SOURCE_FILE));
@@ -269,14 +261,10 @@ class S3FileSystemProviderIT
 			CONTAINER.checksum(TEST_BUCKET, TARGET_FILE)
 					 .forEach((item1, item2) -> assertChecksum(stream, item2.intValue(), item1));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void moveReplacingFileTest()
+	void moveReplacingFileTest() throws IOException
 	{
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, SOURCE_FILE, sourceFile);
 		CONTAINER.createObjectWithChecksum(TEST_BUCKET, TARGET_FILE, targetFile);
@@ -289,10 +277,6 @@ class S3FileSystemProviderIT
 			Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TARGET_FILE));
 			CONTAINER.checksum(TEST_BUCKET, TARGET_FILE)
 					 .forEach((item1, item2) -> assertChecksum(stream, item2.intValue(), item1));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 

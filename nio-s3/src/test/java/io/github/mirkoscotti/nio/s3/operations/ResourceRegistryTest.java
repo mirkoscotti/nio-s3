@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
@@ -27,38 +31,24 @@ class ResourceRegistryTest
 	private Closeable closeable;
 
 	@Test
-	void closeTest()
+	void closeTest() throws Exception
 	{
 		var registry = new ResourceRegistry();
-		try
-		{
-			var list = JunitHelper.findFieldValueByType(registry, List.class);
-			list.add(new AtomicReference<>(closeable));
-			registry.close();
-			Mockito.verify(closeable, Mockito.atLeastOnce()).close();
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
-		}
+		var list = JunitHelper.findFieldValueByType(registry, List.class);
+		list.add(new AtomicReference<>(closeable));
+		registry.close();
+		verify(closeable, Mockito.atLeastOnce()).close();
 	}
 
 	@Test
-	void closeFailedTest(@Mock Closeable otherCloseable)
+	void closeFailedTest(@Mock Closeable otherCloseable) throws Exception
 	{
 		var registry = new ResourceRegistry();
-		try
-		{
-			Mockito.doThrow(IOException.class).when(otherCloseable).close();
-			var list = JunitHelper.findFieldValueByType(registry, List.class);
-			list.add(new AtomicReference<>(otherCloseable));
-			list.add(new AtomicReference<>(closeable));
-			Assertions.assertThrows(IOException.class, registry::close);
-			Mockito.verify(closeable, Mockito.never()).close();
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
-		}
+		doThrow(IOException.class).when(otherCloseable).close();
+		var list = JunitHelper.findFieldValueByType(registry, List.class);
+		list.add(new AtomicReference<>(otherCloseable));
+		list.add(new AtomicReference<>(closeable));
+		Assertions.assertThrows(IOException.class, registry::close);
+		verify(closeable, never()).close();
 	}
 }

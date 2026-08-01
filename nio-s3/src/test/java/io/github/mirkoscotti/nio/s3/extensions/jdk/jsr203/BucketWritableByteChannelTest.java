@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -38,12 +41,12 @@ class BucketWritableByteChannelTest
 	@BeforeEach
 	void beforeEach()
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.bucketName()).thenReturn("test-bucket");
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.bucketName()).thenReturn("test-bucket");
 	}
 
 	@Test
-	void isOpenTest()
+	void isOpenTest() throws IOException
 	{
 		var writableByteChannel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
 																						  path));
@@ -51,43 +54,31 @@ class BucketWritableByteChannelTest
 		{
 			Assertions.assertTrue(channel.isOpen());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 		Assertions.assertFalse(writableByteChannel.isOpen());
 	}
 
 	@Test
-	void ioExceptionWhileWritingTest(@Mock MultipartWriter writer)
+	void ioExceptionWhileWritingTest(@Mock MultipartWriter writer) throws IOException
 	{
 		var buffer = ByteBuffer.wrap(new byte[MULTIPART_THRESHOLD + 1]);
-		Mockito.when(awsFacade.startMultipartUpload(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(writer);
-		Mockito.doThrow(TransportException.class).doNothing().when(writer).write(Mockito.any());
+		when(awsFacade.startMultipartUpload(Mockito.anyString(),
+											Mockito.anyString())).thenReturn(writer);
+		doThrow(TransportException.class).doNothing().when(writer).write(Mockito.any());
 		try (var channel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
 																				   path)))
 		{
 			Assertions.assertThrows(TransportException.class, () -> channel.write(buffer));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void writeThresholdBufferTest()
+	void writeThresholdBufferTest() throws IOException
 	{
 		var buffer = ByteBuffer.wrap(new byte[MULTIPART_THRESHOLD]);
 		try (var channel = JunitHelper.tryCall(() -> new BucketWritableByteChannel(awsFacade,
 																				   path)))
 		{
 			Assertions.assertEquals(MULTIPART_THRESHOLD, channel.write(buffer));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 }

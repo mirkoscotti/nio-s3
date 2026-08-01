@@ -73,7 +73,7 @@ class BucketFileSystemIT
 	}
 
 	@Test
-	void createFileSystemWithWrongCredentialsTest()
+	void createFileSystemWithWrongCredentialsTest() throws IOException
 	{
 		var uri = URI.create("s3://".concat(TEST_BUCKET));
 		var map = ContainerHelper.unauthenticatedProperties(CONTAINER);
@@ -84,14 +84,10 @@ class BucketFileSystemIT
 		{
 			Assertions.assertInstanceOf(AccessDeniedException.class, exception.getCause());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail();
-		}
 	}
 
 	@Test
-	void watchServiceForcedToCloseTest()
+	void watchServiceForcedToCloseTest() throws IOException
 	{
 		var properties = ContainerHelper.standardProperties(CONTAINER);
 		ScheduledExecutorService scheduler = null;
@@ -102,10 +98,6 @@ class BucketFileSystemIT
 														 ScheduledExecutorService.class);
 			Assertions.assertFalse(scheduler.isTerminated());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 		finally
 		{
 			Optional.ofNullable(scheduler)
@@ -115,7 +107,7 @@ class BucketFileSystemIT
 	}
 
 	@Test
-	void directoryStreamForcedToCloseTest()
+	void directoryStreamForcedToCloseTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
 		var properties = ContainerHelper.standardProperties(CONTAINER);
@@ -127,10 +119,6 @@ class BucketFileSystemIT
 			var isClosed = JunitHelper.findFieldValueByName(stream, "isClosed", Boolean.class);
 			Assertions.assertFalse(isClosed);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 		finally
 		{
 			var isClosed = JunitHelper.findFieldValueByName(stream, "isClosed", Boolean.class);
@@ -140,7 +128,7 @@ class BucketFileSystemIT
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void seekableByteChannelForcedToCloseWithoutMultipartTest()
+	void seekableByteChannelForcedToCloseWithoutMultipartTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
 		var properties = ContainerHelper.standardProperties(CONTAINER);
@@ -148,15 +136,13 @@ class BucketFileSystemIT
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
-			var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
+			var channel = Files.newByteChannel(path,
+											   StandardOpenOption.WRITE,
 											   StandardOpenOption.CREATE_NEW);
-			optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
+			optional = JunitHelper.findFieldValueByGenericType(channel,
+															   Optional.class,
 															   BucketWritableByteChannel.class);
 			Assertions.assertTrue(optional.isPresent());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		finally
 		{
@@ -166,7 +152,7 @@ class BucketFileSystemIT
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void seekableByteChannelForcedToCloseWithMultipartTest()
+	void seekableByteChannelForcedToCloseWithMultipartTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, DIRECTORY);
 		var properties = ContainerHelper.standardProperties(CONTAINER);
@@ -174,17 +160,15 @@ class BucketFileSystemIT
 		try (var fileSystem = FileSystems.newFileSystem(TEST_URI, properties))
 		{
 			var path = fileSystem.getPath(DIRECTORY).resolve(FILE);
-			var channel = Files.newByteChannel(path, StandardOpenOption.WRITE,
+			var channel = Files.newByteChannel(path,
+											   StandardOpenOption.WRITE,
 											   StandardOpenOption.CREATE_NEW);
 			var buffer = ByteBuffer.wrap(Files.readAllBytes(hugeFile));
 			channel.write(buffer);
-			optional = JunitHelper.findFieldValueByGenericType(channel, Optional.class,
+			optional = JunitHelper.findFieldValueByGenericType(channel,
+															   Optional.class,
 															   BucketWritableByteChannel.class);
 			Assertions.assertTrue(optional.isPresent());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		finally
 		{

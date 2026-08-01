@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 
@@ -7,7 +9,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -38,7 +39,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void lastModifiedTimeTest(@Mock Instant instant)
 	{
-		Mockito.when(object.lastModified()).thenReturn(instant);
+		when(object.lastModified()).thenReturn(instant);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertEquals(FileTime.from(instant),
 								objectBasicFileAttributes.lastModifiedTime());
@@ -47,7 +48,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void lastAccessTimeTest(@Mock Instant instant)
 	{
-		Mockito.when(object.lastModified()).thenReturn(instant);
+		when(object.lastModified()).thenReturn(instant);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertEquals(FileTime.from(instant), objectBasicFileAttributes.lastAccessTime());
 	}
@@ -55,7 +56,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void creationTimeTest(@Mock Instant instant)
 	{
-		Mockito.when(object.lastModified()).thenReturn(instant);
+		when(object.lastModified()).thenReturn(instant);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertEquals(FileTime.from(instant), objectBasicFileAttributes.creationTime());
 	}
@@ -63,7 +64,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void isNotRegularFileTest()
 	{
-		Mockito.when(object.key()).thenReturn(DIRECTORY);
+		when(object.key()).thenReturn(DIRECTORY);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertFalse(objectBasicFileAttributes.isRegularFile());
 	}
@@ -71,7 +72,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void isRegularFileTest()
 	{
-		Mockito.when(object.key()).thenReturn(KEY);
+		when(object.key()).thenReturn(KEY);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertTrue(objectBasicFileAttributes.isRegularFile());
 	}
@@ -79,7 +80,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void isDirectoryTest()
 	{
-		Mockito.when(object.key()).thenReturn(DIRECTORY);
+		when(object.key()).thenReturn(DIRECTORY);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertTrue(objectBasicFileAttributes.isDirectory());
 	}
@@ -101,7 +102,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void sizeTest()
 	{
-		Mockito.when(object.size()).thenReturn(Long.valueOf(1));
+		when(object.size()).thenReturn(Long.valueOf(1));
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertEquals(1, objectBasicFileAttributes.size());
 	}
@@ -109,7 +110,7 @@ class ObjectsBasicFileAttributesTest
 	@Test
 	void fileKeyTest()
 	{
-		Mockito.when(object.key()).thenReturn(KEY);
+		when(object.key()).thenReturn(KEY);
 		var objectBasicFileAttributes = new ObjectBasicFileAttributes(object);
 		Assertions.assertEquals(KEY, objectBasicFileAttributes.fileKey());
 	}

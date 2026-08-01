@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -29,18 +32,15 @@ class IamConnectorTest
 
 	@Test
 	void closeTest(@Mock IamAsyncClientBuilder builder, @Mock IamAsyncClient client)
+		throws IOException
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
 			var connector = IamConnector.create().build();
 			connector.close();
-			Mockito.verify(client, Mockito.atLeastOnce()).close();
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
+			verify(client, Mockito.atLeastOnce()).close();
 		}
 	}
 
@@ -48,7 +48,7 @@ class IamConnectorTest
 	void hashCodeWithSameInstancesTest(@Mock IamAsyncClientBuilder builder,
 									   @Mock IamAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -63,7 +63,7 @@ class IamConnectorTest
 											@Mock IamAsyncClient client1,
 											@Mock IamAsyncClient client2)
 	{
-		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		when(builder.build()).thenReturn(client1).thenReturn(client2);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -76,7 +76,7 @@ class IamConnectorTest
 	@Test
 	void equalsToNullTest(@Mock IamAsyncClientBuilder builder, @Mock IamAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -91,7 +91,7 @@ class IamConnectorTest
 									 @Mock IamAsyncClient client,
 									 @Mock Object object)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -106,7 +106,7 @@ class IamConnectorTest
 												  @Mock IamAsyncClient client1,
 												  @Mock IamAsyncClient client2)
 	{
-		Mockito.when(builder.build()).thenReturn(client1).thenReturn(client2);
+		when(builder.build()).thenReturn(client1).thenReturn(client2);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -143,13 +143,12 @@ class IamConnectorTest
 							  @Mock SimulatePrincipalPolicyResponse response,
 							  @Mock EvaluationResult result)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		@SuppressWarnings("unchecked")
 		Consumer<SimulatePrincipalPolicyRequest.Builder> consumer = Mockito.any(Consumer.class);
-		Mockito.when(client.simulatePrincipalPolicy(consumer))
-			   .thenReturn(CompletableFuture.completedFuture(response));
-		Mockito.when(response.evaluationResults()).thenReturn(List.of(result));
-		Mockito.when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
+		when(client.simulatePrincipalPolicy(consumer)).thenReturn(CompletableFuture.completedFuture(response));
+		when(response.evaluationResults()).thenReturn(List.of(result));
+		when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);
@@ -170,13 +169,12 @@ class IamConnectorTest
 								   @Mock SimulatePrincipalPolicyResponse response,
 								   @Mock EvaluationResult result)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		@SuppressWarnings("unchecked")
 		Consumer<SimulatePrincipalPolicyRequest.Builder> consumer = Mockito.any(Consumer.class);
-		Mockito.when(client.simulatePrincipalPolicy(consumer))
-			   .thenReturn(CompletableFuture.completedFuture(response));
-		Mockito.when(response.evaluationResults()).thenReturn(List.of(result));
-		Mockito.when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
+		when(client.simulatePrincipalPolicy(consumer)).thenReturn(CompletableFuture.completedFuture(response));
+		when(response.evaluationResults()).thenReturn(List.of(result));
+		when(result.evalDecision()).thenReturn(PolicyEvaluationDecisionType.ALLOWED);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);

@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import java.net.URI;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -34,28 +37,28 @@ class ClientConnectorBuilderTest
 		var mockSettings = Mockito.withSettings()
 								  .useConstructor(clientBuilder)
 								  .defaultAnswer(Mockito.CALLS_REAL_METHODS);
-		builder = Mockito.mock(ClientConnectorBuilder.class, mockSettings);
+		builder = mock(ClientConnectorBuilder.class, mockSettings);
 	}
 
 	@Test
 	void withEndpointTest(@Mock URI uri)
 	{
 		builder.withEndpoint(uri);
-		Mockito.verify(clientBuilder, Mockito.atLeastOnce()).endpointOverride(uri);
+		verify(clientBuilder, Mockito.atLeastOnce()).endpointOverride(uri);
 	}
 
 	@Test
 	void withRegionTest()
 	{
 		builder.withRegion("region");
-		Mockito.verify(clientBuilder, Mockito.atLeastOnce()).region(Mockito.any(Region.class));
+		verify(clientBuilder, Mockito.atLeastOnce()).region(Mockito.any(Region.class));
 	}
 
 	@Test
 	void withCredentialsTest()
 	{
 		builder.withCredentials("access-key", "secret-key");
-		Mockito.verify(clientBuilder, Mockito.atLeastOnce())
-			   .credentialsProvider(Mockito.any(AwsCredentialsProvider.class));
+		verify(clientBuilder,
+			   Mockito.atLeastOnce()).credentialsProvider(Mockito.any(AwsCredentialsProvider.class));
 	}
 }

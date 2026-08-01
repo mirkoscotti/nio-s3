@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -48,35 +51,29 @@ class BucketSeekableByteChannelTest
 	void ioExceptionWhileClosingTest(@Mock BucketReadableByteChannel readableChannel,
 									 @Mock BucketFileSystem fileSystem,
 									 @Mock AwsFacade awsFacade)
+		throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class,
 												 this::readableThrowsIoException))
 		{
 			var channel = new BucketSeekableByteChannel(path, Set.of());
 			Assertions.assertThrows(IOException.class, channel::close);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void runtimeExceptionWhileClosingTest(@Mock BucketWritableByteChannel writableChannel)
+		throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class,
 												 this::initializeWritable))
 		{
 			var channel = new BucketSeekableByteChannel(path, Set.of(StandardOpenOption.WRITE));
 			Assertions.assertThrows(RuntimeException.class, channel::close);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
@@ -84,9 +81,10 @@ class BucketSeekableByteChannelTest
 	void exceptionWhileClosingTest(@Mock BucketReadableByteChannel readableChannel,
 								   @Mock BucketFileSystem fileSystem,
 								   @Mock AwsFacade awsFacade)
+		throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class,
 												 this::readableThrowsException))
 		{
@@ -94,58 +92,43 @@ class BucketSeekableByteChannelTest
 			var exception = Assertions.assertThrows(IllegalStateException.class, channel::close);
 			Assertions.assertInstanceOf(Exception.class, exception.getCause());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void unsupportedPositionTest(@Mock BucketWritableByteChannel writableChannel)
+	void unsupportedPositionTest(@Mock BucketWritableByteChannel writableChannel) throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
 			 var channel = new BucketSeekableByteChannel(path, Set.of(StandardOpenOption.WRITE)))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class, channel::position);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void unsupportedPositionSettingTest(@Mock BucketWritableByteChannel writableChannel)
+		throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
 			 var channel = new BucketSeekableByteChannel(path, Set.of(StandardOpenOption.WRITE)))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class,
 									() -> channel.position(10));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void unsupportedSizeTest(@Mock BucketWritableByteChannel writableChannel)
+	void unsupportedSizeTest(@Mock BucketWritableByteChannel writableChannel) throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		try (var mock = Mockito.mockConstruction(BucketWritableByteChannel.class);
 			 var channel = new BucketSeekableByteChannel(path, Set.of(StandardOpenOption.WRITE)))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class, channel::size);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
@@ -153,36 +136,33 @@ class BucketSeekableByteChannelTest
 	void truncateTest(@Mock BucketReadableByteChannel readableChannel,
 					  @Mock BucketFileSystem fileSystem,
 					  @Mock AwsFacade awsFacade)
+		throws IOException
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.awsFacade()).thenReturn(awsFacade);
 		try (var mock = Mockito.mockConstruction(BucketReadableByteChannel.class);
 			 var channel = new BucketSeekableByteChannel(path, Set.of()))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class,
 									() -> channel.truncate(10));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	private void readableThrowsIoException(BucketReadableByteChannel mock, Context context)
 		throws IOException
 	{
-		Mockito.doThrow(IOException.class).when(mock).close();
+		doThrow(IOException.class).when(mock).close();
 	}
 
 	private void readableThrowsException(BucketReadableByteChannel mock, Context context)
 		throws IOException
 	{
-		Mockito.doThrow(Exception.class).when(mock).close();
+		doThrow(Exception.class).when(mock).close();
 	}
 
 	private void initializeWritable(BucketWritableByteChannel mock, Context context)
 		throws IOException
 	{
-		Mockito.doThrow(RuntimeException.class).when(mock).close();
+		doThrow(RuntimeException.class).when(mock).close();
 	}
 }

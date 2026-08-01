@@ -1,5 +1,10 @@
 package io.github.mirkoscotti.nio.s3.functions;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 
 import org.junit.jupiter.api.Assertions;
@@ -29,108 +34,71 @@ class CaseTest<T>
 	private Handler<T> handler;
 
 	@Test
-	void thenTest(@Mock Handler<T> otherwise)
+	void thenTest(@Mock Handler<T> otherwise) throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
-			Case.of(object).when(condition).then(handler).otherwise(otherwise);
-			Mockito.verify(handler, Mockito.atLeastOnce()).handle(Mockito.any());
-			Mockito.verify(otherwise, Mockito.never()).handle(Mockito.any());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+		Case.of(object).when(condition).then(handler).otherwise(otherwise);
+		verify(handler, Mockito.atLeastOnce()).handle(Mockito.any());
+		verify(otherwise, never()).handle(Mockito.any());
 	}
 
 	@Test
-	void otherwiseWhenNullTest(@Mock Handler<T> otherwise)
+	void otherwiseWhenNullTest(@Mock Handler<T> otherwise) throws IOException
 	{
-		try
-		{
-			Case.of(object).when(null).then(handler).otherwise(otherwise);
-			Mockito.verify(handler, Mockito.never()).handle(Mockito.any());
-			Mockito.verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		Case.of(object).when(null).then(handler).otherwise(otherwise);
+		verify(handler, never()).handle(Mockito.any());
+		verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
 	}
 
 	@Test
-	void otherwiseTest(@Mock Handler<T> otherwise)
+	void otherwiseTest(@Mock Handler<T> otherwise) throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(false);
-			Case.of(object).when(condition).then(handler).otherwise(otherwise);
-			Mockito.verify(handler, Mockito.never()).handle(Mockito.any());
-			Mockito.verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(false);
+		Case.of(object).when(condition).then(handler).otherwise(otherwise);
+		verify(handler, never()).handle(Mockito.any());
+		verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
 	}
 
 	@Test
 	void errorOnConditionTest()
 	{
-		JunitHelper.tryCall(() -> Mockito.when(condition.isSatisfied(Mockito.any()))
-										 .thenThrow(IOException.class));
+		JunitHelper.tryCall(() -> when(condition.isSatisfied(Mockito.any())).thenThrow(IOException.class));
 		var caseInstance = Case.of(object).when(condition);
 		Assertions.assertThrows(IOException.class, () -> caseInstance.thenHandle(handler));
 	}
 
 	@Test
-	void errorOnHandlerTest()
+	void errorOnHandlerTest() throws IOException
 	{
-		try
+		when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+		doThrow(IOException.class).when(handler).handle(Mockito.any());
+		var caseInstance = Case.of(object).when(condition);
+		Assertions.assertThrows(IOException.class, () -> caseInstance.thenHandle(handler));
+	}
+
+	@Test
+	void thenHandleTrueTest(@Mock Handler<T> otherwise) throws IOException
+	{
+		try (var mock = Mockito.mockStatic(Handler.class))
 		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
-			Mockito.doThrow(IOException.class).when(handler).handle(Mockito.any());
-			var caseInstance = Case.of(object).when(condition);
-			Assertions.assertThrows(IOException.class, () -> caseInstance.thenHandle(handler));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
+			when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+			mock.when(Handler::doNothing).thenReturn(otherwise);
+			Case.of(object).when(condition).thenHandle(handler);
+			verify(handler, Mockito.atLeastOnce()).handle(Mockito.any());
+			verify(otherwise, never()).handle(Mockito.any());
 		}
 	}
 
 	@Test
-	void thenHandleTrueTest(@Mock Handler<T> otherwise)
+	void thenHandleFalseTest(@Mock Handler<T> otherwise) throws IOException
 	{
 		try (var mock = Mockito.mockStatic(Handler.class))
 		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+			when(condition.isSatisfied(Mockito.any())).thenReturn(false);
 			mock.when(Handler::doNothing).thenReturn(otherwise);
 			Case.of(object).when(condition).thenHandle(handler);
-			Mockito.verify(handler, Mockito.atLeastOnce()).handle(Mockito.any());
-			Mockito.verify(otherwise, Mockito.never()).handle(Mockito.any());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
-	}
-
-	@Test
-	void thenHandleFalseTest(@Mock Handler<T> otherwise)
-	{
-		try (var mock = Mockito.mockStatic(Handler.class))
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(false);
-			mock.when(Handler::doNothing).thenReturn(otherwise);
-			Case.of(object).when(condition).thenHandle(handler);
-			Mockito.verify(handler, Mockito.never()).handle(Mockito.any());
-			Mockito.verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
+			verify(handler, never()).handle(Mockito.any());
+			verify(otherwise, Mockito.atLeastOnce()).handle(Mockito.any());
 		}
 	}
 }

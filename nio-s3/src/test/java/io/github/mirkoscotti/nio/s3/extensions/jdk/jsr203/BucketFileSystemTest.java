@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.util.function.Consumer;
@@ -47,76 +51,73 @@ class BucketFileSystemTest
 	@Test
 	void bucketNameExceptionTest()
 	{
-		Mockito.doThrow(BucketNameException.class)
-			   .when(awsFacade)
-			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
+		doThrow(BucketNameException.class).when(awsFacade)
+										  .createBucket(Mockito.any(BucketDescriptor.class));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item ->
+		{
+		}));
 	}
 
 	@Test
 	void unpredictedIssueTest()
 	{
-		Mockito.doThrow(RuntimeException.class)
-			   .when(awsFacade)
-			   .createBucket(Mockito.any(BucketDescriptor.class));
-		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item -> {}));
+		doThrow(RuntimeException.class).when(awsFacade)
+									   .createBucket(Mockito.any(BucketDescriptor.class));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> doWithFileSystem(item ->
+		{
+		}));
 	}
 
 	@Test
 	void providerTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertEquals(fileSystemProvider, item.provider()));
 	}
 
 	@Test
 	void isFileSystemOpen()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Mockito.when(fileSystemProvider.isFileSystemOpen(Mockito.any(BucketFileSystem.class)))
-			   .thenReturn(true);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(fileSystemProvider.isFileSystemOpen(Mockito.any(BucketFileSystem.class))).thenReturn(true);
 		doWithFileSystem(item -> Assertions.assertTrue(item.isOpen()));
 	}
 
 	@Test
-	void isReadOnlyTest()
+	void isReadOnlyTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(BucketFileStore.class, this::readOnlyFileStore);
 			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
 		{
 			Assertions.assertTrue(fileSystem.isReadOnly());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
 	@Test
 	void getSeparatorTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertEquals("/", item.getSeparator()));
 	}
 
 	@Test
 	void getRootDirectoriesTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(this::getRootDirectoriesTest);
 	}
 
 	@Test
-	void getFileStoresTest()
+	void getFileStoresTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(BucketFileStore.class);
 			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
 		{
@@ -124,42 +125,34 @@ class BucketFileSystemTest
 									.toList();
 			Assertions.assertEquals(mock.constructed(), list);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void getPathTest()
+	void getPathTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(BucketPath.class);
 			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
 		{
 			var path = fileSystem.getPath("path");
 			Assertions.assertEquals(mock.constructed().get(0), path);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void supportedFileAttributeViewsTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(this::supportedFileAttributeViewsTest);
 	}
 
 	@Test
 	void getPathMatcherFromNullPatternTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertThrows(NullPointerException.class,
 														 () -> item.getPathMatcher(null)));
 	}
@@ -167,8 +160,8 @@ class BucketFileSystemTest
 	@Test
 	void getPathMatcherFromMalformedPatternTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertThrows(IllegalArgumentException.class,
 														 () -> item.getPathMatcher("malformed-pattern")));
 	}
@@ -178,11 +171,12 @@ class BucketFileSystemTest
 							@Mock Pattern pattern,
 							@Mock Matcher matcher,
 							@Mock BucketPath path)
+		throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Mockito.when(pathSyntax.pattern(Mockito.anyString())).thenReturn(pattern);
-		Mockito.when(pattern.matcher(Mockito.anyString())).thenReturn(matcher);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(pathSyntax.pattern(Mockito.anyString())).thenReturn(pattern);
+		when(pattern.matcher(Mockito.anyString())).thenReturn(matcher);
 		try (var mock = Mockito.mockStatic(PathSyntax.class);
 			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
 		{
@@ -192,45 +186,37 @@ class BucketFileSystemTest
 			var pathMatcher = fileSystem.getPathMatcher(String.join(":", glob, globPattern));
 			pathMatcher.matches(path);
 			mock.verify(() -> PathSyntax.of(glob), Mockito.atLeastOnce());
-			Mockito.verify(pathSyntax, Mockito.atLeastOnce()).pattern(globPattern);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
+			verify(pathSyntax, Mockito.atLeastOnce()).pattern(globPattern);
 		}
 	}
 
 	@Test
 	void getUserPrincipalLookupServiceTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertThrows(UnsupportedOperationException.class,
 														 item::getUserPrincipalLookupService));
 	}
 
 	@Test
-	void newWatchServiceTest()
+	void newWatchServiceTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(DirectoryWatchService.class);
 			 var fileSystem = new BucketFileSystem(awsFacade, bucketDescriptor, fileSystemProvider))
 		{
 			var watchService = fileSystem.newWatchService();
 			Assertions.assertEquals(mock.constructed().get(0), watchService);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void hashCodeWithSameInstancesTest()
+	void hashCodeWithSameInstancesTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var fileSystem1 = new BucketFileSystem(awsFacade,
 													bucketDescriptor,
 													fileSystemProvider);
@@ -240,10 +226,6 @@ class BucketFileSystemTest
 		{
 			Assertions.assertEquals(fileSystem1.hashCode(), fileSystem2.hashCode());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
@@ -251,10 +233,11 @@ class BucketFileSystemTest
 											@Mock S3Connector connector,
 											@Mock BucketDescriptor bucketDescriptor,
 											@Mock S3FileSystemProvider fileSystemProvider)
+		throws IOException
 	{
-		Mockito.when(this.bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(this.bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		try (var fileSystem1 = new BucketFileSystem(this.awsFacade,
 													this.bucketDescriptor,
 													this.fileSystemProvider);
@@ -264,34 +247,31 @@ class BucketFileSystemTest
 		{
 			Assertions.assertNotEquals(fileSystem1.hashCode(), fileSystem2.hashCode());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void equalsToNullTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(this::equalsToNullTest);
 	}
 
 	@Test
 	void equalsToDifferentFileSystemTest(@Mock FileSystem otherFileSystem)
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> equalsToDifferentFileSystemTest(item, otherFileSystem));
 	}
 
 	@Test
 	void equalsToFileSystemWithDifferentProviderTest(@Mock S3FileSystemProvider fileSystemProvider)
+		throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
 		try (var fileSystem1 = new BucketFileSystem(awsFacade,
 													bucketDescriptor,
 													this.fileSystemProvider);
@@ -302,20 +282,17 @@ class BucketFileSystemTest
 			var result = fileSystem1.equals(fileSystem2);
 			Assertions.assertFalse(result);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void equalsToFileSystemWithDifferentFileStoreTest(@Mock BucketDescriptor bucketDescriptor,
 													  @Mock BucketRecord bucketKey)
+		throws IOException
 	{
-		Mockito.when(this.bucketDescriptor.bucketKey()).thenReturn(this.bucketKey);
-		Mockito.when(this.bucketKey.bucketName()).thenReturn(BUCKET_NAME);
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn("other-bucket");
+		when(this.bucketDescriptor.bucketKey()).thenReturn(this.bucketKey);
+		when(this.bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn("other-bucket");
 		try (var fileSystem1 = new BucketFileSystem(awsFacade,
 													this.bucketDescriptor,
 													fileSystemProvider);
@@ -326,17 +303,13 @@ class BucketFileSystemTest
 			var result = fileSystem1.equals(fileSystem2);
 			Assertions.assertFalse(result);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void equalsTest()
+	void equalsTest() throws IOException
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		try (var fileSystem1 = new BucketFileSystem(awsFacade,
 													bucketDescriptor,
 													fileSystemProvider);
@@ -347,31 +320,27 @@ class BucketFileSystemTest
 			var result = fileSystem1.equals(fileSystem2);
 			Assertions.assertTrue(result);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
 	void bucketNameTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertEquals(BUCKET_NAME, item.bucketName()));
 	}
 
 	@Test
 	void awsFacadeTest()
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		doWithFileSystem(item -> Assertions.assertEquals(awsFacade, item.awsFacade()));
 	}
 
 	private void readOnlyFileStore(BucketFileStore fileStore, Context context)
 	{
-		Mockito.when(fileStore.isReadOnly()).thenReturn(true);
+		when(fileStore.isReadOnly()).thenReturn(true);
 	}
 
 	private void getRootDirectoriesTest(BucketFileSystem fileSystem)

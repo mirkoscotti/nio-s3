@@ -109,7 +109,7 @@ class BucketSeekableByteChannelIT
 	}
 
 	@Test
-	void isOpenForWriteTest()
+	void isOpenForWriteTest() throws IOException
 	{
 		var seekableByteChannel = JunitHelper.tryCall(() -> Files.newByteChannel(remoteFile,
 																				 StandardOpenOption.WRITE,
@@ -118,25 +118,17 @@ class BucketSeekableByteChannelIT
 		{
 			Assertions.assertTrue(channel.isOpen());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 		Assertions.assertFalse(seekableByteChannel.isOpen());
 	}
 
 	@Test
-	void isOpenForReadTest()
+	void isOpenForReadTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		var seekableByteChannel = JunitHelper.tryCall(() -> Files.newByteChannel(remoteFile));
 		try (var channel = seekableByteChannel)
 		{
 			Assertions.assertTrue(channel.isOpen());
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		Assertions.assertFalse(seekableByteChannel.isOpen());
 	}
@@ -442,7 +434,7 @@ class BucketSeekableByteChannelIT
 	}
 
 	@Test
-	void readFileFromTheBeginningTest()
+	void readFileFromTheBeginningTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		try (var channel = Files.newByteChannel(remoteFile))
@@ -458,14 +450,10 @@ class BucketSeekableByteChannelIT
 			resultSize = channel.read(buffer);
 			Assertions.assertEquals(-1, resultSize);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void readFileFragmentTest()
+	void readFileFragmentTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		try (var channel = Files.newByteChannel(remoteFile);
@@ -481,14 +469,10 @@ class BucketSeekableByteChannelIT
 			var resultContent = buffer.array();
 			Assertions.assertArrayEquals(expectedContent, resultContent);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void readFileFromTheMiddleTest()
+	void readFileFromTheMiddleTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		try (var channel = Files.newByteChannel(remoteFile);
@@ -506,14 +490,10 @@ class BucketSeekableByteChannelIT
 			var resultContent = buffer.array();
 			Assertions.assertArrayEquals(expectedContent, resultContent);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void readFileAfterEndTest()
+	void readFileAfterEndTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, emptyFile);
 		try (var channel = Files.newByteChannel(remoteFile))
@@ -522,14 +502,10 @@ class BucketSeekableByteChannelIT
 			var result = channel.read(buffer);
 			Assertions.assertEquals(0, result);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void sizeTest()
+	void sizeTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		try (var channel = Files.newByteChannel(remoteFile))
@@ -538,24 +514,16 @@ class BucketSeekableByteChannelIT
 			var resultSize = channel.size();
 			Assertions.assertEquals(expectedSize, resultSize);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void truncateTest()
+	void truncateTest() throws IOException
 	{
 		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
 		try (var channel = Files.newByteChannel(remoteFile, StandardOpenOption.WRITE))
 		{
 			Assertions.assertThrows(UnsupportedOperationException.class,
 									() -> channel.truncate(10));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
