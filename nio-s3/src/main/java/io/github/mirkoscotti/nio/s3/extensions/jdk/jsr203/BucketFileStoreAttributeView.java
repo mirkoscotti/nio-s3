@@ -25,6 +25,14 @@ public class BucketFileStoreAttributeView
 
 	private final String bucketName;
 
+	/**
+	 * Creates a view of the given S3 bucket.
+	 *
+	 * @param awsFacade
+	 *            the AWS connector
+	 * @param bucketName
+	 *            the name of the bucket
+	 */
 	public BucketFileStoreAttributeView(AwsFacade awsFacade, String bucketName)
 	{
 		this.awsFacade = Objects.requireNonNull(awsFacade, "Missing AWS connector.");

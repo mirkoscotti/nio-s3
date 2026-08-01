@@ -14,7 +14,7 @@ import io.github.mirkoscotti.nio.s3.operations.AwsFacade;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
- * A <code>BasicFileAttributeView</code< for Amazon S3 objects, providing read access to the
+ * A <code>BasicFileAttributeView</code> for Amazon S3 objects, providing read access to the
  * standard NIO.2 basic file attributes.
  * <p>
  * This view is identified by the standard <code>basic</code> and is registered against a specific
@@ -42,6 +42,16 @@ public class ObjectBasicFileAttributeView
 
 	private final String objectKey;
 
+	/**
+	 * Create an instance of the file attribute view for the given object of an S3 bucket
+	 *
+	 * @param awsFacade
+	 *            the AWS connector
+	 * @param bucketName
+	 *            the bucket name
+	 * @param objectKey
+	 *            the S3 object
+	 */
 	public ObjectBasicFileAttributeView(AwsFacade awsFacade, String bucketName, String objectKey)
 	{
 		this.awsFacade = Objects.requireNonNull(awsFacade, () -> "Missing AWS connector.");

@@ -43,11 +43,14 @@ import software.amazon.awssdk.regions.Region;
  *
  * @author mirko.scotti
  * @version Jan 25, 2025
- * @see BucketFileSystemProvider
+ * @see S3FileSystemProvider
  */
 public class BucketDescriptor
 {
 
+	/**
+	 * The bucket path separator.
+	 */
 	public static final String PATH_SEPARATOR = "/";
 
 	private static final String BUCKET_NAME_NOT_ADJACENT_PERIODS = "(?!.*\\.{2})";
@@ -82,11 +85,25 @@ public class BucketDescriptor
 
 	private final AwsRecord connectorKey;
 
+	/**
+	 * Creates a new instance of this class without additional configuration.
+	 *
+	 * @param uri
+	 *            the bucket URI
+	 */
 	public BucketDescriptor(URI uri)
 	{
 		this(uri, null);
 	}
 
+	/**
+	 * Creates an instance of this class with custom configuration.
+	 *
+	 * @param uri
+	 *            the bucket URI
+	 * @param configuration
+	 *            the additional properties to access AWS or Localstack
+	 */
 	public BucketDescriptor(URI uri, Map<String, ?> configuration)
 	{
 		var uriDescriptor = new UriDescriptor(uri);

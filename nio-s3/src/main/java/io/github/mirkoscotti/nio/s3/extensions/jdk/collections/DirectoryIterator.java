@@ -38,6 +38,16 @@ public class DirectoryIterator
 
 	private String next;
 
+	/**
+	 * Creates an iterator based on the specified bucket and prefix representing a directory.
+	 *
+	 * @param client
+	 *            the AWS client
+	 * @param bucket
+	 *            the bucket name
+	 * @param prefix
+	 *            the prefix key
+	 */
 	public DirectoryIterator(S3AsyncClient client, String bucket, String prefix)
 	{
 		this.bucket = bucket;
@@ -46,12 +56,18 @@ public class DirectoryIterator
 		next = take();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean hasNext()
 	{
 		return !next.equals(END_MARKER);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String next()
 	{

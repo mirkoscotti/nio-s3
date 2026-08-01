@@ -32,6 +32,10 @@ import software.amazon.awssdk.services.sts.model.StsException;
 public enum ObjectAccess
 {
 
+	/**
+	 * Read access mode. Regular files are readable whenever their metadata is accessible;
+	 * directories are readable if they can be listed.
+	 */
 	READ
 	{
 
@@ -50,6 +54,10 @@ public enum ObjectAccess
 				: null;
 		}
 	},
+	/**
+	 * Write access mode. Satisfied when the caller holds the permission required to modify the
+	 * target file or directory.
+	 */
 	WRITE
 	{
 
@@ -86,6 +94,10 @@ public enum ObjectAccess
 			return ERROR_TEMPLATE.formatted(bucket, resourceType, key, permission);
 		}
 	},
+	/**
+	 * Execute access mode. Directories are executable if they can be traversed; regular files are
+	 * never executable.
+	 */
 	EXECUTE
 	{
 
@@ -158,10 +170,32 @@ public enum ObjectAccess
 		}
 	}
 
+	/**
+	 * Checks whether the object represented by the given attributes is a file or a directory.
+	 *
+	 * @param awsFacade
+	 *            the AWS connector
+	 * @param basicFileAttributes
+	 *            the file attributes
+	 * @param bucket
+	 *            the bucket name
+	 * @return <code>File</code> if the object is a file, <code>Directory</code> otherwise
+	 */
 	protected abstract String checkAccess(AwsFacade awsFacade,
 										  BasicFileAttributes basicFileAttributes,
 										  String bucket);
 
+	/**
+	 * Tries to list the objects having the given prefix.
+	 *
+	 * @param awsFacade
+	 *            the AWS connector
+	 * @param bucket
+	 *            the bucket name
+	 * @param key
+	 *            the prefix to be investigated
+	 * @return the error message if the list fails, <code>null</code> otherwise
+	 */
 	protected String tryListObjects(AwsFacade awsFacade, String bucket, String key)
 	{
 		String result = null;
@@ -176,6 +210,13 @@ public enum ObjectAccess
 		return result;
 	}
 
+	/**
+	 * Extracts the error message from the AWS exception if an access fails.
+	 *
+	 * @param exception
+	 *            the AWS exception
+	 * @return the error message
+	 */
 	protected String awsErrorMessage(AwsServiceException exception)
 	{
 		return Optional.of(exception.awsErrorDetails())

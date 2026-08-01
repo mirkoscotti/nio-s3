@@ -23,6 +23,12 @@ public class ObjectBasicFileAttributes
 
 	private final S3Object object;
 
+	/**
+	 * Creates a file attribute instance from the given S3 object
+	 *
+	 * @param object
+	 *            an S3 object
+	 */
 	public ObjectBasicFileAttributes(S3Object object)
 	{
 		this.object = Objects.requireNonNull(object, () -> "Missing S3 object.");

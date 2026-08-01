@@ -5,6 +5,8 @@ import java.util.Optional;
 import io.github.mirkoscotti.nio.s3.configuration.UriDescriptor;
 
 /**
+ * The exception for bucket names that are not compliant to the AWS specification.
+ *
  * @author mirko.scotti
  * @version Jan 25, 2025
  */
@@ -27,6 +29,12 @@ public class BucketNameException
 		9. it can contain only lowercase and uppercase letters, digits, periods, and dashes without violating one of the previous rules
 		""";
 
+	/**
+	 * Creates an exception based on a specific bucket descriptor.
+	 *
+	 * @param uriDescriptor
+	 *            the bucket descriptor
+	 */
 	public BucketNameException(UriDescriptor uriDescriptor)
 	{
 		super(buildMessage(uriDescriptor));

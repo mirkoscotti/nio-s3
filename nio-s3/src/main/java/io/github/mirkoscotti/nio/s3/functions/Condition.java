@@ -5,6 +5,8 @@ import java.io.IOException;
 /**
  * The equivalent of a predicate managing I/O exceptions.
  *
+ * @param <T>
+ *            any type
  * @author mirko.scotti
  * @version Feb 12, 2026
  */
@@ -12,6 +14,9 @@ import java.io.IOException;
 public interface Condition<T>
 {
 
+	/**
+	 * The specific condition never satisfied.
+	 */
 	static Condition<?> FALSE = item -> false;
 
 	/**

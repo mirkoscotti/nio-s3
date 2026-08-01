@@ -12,6 +12,9 @@ import java.io.IOException;
 public interface Expression
 {
 
+	/**
+	 * The trivial expression never satisfied.
+	 */
 	Expression FALSE = () -> false;
 
 	/**

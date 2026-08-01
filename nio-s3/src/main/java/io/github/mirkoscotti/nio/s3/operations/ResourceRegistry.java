@@ -27,6 +27,14 @@ public class ResourceRegistry
 	private final List<AtomicReference<Closeable>> resources = new CopyOnWriteArrayList<>();
 
 	/**
+	 * Create an empty registry.
+	 */
+	public ResourceRegistry()
+	{
+		super();
+	}
+
+	/**
 	 * Closes all currently registered resources. If closing a resource fails, the remaining
 	 * resources are not closed and the exception is propagated.
 	 *

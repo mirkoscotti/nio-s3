@@ -16,6 +16,10 @@ import io.github.mirkoscotti.nio.s3.enums.BucketEffect;
 /**
  * The generic object access policy descriptor.
  *
+ * @param version
+ *            the mapper of <code>Version</code> tag in the AWS policy JSON format
+ * @param statements
+ *            the mapper of <code>Statement</code> tag in the AWS policy JSON format
  * @author mirko.scotti
  * @version Oct 25, 2024
  */
@@ -23,6 +27,12 @@ public record PolicyRecord(@JsonbProperty("Version") String version,
 						   @JsonbProperty("Statement") List<StatementRecord> statements)
 {
 
+	/**
+	 * Checks whether this policy grants only read access, with no permission to perform any write
+	 * action.
+	 *
+	 * @return true if this policy does not allow any write action, false otherwise
+	 */
 	public boolean isReadOnly()
 	{
 		// If some action contains a wild-card, all actions matching with the

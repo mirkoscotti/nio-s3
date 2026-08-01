@@ -68,27 +68,27 @@ import io.github.mirkoscotti.nio.s3.records.BucketRecord;
  * <p>
  * In this case, the {@link FileSystems#newFileSystem(URI, Map)} must be invoked and the credentials
  * for accessing the bucket must be provided in the environment map through the
- * {@link S3Property#ACCESS_KEY access-key} and {@link S3Property#SECRET_KEY secret-key} properties.
- * If the property {@link S3Property#ENDPOINT} is also specified in the same map, the bucket is
- * created, or it is required to be existing, on the specific LocalStack instance instead of an AWS
- * account.
- * <li><code>s3://access-key:secret-key@bucket-name<code>
+ * {@link BucketProperty#ACCESS_KEY access-key} and {@link BucketProperty#SECRET_KEY secret-key}
+ * properties. If the property {@link BucketProperty#ENDPOINT} is also specified in the same map,
+ * the bucket is created, or it is required to be existing, on the specific LocalStack instance
+ * instead of an AWS account.
+ * <li><code>s3://access-key:secret-key@bucket-name</code>
  * <p>
  * In this case, since credentials are directly provided within the URI, the file system can be
  * created either invoking {@link FileSystems#newFileSystem(URI, Map)} or {@link Paths#get(URI)}. If
  * this last API is used, necessarily it is not possible to access LocalStack. If the first one is
  * invoked, credentials eventually specified in the environment properties are ignored because the
  * ones specified in the URI are used.
- * <li><code>s3://access-key:secret-key@host-name/bucket-name<code>
+ * <li><code>s3://access-key:secret-key@host-name/bucket-name</code>
  * <p>
  * This is for accessing LocalStack from the {@link Paths#get(URI)} API. If
- * {@link FileSystems#newFileSystem(URI, Map)} is invoked and the {@link S3Property#ENDPOINT}
+ * {@link FileSystems#newFileSystem(URI, Map)} is invoked and the {@link BucketProperty#ENDPOINT}
  * property is specified, it is ignored because the host name specified in the URI is used.
  * </ul>
+ * <p>
  * The bucket name must match the
  * <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html">bucket
  * naming rules</a>. The following additional rules for managing the bucket are also applied:
- * <p>
  * <ul>
  * <li>if the bucket does not exist in AWS or LocalStack, a new one is attempted to be created in
  * the account the provided credentials belong to before creating the file system.
@@ -109,6 +109,14 @@ public class S3FileSystemProvider
 
 	private static final Map<AwsRecord, AwsFacade> FACADES_CACHE = new ConcurrentHashMap<>();
 
+	/**
+	 * Create an instance of this provider.
+	 */
+	public S3FileSystemProvider()
+	{
+		super();
+	}
+
 	@Override
 	public String getScheme()
 	{
@@ -122,9 +130,9 @@ public class S3FileSystemProvider
 	 * <i>endpoint</i>]. In this key, bucket name and access key are mandatory, while the endpoint
 	 * is optional, meaning that if not specified, AWS's default endpoint is assumed.
 	 * <p>
-	 * This means that if a file system is created from <code>s3://bucket-name/<code> with
+	 * This means that if a file system is created from <code>s3://bucket-name/</code> with
 	 * credentials <i>access-key</i> and <i>secret-key</i> passed in the environment map, a second
-	 * invocation to this method passing <code>s3://access-key:secret-key@bucket-name/<code> will
+	 * invocation to this method passing <code>s3://access-key:secret-key@bucket-name/</code> will
 	 * raise a {@link FileSystemAlreadyExistsException} even if the URI is formally different from
 	 * the previous one. Same if also the LocalStack endpoint is configured.
 	 * <p>
@@ -557,8 +565,8 @@ public class S3FileSystemProvider
 	/**
 	 * Reads a set of file attributes of an S3 object as a bulk operation, returning them as a
 	 * name-to-value map. The attributes string specifies the desired attribute names, optionally
-	 * preceded by the view name separated by a colon (e.g. <code>"basic:size,isDirectory"<code> or
-	 * simply <code>"size,isDirectory"<code>). The wildcard selects all available attributes. Only
+	 * preceded by the view name separated by a colon (e.g. <code>"basic:size,isDirectory"</code> or
+	 * simply <code>"size,isDirectory"</code>). The wildcard selects all available attributes. Only
 	 * the basic view is currently supported.
 	 *
 	 * @param path
