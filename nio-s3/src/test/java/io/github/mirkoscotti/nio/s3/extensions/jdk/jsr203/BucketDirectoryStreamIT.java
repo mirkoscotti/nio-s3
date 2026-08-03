@@ -93,7 +93,7 @@ class BucketDirectoryStreamIT
 	}
 
 	@Test
-	void directoryStreamTest()
+	void directoryStreamTest() throws IOException
 	{
 		var target = fileSystem.getPath(TARGET_DIRECTORY);
 		var other = fileSystem.getPath(OTHER_DIRECTORY);
@@ -115,14 +115,10 @@ class BucketDirectoryStreamIT
 			assertNotSelected(TEXT_PATTERN, subDirectory, list);
 			assertNotSelected(PDF_PATTERN, subDirectory, list);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void filteredDirectoryStreamTest()
+	void filteredDirectoryStreamTest() throws IOException
 	{
 		var target = fileSystem.getPath(TARGET_DIRECTORY);
 		try (var stream = Files.newDirectoryStream(target, "*.txt"))
@@ -131,10 +127,6 @@ class BucketDirectoryStreamIT
 			Assertions.assertFalse(list.contains(target));
 			assertSelected(TEXT_PATTERN, target, list);
 			assertNotSelected(PDF_PATTERN, target, list);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
@@ -150,7 +142,8 @@ class BucketDirectoryStreamIT
 	{
 		IntStream.rangeClosed(1, FILES_COUNT)
 				 .mapToObj(pattern::formatted)
-				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET, directory.concat(item),
+				 .forEach(item -> CONTAINER.createObject(TEST_BUCKET,
+														 directory.concat(item),
 														 baseDirectory.resolve(item)));
 	}
 

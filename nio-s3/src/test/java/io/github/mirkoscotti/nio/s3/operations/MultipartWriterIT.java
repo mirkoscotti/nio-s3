@@ -68,30 +68,22 @@ class MultipartWriterIT
 	}
 
 	@Test
-	void multipartUploadWithoutPartsTest()
+	void multipartUploadWithoutPartsTest() throws IOException
 	{
 		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			var uploadId = JunitHelper.findFieldValueByName(writer, "uploadId", String.class);
 			Assertions.assertNotNull(uploadId);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void multipartSingleUploadTest()
+	void multipartSingleUploadTest() throws IOException
 	{
 		var test = "test";
 		try (var writer = new MultipartWriter(client, TEST_BUCKET, TEST_KEY))
 		{
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
 		var output = baseDirectory.resolve(TEST_FILE);
@@ -101,7 +93,7 @@ class MultipartWriterIT
 	}
 
 	@Test
-	void multipartUploadTest()
+	void multipartUploadTest() throws IOException
 	{
 		var test = "test";
 		var part = Stream.generate(() -> test)
@@ -111,10 +103,6 @@ class MultipartWriterIT
 		{
 			writer.write(part.getBytes(StandardCharsets.UTF_8));
 			writer.write(test.getBytes(StandardCharsets.UTF_8));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		Assertions.assertTrue(CONTAINER.objectExists(TEST_BUCKET, TEST_KEY));
 		var output = baseDirectory.resolve(TEST_FILE);

@@ -1,5 +1,12 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
+
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
@@ -49,12 +56,12 @@ class DirectoryWatchKeyTest
 			var list = watchKey.pollEvents();
 			Assertions.assertEquals(1, list.size());
 			var queue = Assertions.assertInstanceOf(BlockingQueue.class, mock.constructed().get(0));
-			Mockito.verify(queue, Mockito.atLeastOnce()).clear();
+			verify(queue, Mockito.atLeastOnce()).clear();
 		}
 	}
 
 	@Test
-	void resetInvalidKeyTest()
+	void resetInvalidKeyTest() throws ReflectiveOperationException
 	{
 		var field = JunitHelper.findFieldByType(DirectoryWatchKey.class, boolean.class);
 		ReflectionSupport.makeAccessible(field);
@@ -63,11 +70,7 @@ class DirectoryWatchKeyTest
 			var watchKey = new DirectoryWatchKey(directory);
 			field.set(watchKey, false);
 			Assertions.assertFalse(watchKey.reset());
-			Mockito.verify(mock.constructed().get(0), Mockito.never()).clear();
-		}
-		catch (ReflectiveOperationException x)
-		{
-			Assertions.fail(x);
+			verify(mock.constructed().get(0), Mockito.never()).clear();
 		}
 	}
 
@@ -78,7 +81,7 @@ class DirectoryWatchKeyTest
 		{
 			var watchKey = new DirectoryWatchKey(directory);
 			Assertions.assertTrue(watchKey.reset());
-			Mockito.verify(mock.constructed().get(0), Mockito.atLeastOnce()).clear();
+			verify(mock.constructed().get(0), Mockito.atLeastOnce()).clear();
 		}
 	}
 
@@ -91,9 +94,9 @@ class DirectoryWatchKeyTest
 			var watchKey = new DirectoryWatchKey(directory);
 			watchKey.cancel();
 			var map = mapMock.constructed().get(0);
-			Mockito.verify(map, Mockito.atLeastOnce()).clear();
+			verify(map, Mockito.atLeastOnce()).clear();
 			var queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.atLeastOnce()).clear();
+			verify(queue, Mockito.atLeastOnce()).clear();
 		}
 	}
 
@@ -107,15 +110,16 @@ class DirectoryWatchKeyTest
 	@Test
 	void initialUpdateEventsTest(@Mock Instant instant)
 	{
-		try (var mock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+		try (var mock = Mockito.mockConstruction(ConcurrentHashMap.class,
+												 initializeSettings(),
 												 this::initializeEmpty))
 		{
 			var watchKey = new DirectoryWatchKey(directory);
 			watchKey.updateEvents(Map.of("file", instant));
 			if (mock.constructed().get(0) instanceof ConcurrentHashMap<?, ?> map)
 			{
-				Mockito.verify(map, Mockito.atLeastOnce()).clear();
-				Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+				verify(map, Mockito.atLeastOnce()).clear();
+				verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 			}
 			else
 			{
@@ -127,17 +131,18 @@ class DirectoryWatchKeyTest
 	@Test
 	void insertEventsTest(@Mock BucketFileSystem fileSystem, @Mock Instant instant)
 	{
-		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_CREATE);
 			watchKey.updateEvents(Map.of("new", instant));
 			if (mapMock.constructed().get(0) instanceof ConcurrentHashMap<?, ?> map)
 			{
-				Mockito.verify(map, Mockito.atLeastOnce()).clear();
-				Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+				verify(map, Mockito.atLeastOnce()).clear();
+				verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 			}
 			else
 			{
@@ -145,7 +150,7 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
+			verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
@@ -153,7 +158,8 @@ class DirectoryWatchKeyTest
 	void noInsertEventsTest(@Mock BucketFileSystem fileSystem)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_CREATE);
@@ -163,8 +169,8 @@ class DirectoryWatchKeyTest
 				if (entry.getValue() instanceof Instant instant)
 				{
 					watchKey.updateEvents(Map.of(entry.getKey().toString(), instant));
-					Mockito.verify(map, Mockito.atLeastOnce()).clear();
-					Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+					verify(map, Mockito.atLeastOnce()).clear();
+					verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 				}
 				else
 				{
@@ -177,16 +183,17 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.never()).add(Mockito.any(WatchEvent.class));
+			verify(queue, never()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
 	@Test
 	void modifyEventsTest(@Mock BucketFileSystem fileSystem, @Mock Instant instant)
 	{
-		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_MODIFY);
@@ -194,8 +201,8 @@ class DirectoryWatchKeyTest
 			{
 				var entry = map.entrySet().stream().findFirst().orElseGet(Assertions::fail);
 				watchKey.updateEvents(Map.of(entry.getKey().toString(), instant));
-				Mockito.verify(map, Mockito.atLeastOnce()).clear();
-				Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+				verify(map, Mockito.atLeastOnce()).clear();
+				verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 			}
 			else
 			{
@@ -203,16 +210,17 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
+			verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
 	@Test
 	void noModifyEventsTest(@Mock BucketFileSystem fileSystem)
 	{
-		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
-													this::initializeWithOneFile))
+		try (var queueMock = mockConstruction(LinkedBlockingQueue.class);
+			 var mapMock = mockConstruction(ConcurrentHashMap.class,
+											initializeSettings(),
+											this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_MODIFY);
 			if (mapMock.constructed().get(0) instanceof ConcurrentHashMap<?, ?> map)
@@ -221,8 +229,8 @@ class DirectoryWatchKeyTest
 				if (entry.getValue() instanceof Instant instant)
 				{
 					watchKey.updateEvents(Map.of(entry.getKey().toString(), instant));
-					Mockito.verify(map, Mockito.atLeastOnce()).clear();
-					Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+					verify(map, Mockito.atLeastOnce()).clear();
+					verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 				}
 				else
 				{
@@ -235,24 +243,25 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.never()).add(Mockito.any(WatchEvent.class));
+			verify(queue, never()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
 	@Test
 	void deleteEventsTest(@Mock BucketFileSystem fileSystem, @Mock Instant instant)
 	{
-		Mockito.when(directory.getFileSystem()).thenReturn(fileSystem);
+		when(directory.getFileSystem()).thenReturn(fileSystem);
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_DELETE);
 			watchKey.updateEvents(Map.of("new", instant));
 			if (mapMock.constructed().get(0) instanceof ConcurrentHashMap<?, ?> map)
 			{
-				Mockito.verify(map, Mockito.atLeastOnce()).clear();
-				Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+				verify(map, Mockito.atLeastOnce()).clear();
+				verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 			}
 			else
 			{
@@ -260,7 +269,7 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
+			verify(queue, Mockito.atLeastOnce()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
@@ -268,7 +277,8 @@ class DirectoryWatchKeyTest
 	void noDeleteEventsTest(@Mock BucketFileSystem fileSystem)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, StandardWatchEventKinds.ENTRY_DELETE);
@@ -278,8 +288,8 @@ class DirectoryWatchKeyTest
 				if (entry.getValue() instanceof Instant instant)
 				{
 					watchKey.updateEvents(Map.of(entry.getKey().toString(), instant));
-					Mockito.verify(map, Mockito.atLeastOnce()).clear();
-					Mockito.verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
+					verify(map, Mockito.atLeastOnce()).clear();
+					verify(map, Mockito.atLeastOnce()).putAll(Mockito.anyMap());
 				}
 				else
 				{
@@ -292,7 +302,7 @@ class DirectoryWatchKeyTest
 			}
 			@SuppressWarnings("unchecked")
 			BlockingQueue<WatchEvent<?>> queue = queueMock.constructed().get(0);
-			Mockito.verify(queue, Mockito.never()).add(Mockito.any(WatchEvent.class));
+			verify(queue, never()).add(Mockito.any(WatchEvent.class));
 		}
 	}
 
@@ -300,7 +310,8 @@ class DirectoryWatchKeyTest
 	void unsupportedEventTest(@Mock Instant instant, @Mock Kind<Path> kind)
 	{
 		try (var queueMock = Mockito.mockConstruction(LinkedBlockingQueue.class);
-			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class, initializeSettings(),
+			 var mapMock = Mockito.mockConstruction(ConcurrentHashMap.class,
+													initializeSettings(),
 													this::initializeWithOneFile))
 		{
 			var watchKey = new DirectoryWatchKey(directory, kind);
@@ -312,23 +323,23 @@ class DirectoryWatchKeyTest
 
 	private void initializeEvent(BlockingQueue<WatchEvent<?>> queue, Context context)
 	{
-		var watchEvent = Mockito.mock(WatchEvent.class);
-		Mockito.when(queue.toArray()).thenReturn(new WatchEvent<?>[] {watchEvent});
+		var watchEvent = mock(WatchEvent.class);
+		when(queue.toArray()).thenReturn(new WatchEvent<?>[] {watchEvent});
 	}
 
 	private void initializeEmpty(ConcurrentHashMap<String, Instant> map, Context context)
 	{
-		Mockito.when(map.isEmpty()).thenReturn(true);
+		when(map.isEmpty()).thenReturn(true);
 	}
 
 	private void initializeWithOneFile(ConcurrentHashMap<String, Instant> map, Context context)
 	{
-		var instant = Mockito.mock(Instant.class);
+		var instant = mock(Instant.class);
 		map.put("initial", instant);
 	}
 
 	private MockSettings initializeSettings()
 	{
-		return Mockito.withSettings().defaultAnswer(Mockito.CALLS_REAL_METHODS);
+		return withSettings().defaultAnswer(Mockito.CALLS_REAL_METHODS);
 	}
 }

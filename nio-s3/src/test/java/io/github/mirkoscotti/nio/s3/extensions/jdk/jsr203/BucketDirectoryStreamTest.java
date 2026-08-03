@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream.Filter;
@@ -47,16 +49,16 @@ class BucketDirectoryStreamTest
 	@BeforeEach
 	void beforeEach()
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
-		Mockito.when(fileSystem.awsFacade()).thenReturn(awsFacade);
-		Mockito.when(fileStore.name()).thenReturn(BUCKET);
-		Mockito.when(awsFacade.scanDirectory(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(List.of(FILE).iterator());
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		when(fileSystem.awsFacade()).thenReturn(awsFacade);
+		when(fileStore.name()).thenReturn(BUCKET);
+		when(awsFacade.scanDirectory(Mockito.anyString(),
+									 Mockito.anyString())).thenReturn(List.of(FILE).iterator());
 	}
 
 	@Test
-	void iteratorWhenStreamIsClosedTest()
+	void iteratorWhenStreamIsClosedTest() throws IOException
 	{
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
@@ -68,14 +70,10 @@ class BucketDirectoryStreamTest
 			}
 			Assertions.assertThrows(IllegalStateException.class, directoryStream::iterator);
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void iteratorWhenStreamIsOverTest()
+	void iteratorWhenStreamIsOverTest() throws IOException
 	{
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
@@ -86,28 +84,20 @@ class BucketDirectoryStreamTest
 				Assertions.assertThrows(IllegalStateException.class, stream::iterator);
 			}
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void filterFailureTest()
+	void filterFailureTest() throws IOException
 	{
 		try (var mock = Mockito.mockStatic(Files.class))
 		{
-			Mockito.when(filter.accept(Mockito.any(Path.class))).thenThrow(IOException.class);
+			when(filter.accept(Mockito.any(Path.class))).thenThrow(IOException.class);
 			mock.when(() -> Files.isDirectory(Mockito.any(Path.class))).thenReturn(true);
 			try (var stream = new BucketDirectoryStream(path, filter))
 			{
 				Assertions.assertThrows(DirectoryIteratorException.class,
 										() -> stream.forEach(this::doNothing));
 			}
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 

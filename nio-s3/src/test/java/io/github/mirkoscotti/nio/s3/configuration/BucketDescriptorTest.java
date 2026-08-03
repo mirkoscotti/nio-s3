@@ -1,5 +1,8 @@
 package io.github.mirkoscotti.nio.s3.configuration;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
@@ -56,7 +59,7 @@ class BucketDescriptorTest
 	@Test
 	void uriWithOnlyBucketNameTest()
 	{
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureOnlyBucketName))
 		{
@@ -67,7 +70,7 @@ class BucketDescriptorTest
 	@Test
 	void uriWithBucketNameAndCredentialsTest()
 	{
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureBucketNameAndCredentials))
 		{
@@ -86,7 +89,7 @@ class BucketDescriptorTest
 	@Test
 	void configurationWithRegionTest()
 	{
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureEmptyCredentials))
 		{
@@ -102,7 +105,7 @@ class BucketDescriptorTest
 	@Test
 	void configurationWithCredentialsTest()
 	{
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureOnlyBucketName))
 		{
@@ -121,7 +124,7 @@ class BucketDescriptorTest
 	@Test
 	void configurationTest()
 	{
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureEmptyCredentials))
 		{
@@ -134,7 +137,7 @@ class BucketDescriptorTest
 
 	void wrongBucketName(String bucketName)
 	{
-		Mockito.when(uri.getHost()).thenReturn(bucketName);
+		when(uri.getHost()).thenReturn(bucketName);
 		try (var mock = Mockito.mockConstruction(UriDescriptor.class,
 												 this::configureOnlyBucketName))
 		{
@@ -145,23 +148,23 @@ class BucketDescriptorTest
 	private void configureOnlyBucketName(UriDescriptor uriDescriptor, Context context)
 	{
 		configureBucketName(uriDescriptor, context.arguments().get(0));
-		Mockito.when(uriDescriptor.credentials()).thenReturn(Optional.empty());
+		when(uriDescriptor.credentials()).thenReturn(Optional.empty());
 	}
 
 	private void configureEmptyCredentials(UriDescriptor uriDescriptor, Context context)
 	{
 		configureBucketName(uriDescriptor, context.arguments().get(0));
-		var credentials = Mockito.mock(CredentialsRecord.class);
-		Mockito.when(uriDescriptor.credentials()).thenReturn(Optional.of(credentials));
+		var credentials = mock(CredentialsRecord.class);
+		when(uriDescriptor.credentials()).thenReturn(Optional.of(credentials));
 	}
 
 	private void configureBucketNameAndCredentials(UriDescriptor uriDescriptor, Context context)
 	{
 		configureBucketName(uriDescriptor, context.arguments().get(0));
-		var credentials = Mockito.mock(CredentialsRecord.class);
-		Mockito.when(credentials.accessKey()).thenReturn(ACCESS_KEY);
-		Mockito.when(credentials.secretKey()).thenReturn(SECRET_KEY);
-		Mockito.when(uriDescriptor.credentials()).thenReturn(Optional.of(credentials));
+		var credentials = mock(CredentialsRecord.class);
+		when(credentials.accessKey()).thenReturn(ACCESS_KEY);
+		when(credentials.secretKey()).thenReturn(SECRET_KEY);
+		when(uriDescriptor.credentials()).thenReturn(Optional.of(credentials));
 	}
 
 	private void configureBucketName(UriDescriptor uriDescriptor, Object uri)
@@ -170,6 +173,6 @@ class BucketDescriptorTest
 				.filter(URI.class::isInstance)
 				.map(URI.class::cast)
 				.map(URI::getHost)
-				.ifPresent(Mockito.when(uriDescriptor.bucketName())::thenReturn);
+				.ifPresent(when(uriDescriptor.bucketName())::thenReturn);
 	}
 }

@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.helpers;
 
+import static org.mockito.Mockito.when;
+
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
@@ -7,7 +9,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.exceptions.TransportException;
@@ -60,7 +61,7 @@ class ExceptionHelperTest
 
 	void throwExceptionWithCauseTest(Exception exception, AwsServiceException cause)
 	{
-		Mockito.when(exception.getCause()).thenReturn(cause);
+		when(exception.getCause()).thenReturn(cause);
 		var transportException = Assertions.assertThrows(TransportException.class,
 														 () -> ExceptionHelper.sneakyThrow(exception));
 		Assertions.assertEquals(cause, transportException.getCause());

@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.when;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -15,7 +17,6 @@ import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.commons.function.Try;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -99,8 +100,8 @@ class S3ConnectorIT
 	void createBucketAlreadyOwnedByUserTest(@Mock BucketDescriptor bucketDescriptor,
 											@Mock BucketRecord bucketKey)
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
 		createConnector(USER_1, Region.US_WEST_1.toString()).createBucket(bucketDescriptor);
 		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
@@ -114,8 +115,8 @@ class S3ConnectorIT
 	void createAlreadyExistingBucketTest(@Mock BucketDescriptor bucketDescriptor,
 										 @Mock BucketRecord bucketKey)
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
 		createConnector(USER_1, Region.US_WEST_1.toString()).createBucket(bucketDescriptor);
 		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
@@ -128,8 +129,8 @@ class S3ConnectorIT
 	@Test
 	void createBucketTest(@Mock BucketDescriptor bucketDescriptor, @Mock BucketRecord bucketKey)
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		Assertions.assertFalse(CONTAINER.bucketExists(BUCKET_NAME));
 		createConnector(USER_1).createBucket(bucketDescriptor);
 		Assertions.assertTrue(CONTAINER.bucketExists(BUCKET_NAME));
@@ -140,8 +141,8 @@ class S3ConnectorIT
 	void createBucketWithReadOnlyUserTest(@Mock BucketDescriptor bucketDescriptor,
 										  @Mock BucketRecord bucketKey)
 	{
-		Mockito.when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
-		Mockito.when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
+		when(bucketDescriptor.bucketKey()).thenReturn(bucketKey);
+		when(bucketKey.bucketName()).thenReturn(BUCKET_NAME);
 		var connector = createConnector(USER_1);
 		Assertions.assertThrows(S3Exception.class, () -> connector.createBucket(bucketDescriptor));
 	}

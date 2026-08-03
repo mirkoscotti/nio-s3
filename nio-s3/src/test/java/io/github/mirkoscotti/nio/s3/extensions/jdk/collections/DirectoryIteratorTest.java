@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.collections;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 
@@ -39,15 +43,13 @@ class DirectoryIteratorTest
 	@BeforeEach
 	void beforeEach()
 	{
-		Mockito.when(client.listObjectsV2Paginator(Mockito.any(Consumer.class)))
-			   .thenReturn(publisher);
+		when(client.listObjectsV2Paginator(Mockito.any(Consumer.class))).thenReturn(publisher);
 	}
 
 	@Test
 	void cannotPutElementTest()
 	{
-		Mockito.when(publisher.subscribe(Mockito.any(Consumer.class)))
-			   .thenAnswer(this::mockResponse);
+		when(publisher.subscribe(Mockito.any(Consumer.class))).thenAnswer(this::mockResponse);
 		try (var mock = Mockito.mockConstruction(LinkedBlockingQueue.class, this::configurePutFail))
 		{
 			Assertions.assertThrows(IllegalStateException.class,
@@ -70,9 +72,7 @@ class DirectoryIteratorTest
 	{
 		try
 		{
-			Mockito.doThrow(new InterruptedException("Test interrupt"))
-				   .when(mock)
-				   .put(Mockito.anyString());
+			doThrow(new InterruptedException("Test interrupt")).when(mock).put(Mockito.anyString());
 		}
 		catch (InterruptedException x)
 		{
@@ -84,7 +84,7 @@ class DirectoryIteratorTest
 	{
 		try
 		{
-			Mockito.when(mock.take()).thenThrow(new InterruptedException("Test interrupt"));
+			when(mock.take()).thenThrow(new InterruptedException("Test interrupt"));
 		}
 		catch (InterruptedException x)
 		{
@@ -94,7 +94,7 @@ class DirectoryIteratorTest
 
 	private Void mockResponse(InvocationOnMock invocation)
 	{
-		var response = Mockito.mock(ListObjectsV2Response.class);
+		var response = mock(ListObjectsV2Response.class);
 		Consumer<ListObjectsV2Response> consumer = invocation.getArgument(0);
 		consumer.accept(response);
 		return null;

@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.lang.reflect.Field;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
@@ -72,7 +74,8 @@ class BucketPathTest
 	@Test
 	void pathTooLongTest()
 	{
-		var path = Stream.iterate("/path/too/long", item -> item.length() <= 2048,
+		var path = Stream.iterate("/path/too/long",
+								  item -> item.length() <= 2048,
 								  item -> item.concat(item))
 						 .reduce((item1, item2) -> item2)
 						 .orElseThrow();
@@ -149,7 +152,7 @@ class BucketPathTest
 	@Test
 	void getFileNameTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var expected = ABSOLUTE_PATH.substring(ABSOLUTE_PATH.lastIndexOf('/') + 1);
 		var fileName = bucketPath.getFileName();
@@ -161,8 +164,8 @@ class BucketPathTest
 	@Test
 	void getParentTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
-		Mockito.when(fileSystem.getRootDirectories()).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getRootDirectories()).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var expected = ABSOLUTE_PATH.substring(1, ABSOLUTE_PATH.lastIndexOf('/') + 1);
 		var parent = bucketPath.getParent();
@@ -196,7 +199,7 @@ class BucketPathTest
 	@Test
 	void getNameTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var name = bucketPath.getName(0);
 		var result = findValue("objectKey", name).orElseGet(Assertions::fail);
@@ -250,7 +253,7 @@ class BucketPathTest
 	@Test
 	void doesNotStartWithTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.startsWith(RELATIVE_PATH));
 	}
@@ -265,7 +268,7 @@ class BucketPathTest
 	@Test
 	void startsWithLongerPathTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.startsWith(ABSOLUTE_PATH.concat("/more")));
 	}
@@ -273,7 +276,7 @@ class BucketPathTest
 	@Test
 	void startsWithPathFromDifferentFileSystemTest(@Mock Path path, @Mock FileSystem fileSystem)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.startsWith(path));
 	}
@@ -281,7 +284,7 @@ class BucketPathTest
 	@Test
 	void startsWithTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertTrue(bucketPath.startsWith(ABSOLUTE));
 	}
@@ -289,7 +292,7 @@ class BucketPathTest
 	@Test
 	void doesNotEndWithTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.endsWith(RELATIVE_PATH));
 	}
@@ -304,7 +307,7 @@ class BucketPathTest
 	@Test
 	void endsWithLongerPathTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.endsWith("/more".concat(ABSOLUTE_PATH)));
 	}
@@ -312,7 +315,7 @@ class BucketPathTest
 	@Test
 	void endsWithPathFromDifferentFileSystemTest(@Mock Path path, @Mock FileSystem fileSystem)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
 		Assertions.assertFalse(bucketPath.endsWith(path));
 	}
@@ -320,7 +323,7 @@ class BucketPathTest
 	@Test
 	void endsWithTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertTrue(bucketPath.endsWith(PATH));
 	}
@@ -328,7 +331,7 @@ class BucketPathTest
 	@Test
 	void normalizeRelativePathTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, RELATIVE_PATH);
 		var normalizedPath = bucketPath.normalize();
 		var expected = findValue("objectKey", bucketPath).orElseGet(Assertions::fail);
@@ -339,7 +342,7 @@ class BucketPathTest
 	@Test
 	void normalizeAbsolutePathTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var normalizedPath = bucketPath.normalize();
 		var expected = findValue("objectKey", bucketPath).orElseGet(Assertions::fail);
@@ -350,7 +353,7 @@ class BucketPathTest
 	@Test
 	void normalizePathWithCurrentDirectoryTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, String.join("/./", ABSOLUTE, PATH));
 		var normalizedPath = bucketPath.normalize();
 		var expected = ABSOLUTE_PATH.substring(1);
@@ -361,7 +364,7 @@ class BucketPathTest
 	@Test
 	void normalizePathWithParentDirectoryTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, String.join("/../", ABSOLUTE, PATH));
 		var normalizedPath = bucketPath.normalize();
 		var expected = PATH;
@@ -372,7 +375,7 @@ class BucketPathTest
 	@Test
 	void normalizePathWithBackwardDirectoryTest()
 	{
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var path = ABSOLUTE_PATH.concat("/");
 		var bucketPath = new BucketPath(fileSystem, path);
 		var normalizedPath = bucketPath.normalize();
@@ -399,7 +402,7 @@ class BucketPathTest
 	void resolveWithBucketBathHavingDifferentFileSystemTest(@Mock BucketPath path,
 															@Mock BucketFileSystem fileSystem)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(this.fileSystem, ABSOLUTE_PATH);
 		Assertions.assertThrows(IllegalArgumentException.class, () -> bucketPath.resolve(path));
 	}
@@ -491,10 +494,10 @@ class BucketPathTest
 	@Test
 	void toUriTest(@Mock FileSystemProvider fileSystemProvider, @Mock FileStore fileStore)
 	{
-		Mockito.when(fileSystemProvider.getScheme()).thenReturn(S3);
-		Mockito.when(fileStore.name()).thenReturn(TEST_BUCKET);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		when(fileSystemProvider.getScheme()).thenReturn(S3);
+		when(fileStore.name()).thenReturn(TEST_BUCKET);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var uri = bucketPath.toUri();
 		Assertions.assertEquals(S3, uri.getScheme());
@@ -529,11 +532,11 @@ class BucketPathTest
 	void toRealNotExistingPathTest(@Mock FileSystemProvider fileSystemProvider,
 								   @Mock FileStore fileStore)
 	{
-		Mockito.when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(false);
-		Mockito.when(fileStore.name()).thenReturn(TEST_BUCKET);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(false);
+		when(fileStore.name()).thenReturn(TEST_BUCKET);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		Assertions.assertThrows(NoSuchFileException.class, bucketPath::toRealPath);
 	}
@@ -541,9 +544,9 @@ class BucketPathTest
 	@Test
 	void toRealPathTest(@Mock FileSystemProvider fileSystemProvider)
 	{
-		Mockito.when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(true);
-		Mockito.when(fileSystem.provider()).thenReturn(fileSystemProvider);
-		Mockito.when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
+		when(fileSystemProvider.exists(Mockito.any(Path.class))).thenReturn(true);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(fileSystem.getPath(Mockito.anyString())).thenCallRealMethod();
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var realPath = JunitHelper.tryCall(bucketPath::toRealPath);
 		var root = findValue("root", realPath);
@@ -638,7 +641,8 @@ class BucketPathTest
 			var bucketPath = new BucketPath(fileSystem, PATH);
 			var kinds = new Kind[] {StandardWatchEventKinds.ENTRY_CREATE};
 			var exception = Assertions.assertThrows(UnsupportedOperationException.class,
-													() -> bucketPath.register(watchService, kinds,
+													() -> bucketPath.register(watchService,
+																			  kinds,
 																			  modifier));
 			var suppressed = exception.getSuppressed();
 			Assertions.assertEquals(1, suppressed.length);
@@ -692,7 +696,7 @@ class BucketPathTest
 	@Test
 	void equalsToDifferentPathTest(@Mock BucketPath path)
 	{
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
+		when(path.getFileSystem()).thenReturn(fileSystem);
 		var bucketPath = new BucketPath(fileSystem, ABSOLUTE_PATH);
 		var result = bucketPath.equals(path);
 		Assertions.assertFalse(result);

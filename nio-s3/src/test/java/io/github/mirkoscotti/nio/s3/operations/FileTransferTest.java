@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.operations;
 
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -74,7 +76,8 @@ class FileTransferTest
 	{
 		var fileTransfer = new FileTransfer(client, SOURCE_BUCKET, SOURCE_KEY);
 		var exception = Assertions.assertThrows(IOException.class,
-												() -> fileTransfer.transfer(client, SOURCE_BUCKET,
+												() -> fileTransfer.transfer(client,
+																			SOURCE_BUCKET,
 																			null));
 		Assertions.assertInstanceOf(ExecutionException.class, exception.getCause());
 	}
@@ -85,15 +88,16 @@ class FileTransferTest
 													@Mock S3TransferManager transferManager,
 													@Mock Copy copy,
 													@Mock CompletableFuture<CompletedCopy> future)
+		throws Exception
 	{
-		Mockito.when(builder.s3Client(Mockito.any(S3AsyncClient.class))).thenReturn(builder);
-		Mockito.when(builder.build()).thenReturn(transferManager);
-		Mockito.when(transferManager.copy(Mockito.any(Consumer.class))).thenReturn(copy);
-		Mockito.when(copy.completionFuture()).thenReturn(future);
+		when(builder.s3Client(Mockito.any(S3AsyncClient.class))).thenReturn(builder);
+		when(builder.build()).thenReturn(transferManager);
+		when(transferManager.copy(Mockito.any(Consumer.class))).thenReturn(copy);
+		when(copy.completionFuture()).thenReturn(future);
 		try (var mock = Mockito.mockStatic(S3TransferManager.class))
 		{
-			Mockito.when(future.get(Mockito.anyLong(), Mockito.any(TimeUnit.class)))
-				   .thenThrow(InterruptedException.class);
+			when(future.get(Mockito.anyLong(),
+							Mockito.any(TimeUnit.class))).thenThrow(InterruptedException.class);
 			mock.when(S3TransferManager::builder).thenReturn(builder);
 			var fileTransfer = new FileTransfer(client, SOURCE_BUCKET, SOURCE_KEY);
 			var exception = Assertions.assertThrows(IOException.class,
@@ -101,10 +105,6 @@ class FileTransferTest
 																				SOURCE_BUCKET,
 																				TARGET_KEY));
 			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
 		}
 	}
 
@@ -114,15 +114,16 @@ class FileTransferTest
 														 @Mock S3TransferManager transferManager,
 														 @Mock Upload upload,
 														 @Mock CompletableFuture<CompletedUpload> future)
+		throws Exception
 	{
-		Mockito.when(builder.s3Client(Mockito.any(S3AsyncClient.class))).thenReturn(builder);
-		Mockito.when(builder.build()).thenReturn(transferManager);
-		Mockito.when(transferManager.upload(Mockito.any(Consumer.class))).thenReturn(upload);
-		Mockito.when(upload.completionFuture()).thenReturn(future);
+		when(builder.s3Client(Mockito.any(S3AsyncClient.class))).thenReturn(builder);
+		when(builder.build()).thenReturn(transferManager);
+		when(transferManager.upload(Mockito.any(Consumer.class))).thenReturn(upload);
+		when(upload.completionFuture()).thenReturn(future);
 		try (var mock = Mockito.mockStatic(S3TransferManager.class))
 		{
-			Mockito.when(future.get(Mockito.anyLong(), Mockito.any(TimeUnit.class)))
-				   .thenThrow(InterruptedException.class);
+			when(future.get(Mockito.anyLong(),
+							Mockito.any(TimeUnit.class))).thenThrow(InterruptedException.class);
 			mock.when(S3TransferManager::builder).thenReturn(builder);
 			var fileTransfer = new FileTransfer(client, TARGET_BUCKET, SOURCE_KEY);
 			var exception = Assertions.assertThrows(IOException.class,
@@ -130,10 +131,6 @@ class FileTransferTest
 																				SOURCE_BUCKET,
 																				TARGET_KEY));
 			Assertions.assertInstanceOf(InterruptedException.class, exception.getCause());
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
 		}
 	}
 }

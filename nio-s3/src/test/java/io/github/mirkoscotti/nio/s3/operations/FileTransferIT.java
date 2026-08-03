@@ -82,7 +82,7 @@ class FileTransferIT
 	}
 
 	@Test
-	void copyToSameBucket()
+	void copyToSameBucket() throws IOException
 	{
 		CONTAINER.createObjectWithChecksum(SOURCE_BUCKET, SOURCE_FILE, sourceFile);
 		try (var client = clientBuilder(SOURCE_USER, SOURCE_REGION).build();
@@ -93,14 +93,10 @@ class FileTransferIT
 			CONTAINER.checksum(SOURCE_BUCKET, TARGET_FILE)
 					 .forEach((item1, item2) -> assertChecksum(stream, item2.intValue(), item1));
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 	}
 
 	@Test
-	void copyToDifferentBucket()
+	void copyToDifferentBucket() throws Exception
 	{
 		CONTAINER.createObjectWithChecksum(SOURCE_BUCKET, SOURCE_FILE, sourceFile);
 		try (var sourceClient = clientBuilder(SOURCE_USER, SOURCE_REGION).build();
@@ -113,17 +109,12 @@ class FileTransferIT
 			var lastEntry = map.pollLastEntry();
 			var outputStream = new ByteArrayOutputStream();
 			map.entrySet()
-			   .stream()
 			   .forEach(item -> writeDigest(stream, outputStream, item.getKey(), item.getValue()));
 			var expected = Base64.getEncoder()
 								 .encodeToString(MessageDigest.getInstance(CHECKSUM_ALGORITHM)
 															  .digest(outputStream.toByteArray()));
 			var result = lastEntry.getKey();
 			Assertions.assertEquals(expected, result);
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
 		}
 	}
 

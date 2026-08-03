@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.functions;
 
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 
 import org.junit.jupiter.api.Assertions;
@@ -32,149 +36,86 @@ class TransformerTest<I, O>
 	private Mapper<I, O> mapper;
 
 	@Test
-	void thenTest(@Mock Mapper<I, O> orMapper)
+	void thenTest(@Mock Mapper<I, O> orMapper) throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
-			Mockito.when(mapper.map(input)).thenReturn(output);
-			var result = Transformer.<I, O>of(input)
-									.when(condition)
-									.then(mapper)
-									.orReturn(orMapper);
-			Mockito.verify(mapper, Mockito.atLeastOnce()).map(input);
-			Mockito.verify(orMapper, Mockito.never()).map(Mockito.any());
-			Assertions.assertEquals(output, result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+		when(mapper.map(input)).thenReturn(output);
+		var result = Transformer.<I, O>of(input).when(condition).then(mapper).orReturn(orMapper);
+		verify(mapper, Mockito.atLeastOnce()).map(input);
+		verify(orMapper, never()).map(Mockito.any());
+		Assertions.assertEquals(output, result);
 	}
 
 	@Test
-	void orReturnWhenNullTest(@Mock Mapper<I, O> orMapper)
+	void orReturnWhenNullTest(@Mock Mapper<I, O> orMapper) throws IOException
 	{
-		try
-		{
-			Mockito.when(orMapper.map(input)).thenReturn(output);
-			var result = Transformer.<I, O>of(input).when(null).then(mapper).orReturn(orMapper);
-			Mockito.verify(mapper, Mockito.never()).map(Mockito.any());
-			Mockito.verify(orMapper, Mockito.atLeastOnce()).map(Mockito.any());
-			Assertions.assertEquals(output, result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(orMapper.map(input)).thenReturn(output);
+		var result = Transformer.<I, O>of(input).when(null).then(mapper).orReturn(orMapper);
+		verify(mapper, never()).map(Mockito.any());
+		verify(orMapper, Mockito.atLeastOnce()).map(Mockito.any());
+		Assertions.assertEquals(output, result);
 	}
 
 	@Test
-	void orReturnTest(@Mock Mapper<I, O> orMapper, @Mock O fallback)
+	void orReturnTest(@Mock Mapper<I, O> orMapper, @Mock O fallback) throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(false);
-			Mockito.when(orMapper.map(input)).thenReturn(fallback);
-			var result = Transformer.<I, O>of(input)
-									.when(condition)
-									.then(mapper)
-									.orReturn(orMapper);
-			Mockito.verify(mapper, Mockito.never()).map(input);
-			Mockito.verify(orMapper, Mockito.atLeastOnce()).map(Mockito.any());
-			Assertions.assertEquals(fallback, result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(false);
+		when(orMapper.map(input)).thenReturn(fallback);
+		var result = Transformer.<I, O>of(input).when(condition).then(mapper).orReturn(orMapper);
+		verify(mapper, never()).map(input);
+		verify(orMapper, Mockito.atLeastOnce()).map(Mockito.any());
+		Assertions.assertEquals(fallback, result);
 	}
 
 	@Test
 	void errorOnConditionTest()
 	{
-		JunitHelper.tryCall(() -> Mockito.when(condition.isSatisfied(Mockito.any()))
-										 .thenThrow(IOException.class));
+		JunitHelper.tryCall(() -> when(condition.isSatisfied(Mockito.any())).thenThrow(IOException.class));
 		var transformer = Transformer.<I, O>of(input).when(condition);
 		Assertions.assertThrows(IOException.class, () -> transformer.thenReturn(mapper));
 	}
 
 	@Test
-	void errorOnMapperTest()
+	void errorOnMapperTest() throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
-			Mockito.when(mapper.map(input)).thenThrow(IOException.class);
-			var transformer = Transformer.<I, O>of(input).when(condition);
-			Assertions.assertThrows(IOException.class, () -> transformer.thenReturn(mapper));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+		when(mapper.map(input)).thenThrow(IOException.class);
+		var transformer = Transformer.<I, O>of(input).when(condition);
+		Assertions.assertThrows(IOException.class, () -> transformer.thenReturn(mapper));
 	}
 
 	@Test
-	void thenReturnTrueTest()
+	void thenReturnTrueTest() throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(true);
-			Mockito.when(mapper.map(input)).thenReturn(output);
-			var result = Transformer.<I, O>of(input).when(condition).thenReturn(mapper);
-			Mockito.verify(mapper, Mockito.atLeastOnce()).map(Mockito.any());
-			Assertions.assertEquals(output, result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(true);
+		when(mapper.map(input)).thenReturn(output);
+		var result = Transformer.<I, O>of(input).when(condition).thenReturn(mapper);
+		verify(mapper, Mockito.atLeastOnce()).map(Mockito.any());
+		Assertions.assertEquals(output, result);
 	}
 
 	@Test
-	void thenReturnFalseTest()
+	void thenReturnFalseTest() throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(false);
-			var result = Transformer.<I, O>of(input).when(condition).thenReturn(mapper);
-			Mockito.verify(mapper, Mockito.never()).map(Mockito.any());
-			Assertions.assertNull(result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(false);
+		var result = Transformer.<I, O>of(input).when(condition).thenReturn(mapper);
+		verify(mapper, never()).map(Mockito.any());
+		Assertions.assertNull(result);
 	}
 
 	@Test
-	void whenNotNullTest()
+	void whenNotNullTest() throws IOException
 	{
-		try
-		{
-			Mockito.when(mapper.map(input)).thenReturn(output);
-			var result = Transformer.<I, O>of(input).whenNotNull().thenReturn(mapper);
-			Assertions.assertEquals(output, result);
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(mapper.map(input)).thenReturn(output);
+		var result = Transformer.<I, O>of(input).whenNotNull().thenReturn(mapper);
+		Assertions.assertEquals(output, result);
 	}
 
 	@Test
-	void orThrowTest(@Mock Exception exception)
+	void orThrowTest(@Mock Exception exception) throws IOException
 	{
-		try
-		{
-			Mockito.when(condition.isSatisfied(Mockito.any())).thenReturn(false);
-			var transformer = Transformer.<I, O>of(input).when(condition).then(mapper);
-			Assertions.assertThrows(Exception.class, () -> transformer.orThrow(() -> exception));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
+		when(condition.isSatisfied(Mockito.any())).thenReturn(false);
+		var transformer = Transformer.<I, O>of(input).when(condition).then(mapper);
+		Assertions.assertThrows(Exception.class, () -> transformer.orThrow(() -> exception));
 	}
 }

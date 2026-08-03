@@ -65,15 +65,18 @@ class BucketPathIT
 	}
 
 	@Test
-	void createEventTest()
+	void createEventTest() throws IOException
 	{
 		var uri = String.join(BucketDescriptor.PATH_SEPARATOR, PATTERN, DIRECTORY)
-						.formatted(CONTAINER.getAccessKey(), CONTAINER.getSecretKey(),
-								   CONTAINER.getHost(), CONTAINER.getFirstMappedPort());
+						.formatted(CONTAINER.getAccessKey(),
+								   CONTAINER.getSecretKey(),
+								   CONTAINER.getHost(),
+								   CONTAINER.getFirstMappedPort());
 		var path = Paths.get(URI.create(uri));
 		try (var watchService = path.getFileSystem().newWatchService())
 		{
-			var watchKey = path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE,
+			var watchKey = path.register(watchService,
+										 StandardWatchEventKinds.ENTRY_CREATE,
 										 StandardWatchEventKinds.ENTRY_MODIFY,
 										 StandardWatchEventKinds.ENTRY_DELETE);
 			var file = baseDirectory.resolve(FILE);
@@ -95,10 +98,6 @@ class BucketPathIT
 			Assertions.assertEquals(expected.size(), result.size());
 			Assertions.assertTrue(expected.containsAll(result));
 			Assertions.assertTrue(result.containsAll(expected));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 

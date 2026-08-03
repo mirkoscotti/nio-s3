@@ -143,14 +143,14 @@ In all other use cases, the behaviour of the channel implementation is exactly t
 |---|---|---|
 | `s3:CreateBucket` | Creating a bucket | `FileSystems#newFileSystem` |
 | `s3:GetBucketPolicy` | Checking whether a bucket is read-only, based on its bucket policy | `FileSystem#isReadOnly` |
-| `s3:GetBucketAcl` | Checking whether a bucket is read-only, based on its ACL; reading a bucket's ACL | `FileSystem#isReadOnly` |
-| `s3:ListBucket` | Listing the objects under a directory; checking whether a directory is empty; scanning a directory | `Files#newDirectoryStream` |
-| `s3:GetObject` | Reading an object's metadata or content; copying/moving an object to another bucket (reading the source); copying a byte range as a multipart upload part (reading the source) | `Files#readAttributes`<br>`Files#newByteChannel` (read)<br>`Files#copy`<br>`Files#move` |
-| `s3:PutObject` | Writing an object; copying/moving an object to another bucket (writing the destination); performing a multipart upload (starting, uploading, and completing parts) | `Files#newByteChannel` (write)<br>`Files#copy`<br>`Files#move` |
+| `s3:GetBucketAcl` | Checking whether a bucket is read-only, based on its ACL; reading a bucket's ACL | `Files#getFileStore` |
+| `s3:ListBucket` | Listing the objects under a directory; checking whether a directory is empty; scanning a directory | `Files#newDirectoryStream`<br>`Files#walkFileTree`<br>`Files#list`<br>`Files#walk`<br>`Files#find` |
+| `s3:GetObject` | Reading an object's metadata or content; copying/moving an object to another bucket (reading the source); copying a byte range as a multipart upload part (reading the source) | `Files#newInputStream`<br>`Files#readAttributes`<br>`Files#newByteChannel` (read)<br>`Files#copy`<br>`Files#move`<br>`Files#mismatch`<br>`Files#getFileAttributeView`<br>`Files#readAttributes`<br>`Files#getAttribute`<br>`Files#isDirectory`<br>`Files#isRegularFile`<br>`Files#getLastModifiedTime`<br>`Files#size`<br>`Files#newBufferedReader`<br>`Files#readAllBytes`<br>`Files#readString`<br>`Files#readAllLines`<br>`Files#lines` |
+| `s3:PutObject` | Writing an object; copying/moving an object to another bucket (writing the destination); performing a multipart upload (starting, uploading, and completing parts) | `Files#newOutputStream`<br>`Files#newByteChannel` (write)<br>`Files#createFile`<br>`Files#createDirectory`<br>`Files#createDirectories`<br>`Files#createTempFile`<br>`Files#createTempDirectory`<br>`Files#newBufferedWriter`<br>`Files#copy`<br>`Files#move`<br>`Files#write`<br>`Files#writeString` |
 | `s3:DeleteObject` | Deleting an object | `Files#delete`<br>`Files#deleteIfExists` |
 | `s3:AbortMultipartUpload` | Aborting an incomplete multipart upload, triggered on error or premature closing of the write channel | `Files#newByteChannel` (write) |
-| `sts:GetCallerIdentity` | Retrieving the ARN of the caller identity, required as input for the IAM policy simulation used to determine permissions on a file or directory | `FileSystemProvider#checkAccess` |
-| `iam:SimulatePrincipalPolicy` | Simulating whether a given principal is allowed to write/delete an object or a directory | `FileSystemProvider#checkAccess` |
+| `sts:GetCallerIdentity` | Retrieving the ARN of the caller identity, required as input for the IAM policy simulation used to determine permissions on a file or directory | `Files#exists`<br>`Files#notExists`<br>`Files#isAccessible`<br>`Files#isReadable`<br>`Files#isWritable`<br>`Files#isExecutable` |
+| `iam:SimulatePrincipalPolicy` | Simulating whether a given principal is allowed to write/delete an object or a directory | `Files#exists`<br>`Files#notExists`<br>`Files#isAccessible`<br>`Files#isReadable`<br>`Files#isWritable`<br>`Files#isExecutable` |
 
 ## 📄 License
 

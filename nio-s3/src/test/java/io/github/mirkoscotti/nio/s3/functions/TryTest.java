@@ -1,5 +1,9 @@
 package io.github.mirkoscotti.nio.s3.functions;
 
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -28,56 +32,36 @@ class TryTest
 	}
 
 	@Test
-	<T> void tryWithoutCatchAndFinallyTest(@Mock Callable<T> tryCallable)
+	<T> void tryWithoutCatchAndFinallyTest(@Mock Callable<T> tryCallable) throws Exception
 	{
-		try
-		{
-			Mockito.when(tryCallable.call()).thenThrow(Exception.class);
-			var tryStatement = Try.to(tryCallable);
-			Assertions.assertThrows(IllegalStateException.class, tryStatement::run);
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
-		}
+		when(tryCallable.call()).thenThrow(Exception.class);
+		var tryStatement = Try.to(tryCallable);
+		Assertions.assertThrows(IllegalStateException.class, tryStatement::run);
 	}
 
 	@Test
 	<T> void callableTest(@Mock Callable<T> tryCallable, @Mock Callable<Void> finallyCallable)
+		throws Exception
 	{
-		try
-		{
-			var tryStatement = Try.to(tryCallable).onFinally(finallyCallable);
-			Mockito.verify(tryCallable, Mockito.never()).call();
-			Mockito.verify(finallyCallable, Mockito.never()).call();
-			tryStatement.run();
-			Mockito.verify(tryCallable, Mockito.atLeastOnce()).call();
-			Mockito.verify(finallyCallable, Mockito.atLeastOnce()).call();
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
-		}
+		var tryStatement = Try.to(tryCallable).onFinally(finallyCallable);
+		verify(tryCallable, never()).call();
+		verify(finallyCallable, never()).call();
+		tryStatement.run();
+		verify(tryCallable, Mockito.atLeastOnce()).call();
+		verify(finallyCallable, Mockito.atLeastOnce()).call();
 	}
 
 	@Test
 	<T> void callableThrowingExceptionTest(@Mock Callable<T> tryCallable,
 										   @Mock Consumer<Exception> catchConsumer,
 										   @Mock Callable<Void> finallyCallable)
+		throws Exception
 	{
-		try
-		{
-			Mockito.when(tryCallable.call()).thenThrow(Exception.class);
-			Mockito.when(finallyCallable.call()).thenThrow(Exception.class);
-			Try.to(tryCallable).onCatch(catchConsumer).onFinally(finallyCallable).run();
-			Mockito.verify(tryCallable, Mockito.atLeastOnce()).call();
-			Mockito.verify(catchConsumer, Mockito.atLeastOnce())
-				   .accept(Mockito.any(Exception.class));
-			Mockito.verify(finallyCallable, Mockito.atLeastOnce()).call();
-		}
-		catch (Exception x)
-		{
-			Assertions.fail(x);
-		}
+		when(tryCallable.call()).thenThrow(Exception.class);
+		when(finallyCallable.call()).thenThrow(Exception.class);
+		Try.to(tryCallable).onCatch(catchConsumer).onFinally(finallyCallable).run();
+		verify(tryCallable, Mockito.atLeastOnce()).call();
+		verify(catchConsumer, Mockito.atLeastOnce()).accept(Mockito.any(Exception.class));
+		verify(finallyCallable, Mockito.atLeastOnce()).call();
 	}
 }

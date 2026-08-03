@@ -1,12 +1,13 @@
 package io.github.mirkoscotti.nio.s3.configuration;
 
+import static org.mockito.Mockito.when;
+
 import java.net.URI;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.github.mirkoscotti.nio.s3.exceptions.BucketUriException;
@@ -44,8 +45,8 @@ class UriDescriptorTest
 	@Test
 	void bucketStyleTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn(S3);
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getScheme()).thenReturn(S3);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		Assertions.assertTrue(uriDescriptor.endpoint().isEmpty());
@@ -54,9 +55,9 @@ class UriDescriptorTest
 	@Test
 	void bucketStyleWithEmptyPathTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn(S3);
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
-		Mockito.when(uri.getPath()).thenReturn("/");
+		when(uri.getScheme()).thenReturn(S3);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getPath()).thenReturn("/");
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		Assertions.assertTrue(uriDescriptor.endpoint().isEmpty());
@@ -65,8 +66,8 @@ class UriDescriptorTest
 	@Test
 	void virtualHostStyleTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn(S3);
-		Mockito.when(uri.getHost()).thenReturn(String.join(".", BUCKET_NAME, S3, ENDPOINT));
+		when(uri.getScheme()).thenReturn(S3);
+		when(uri.getHost()).thenReturn(String.join(".", BUCKET_NAME, S3, ENDPOINT));
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		var endpoint = uriDescriptor.endpoint();
@@ -80,10 +81,10 @@ class UriDescriptorTest
 	@Test
 	void pathStyleTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn("s3");
-		Mockito.when(uri.getHost()).thenReturn(ENDPOINT);
-		Mockito.when(uri.getPort()).thenReturn(-1);
-		Mockito.when(uri.getPath()).thenReturn("/".concat(BUCKET_NAME));
+		when(uri.getScheme()).thenReturn("s3");
+		when(uri.getHost()).thenReturn(ENDPOINT);
+		when(uri.getPort()).thenReturn(-1);
+		when(uri.getPath()).thenReturn("/".concat(BUCKET_NAME));
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertEquals(BUCKET_NAME, uriDescriptor.bucketName());
 		var endpoint = uriDescriptor.endpoint();
@@ -96,9 +97,9 @@ class UriDescriptorTest
 	@Test
 	void incompleteCredentialsTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn(S3);
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
-		Mockito.when(uri.getUserInfo()).thenReturn(ACCESS_KEY);
+		when(uri.getScheme()).thenReturn(S3);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getUserInfo()).thenReturn(ACCESS_KEY);
 		var uriDescriptor = new UriDescriptor(uri);
 		Assertions.assertTrue(uriDescriptor.credentials().isEmpty());
 	}
@@ -106,9 +107,9 @@ class UriDescriptorTest
 	@Test
 	void credentialsTest(@Mock URI uri)
 	{
-		Mockito.when(uri.getScheme()).thenReturn(S3);
-		Mockito.when(uri.getHost()).thenReturn(BUCKET_NAME);
-		Mockito.when(uri.getUserInfo()).thenReturn(String.join(":", ACCESS_KEY, SECRET_KEY));
+		when(uri.getScheme()).thenReturn(S3);
+		when(uri.getHost()).thenReturn(BUCKET_NAME);
+		when(uri.getUserInfo()).thenReturn(String.join(":", ACCESS_KEY, SECRET_KEY));
 		var uriDescriptor = new UriDescriptor(uri);
 		var optional = uriDescriptor.credentials();
 		Assertions.assertTrue(optional.isPresent());

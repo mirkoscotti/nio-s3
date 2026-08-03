@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.extensions.jdk.jsr203;
 
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.file.FileStore;
@@ -42,40 +44,32 @@ class BucketReadableByteChannelTest
 	@BeforeEach
 	void beforeEach()
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(fileAttributes);
-		Mockito.when(path.getFileSystem()).thenReturn(fileSystem);
-		Mockito.when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
-		Mockito.when(fileStore.name()).thenReturn("file-store");
-		Mockito.when(path.toString()).thenReturn("path");
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(fileAttributes);
+		when(path.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.getFileStores()).thenReturn(List.of(fileStore));
+		when(fileStore.name()).thenReturn("file-store");
+		when(path.toString()).thenReturn("path");
 	}
 
 	@Test
-	void isOpenTest()
+	void isOpenTest() throws IOException
 	{
 		var readableByteChannel = new BucketReadableByteChannel(awsFacade, path);
 		try (var channel = readableByteChannel)
 		{
 			Assertions.assertTrue(channel.isOpen());
 		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
-		}
 		Assertions.assertFalse(readableByteChannel.isOpen());
 	}
 
 	@Test
-	void positionWhileChannelIsClosedTest()
+	void positionWhileChannelIsClosedTest() throws IOException
 	{
 		var readableByteChannel = new BucketReadableByteChannel(awsFacade, path);
 		try (var channel = readableByteChannel)
 		{
 			// Nothing to do
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 		Assertions.assertThrows(ClosedChannelException.class, readableByteChannel::position);
 		Assertions.assertThrows(ClosedChannelException.class,
@@ -83,15 +77,11 @@ class BucketReadableByteChannelTest
 	}
 
 	@Test
-	void negativePositionTest()
+	void negativePositionTest() throws IOException
 	{
 		try (var channel = new BucketReadableByteChannel(awsFacade, path))
 		{
 			Assertions.assertThrows(IllegalArgumentException.class, () -> channel.position(-1));
-		}
-		catch (IOException x)
-		{
-			Assertions.fail(x);
 		}
 	}
 }
