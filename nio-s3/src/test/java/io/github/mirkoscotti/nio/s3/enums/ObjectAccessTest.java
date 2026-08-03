@@ -101,8 +101,8 @@ class ObjectAccessTest
 										   Mockito.anyString())).thenThrow(exception);
 		when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
 		when(basicFileAttributes.isDirectory()).thenReturn(true);
-		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
-		Mockito.when(errorDetails.errorCode()).thenReturn("AccessDenied");
+		when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		when(errorDetails.errorCode()).thenReturn("AccessDenied");
 		Assertions.assertThrows(AccessDeniedException.class,
 								() -> ObjectAccess.check(awsFacade,
 														 TEST_BUCKET,
@@ -213,10 +213,10 @@ class ObjectAccessTest
 	@Test
 	void executeDeniedForFileTest()
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
-		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
-		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(false);
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(basicFileAttributes);
+		when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		when(basicFileAttributes.isDirectory()).thenReturn(false);
 		Assertions.assertThrows(AccessDeniedException.class,
 								() -> ObjectAccess.check(awsFacade,
 														 TEST_BUCKET,
@@ -228,14 +228,15 @@ class ObjectAccessTest
 										  AwsErrorDetails errorDetails,
 										  AccessMode accessMode)
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
-		Mockito.when(awsFacade.listObjects(Mockito.anyString(), Mockito.anyString(), Mockito.eq(0)))
-			   .thenThrow(exception);
-		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
-		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
-		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
-		Mockito.when(errorDetails.errorCode()).thenReturn("AccessDenied");
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(basicFileAttributes);
+		when(awsFacade.listObjects(Mockito.anyString(),
+								   Mockito.anyString(),
+								   Mockito.eq(0))).thenThrow(exception);
+		when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		when(basicFileAttributes.isDirectory()).thenReturn(true);
+		when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		when(errorDetails.errorCode()).thenReturn("AccessDenied");
 		Assertions.assertThrows(AccessDeniedException.class,
 								() -> ObjectAccess.check(awsFacade,
 														 TEST_BUCKET,
@@ -247,13 +248,14 @@ class ObjectAccessTest
 														   AwsErrorDetails errorDetails,
 														   AccessMode accessMode)
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
-		Mockito.when(awsFacade.listObjects(Mockito.anyString(), Mockito.anyString(), Mockito.eq(0)))
-			   .thenThrow(exception);
-		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
-		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
-		Mockito.when(exception.awsErrorDetails()).thenReturn(errorDetails);
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(basicFileAttributes);
+		when(awsFacade.listObjects(Mockito.anyString(),
+								   Mockito.anyString(),
+								   Mockito.eq(0))).thenThrow(exception);
+		when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		when(basicFileAttributes.isDirectory()).thenReturn(true);
+		when(exception.awsErrorDetails()).thenReturn(errorDetails);
 		Assertions.assertThrows(S3Exception.class,
 								() -> ObjectAccess.check(awsFacade,
 														 TEST_BUCKET,
@@ -263,10 +265,10 @@ class ObjectAccessTest
 
 	private void actionAllowedForDirectory(AccessMode accessMode)
 	{
-		Mockito.when(awsFacade.objectMetadata(Mockito.anyString(), Mockito.anyString()))
-			   .thenReturn(basicFileAttributes);
-		Mockito.when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
-		Mockito.when(basicFileAttributes.isDirectory()).thenReturn(true);
+		when(awsFacade.objectMetadata(Mockito.anyString(),
+									  Mockito.anyString())).thenReturn(basicFileAttributes);
+		when(basicFileAttributes.fileKey()).thenReturn(TEST_OBJECT);
+		when(basicFileAttributes.isDirectory()).thenReturn(true);
 		Assertions.assertDoesNotThrow(() -> ObjectAccess.check(awsFacade,
 															   TEST_BUCKET,
 															   TEST_OBJECT,
