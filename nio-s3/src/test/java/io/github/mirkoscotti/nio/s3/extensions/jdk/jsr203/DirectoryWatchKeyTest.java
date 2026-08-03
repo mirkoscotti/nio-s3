@@ -70,7 +70,7 @@ class DirectoryWatchKeyTest
 			var watchKey = new DirectoryWatchKey(directory);
 			field.set(watchKey, false);
 			Assertions.assertFalse(watchKey.reset());
-			verify(mock.constructed().get(0), Mockito.never()).clear();
+			verify(mock.constructed().get(0), never()).clear();
 		}
 	}
 

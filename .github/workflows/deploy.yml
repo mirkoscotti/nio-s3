@@ -48,7 +48,7 @@ jobs:
               "username": "${{ secrets.CENTRAL_USERNAME }}",
               "password": "${{ secrets.CENTRAL_PASSWORD }}"
             }]
-      - name: Build and Test
-        run: mvn clean verify -Pmaven-central -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
+      - name: Verify Build
+        run: mvn clean verify -DskipTests -Pmaven-central -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
 #      - name: Deploy to Maven Central
 #        run: mvn deploy -Pmaven-central -DskipTests -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"

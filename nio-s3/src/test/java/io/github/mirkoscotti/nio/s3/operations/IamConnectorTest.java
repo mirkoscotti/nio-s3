@@ -120,7 +120,7 @@ class IamConnectorTest
 	@Test
 	void equalsTest(@Mock IamAsyncClientBuilder builder, @Mock IamAsyncClient client)
 	{
-		Mockito.when(builder.build()).thenReturn(client);
+		when(builder.build()).thenReturn(client);
 		try (var mock = Mockito.mockStatic(IamAsyncClient.class))
 		{
 			mock.when(IamAsyncClient::builder).thenReturn(builder);

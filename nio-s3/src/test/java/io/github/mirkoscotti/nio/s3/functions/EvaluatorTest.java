@@ -36,7 +36,7 @@ class EvaluatorTest
 		when(expression.evaluate()).thenReturn(true);
 		Evaluator.when(expression).then(action).elseExecute(elseAction);
 		verify(action, Mockito.atLeastOnce()).execute();
-		verify(elseAction, Mockito.never()).execute();
+		verify(elseAction, never()).execute();
 	}
 
 	@Test
@@ -134,7 +134,7 @@ class EvaluatorTest
 		when(expression.evaluate()).thenReturn(false);
 		when(elseWhen.evaluate()).thenReturn(true);
 		Evaluator.when(expression).then(action).elseWhen(elseWhen).thenExecute(elseIfAction);
-		verify(action, Mockito.never()).execute();
+		verify(action, never()).execute();
 		verify(elseIfAction, Mockito.atLeastOnce()).execute();
 	}
 
