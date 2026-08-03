@@ -30,7 +30,7 @@ jobs:
           echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -49,6 +49,10 @@ jobs:
               "password": "${{ secrets.CENTRAL_PASSWORD }}"
             }]
       - name: Verify Build
-        run: mvn clean verify -DskipTests -Pmaven-central -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
+        run: mvn clean verify -DskipTests -Pmaven-central
+        env: 
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 #      - name: Deploy to Maven Central
-#        run: mvn deploy -Pmaven-central -DskipTests -Dgpg.passphrase="${{ secrets.GPG_PASSPHRASE }}"
+#        run: mvn deploy -Pmaven-central -DskipTests
+#        env: 
+#          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
