@@ -1,5 +1,7 @@
 package io.github.mirkoscotti.nio.s3.enums;
 
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +24,7 @@ class PathSyntaxTest
 	@Test
 	void globTest(@Mock GlobPattern globPattern)
 	{
-		Mockito.when(globPattern.toRegex()).thenReturn(REGEX);
+		when(globPattern.toRegex()).thenReturn(REGEX);
 		try (var globMock = Mockito.mockStatic(GlobPattern.class))
 		{
 			globMock.when(() -> GlobPattern.of(Mockito.anyString())).thenReturn(globPattern);

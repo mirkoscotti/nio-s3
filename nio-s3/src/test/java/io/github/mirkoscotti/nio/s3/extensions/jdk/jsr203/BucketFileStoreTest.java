@@ -197,6 +197,6 @@ class BucketFileStoreTest
 	private void initializeBucketFileStoreAttributeView(BucketFileStoreAttributeView view,
 														Context context)
 	{
-		Mockito.when(view.get(Mockito.any(BucketProperty.class))).thenReturn(VALUE);
+		when(view.get(Mockito.any(BucketProperty.class))).thenReturn(VALUE);
 	}
 }
