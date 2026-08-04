@@ -1,0 +1,131 @@
+name: Create Pull Request
+on:
+  push:
+    branches-ignore:
+      - main
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  issues: write
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Issue Number
+        id: issue_extractor
+        env:
+          REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          REPOSITORY_NAME="${REPOSITORY#*/}"
+          ISSUE_NUMBER="${BRANCH_NAME#$REPOSITORY_NAME-}"
+          if [[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "issue_number=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+          else
+            echo "No valid issue number found. Skipping remaining steps..."
+          fi
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check Pull Request
+        id: pull_request_checker
+        if: steps.issue_extractor.outputs.issue_number > 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh pr list --head "${{ github.ref_name }}" --json number | grep -q "number"; then
+            echo "Pull Request already exists. Ignoring creation..."
+            echo "pull_request_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "pull_request_exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Issue Details
+        id: issue_details
+        if: steps.pull_request_checker.outputs.pull_request_exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_JSON=$(gh issue view ${{ steps.issue_extractor.outputs.issue_number }} --json title,body,author,url)
+          echo "DEBUG JSON: $ISSUE_JSON"
+          echo "issue_url=$(echo "$ISSUE_JSON" | jq -r .url)" >> $GITHUB_OUTPUT
+          echo "issue_user=$(echo "$ISSUE_JSON" | jq -r .author.login)" >> $GITHUB_OUTPUT
+          echo "issue_title=$(echo "$ISSUE_JSON" | jq -r .title)" >> $GITHUB_OUTPUT
+          {
+            echo "issue_body<<EOF"
+            echo "$ISSUE_JSON" | jq -r .body
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+      - name: Base Branch
+        id: base_branch
+        if: steps.pull_request_checker.outputs.pull_request_exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.issue_extractor.outputs.issue_number }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/parent")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          if [[ "$HTTP_CODE" -eq 200 ]]; then
+            PARENT_ISSUE_NUMBER=$(echo "$BODY" | jq -r .number)
+            REPOSITORY_NAME="${REPOSITORY#*/}"
+            BASE_BRANCH_NAME="${REPOSITORY_NAME}-${PARENT_ISSUE_NUMBER}"
+            echo "name=${BASE_BRANCH_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "No parent issue found (API status: ${HTTP_CODE}). Defaulting base branch to 'main'..."
+            echo "name=main" >> $GITHUB_OUTPUT
+          fi
+      - name: Create Pull Request
+        id: pull_request_creator
+        if: steps.pull_request_checker.outputs.pull_request_exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_BODY: |
+            ## 🔗 Link to the issue
+            Resolves #${{ steps.issue_extractor.outputs.issue_number }}
+            
+            ## 📋 Description
+            ${{ steps.issue_details.outputs.issue_body }}
+            
+            Thanks to @${{ steps.issue_details.outputs.issue_user }} for reporting this issue!
+            
+            ## ✅ Checklist
+            - [ ] Implementation completed
+            - [ ] Tests added/updated
+            - [ ] Documentation updated
+            - [ ] Code review required
+            
+            ---
+            *This PR was automatically created from issue [#${{ steps.issue_extractor.outputs.issue_number }}](${{ steps.issue_details.outputs.issue_url }})*
+        run: |
+          PULL_REQUEST_URL=$(gh pr create \
+            --base "${{ steps.base_branch.outputs.name }}" \
+            --head "${{ github.ref_name }}" \
+            --title "WIP: #${{ steps.issue_extractor.outputs.issue_number }} - ${{ steps.issue_details.outputs.issue_title }}" \
+            --body "$PULL_REQUEST_BODY" \
+            --draft)
+          echo "url=${PULL_REQUEST_URL}" >> $GITHUB_OUTPUT
+      - name: Final Comment
+        if: steps.pull_request_checker.outputs.pull_request_exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.issue_extractor.outputs.issue_number }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          BASE_BRANCH: ${{ steps.base_branch.outputs.name }}
+          PULL_REQUEST_URL: ${{ steps.pull_request_creator.outputs.url }}
+        run: |
+          COMMENT="🚀 **Pull Request successfully created!**
+
+          📋 **Branch:** \`${BRANCH_NAME}\`
+          📋 **Base Branch:** \`${BASE_BRANCH}\`
+          🔄 **Pull Request:** Go to [Pull Requests](${PULL_REQUEST_URL}) to view the Pull Request created.
+
+          The branch is ready for development. Happy coding! 🎉"
+          gh issue comment ${ISSUE_NUMBER} --body "$COMMENT"

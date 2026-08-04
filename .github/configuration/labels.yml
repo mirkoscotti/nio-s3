@@ -1,0 +1,73 @@
+# Type labels
+- name: "type:bug"
+  color: "e53e3e"
+  description: "Something isn't working"
+
+- name: "type:feature"
+  color: "9f7aea"
+  description: "A new feature"
+
+- name: "type:enhancement"
+  color: "38a169"
+  description: "Improvement to existing feature"
+
+- name: "type:documentation"
+  color: "3182ce"
+  description: "Improvements or additions to documentation"
+
+- name: "type:maintenance"
+  color: "a0aec0"
+  description: "Code maintenance and refactoring"
+
+- name: "type:testing"
+  color: "48bb78"
+  description: "Related to testing"
+
+- name: "type:security"
+  color: "ff0000"
+  description: "Security-related issues"
+
+- name: "type:performance"
+  color: "fbb6ce"
+  description: "Performance improvements"
+
+- name: "type:accessibility"
+  color: "ff6b6b"
+  description: "Accessibility improvements"
+
+# Status labels
+- name: "status:triage"
+  color: "f59e0b"
+  description: "Needs to be triaged"
+
+- name: "status:accepted"
+  color: "10b981"
+  description: "Feature accepted, ready to be worked on"
+
+- name: "status:confirmed"
+  color: "dc2626"
+  description: "Bug confirmed, ready to be fixed"
+
+- name: "status:in-progress"
+  color: "3b82f6"
+  description: "Currently being worked on"
+
+- name: "status:review"
+  color: "8b5cf6"
+  description: "Ready for review"
+
+- name: "status:blocked"
+  color: "ef4444"
+  description: "Blocked by external dependency"
+
+- name: "status:on-hold"
+  color: "6b7280"
+  description: "On hold for now"
+
+- name: "status:duplicate"
+  color: "9ca3af"
+  description: "Duplicate of another issue"
+
+- name: "status:wontfix"
+  color: "374151"
+  description: "Won't be fixed"
