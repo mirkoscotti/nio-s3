@@ -52,7 +52,7 @@ jobs:
         run: mvn clean verify -DskipTests -Pmaven-central
         env: 
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-#      - name: Deploy to Maven Central
-#        run: mvn deploy -Pmaven-central -DskipTests
-#        env: 
-#          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Deploy to Maven Central
+        run: mvn deploy -Pmaven-central -DskipTests
+        env: 
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
