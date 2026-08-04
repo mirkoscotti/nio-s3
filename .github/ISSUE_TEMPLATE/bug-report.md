@@ -2,7 +2,7 @@
 name: Bug Report
 about: Report a bug to help us improve
 title: '[BUG] '
-labels: ["type:bug", "ststus:triage"]
+labels: ["type:bug"]
 assignees: ''
 ---
 
