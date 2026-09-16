@@ -1,0 +1,43 @@
+name: ✨ Feature Request
+description: Suggest an idea for this project
+title: "[FEATURE] - "
+labels: ["type:feature"]
+
+body:
+
+  - type: checkboxes
+    id: verify-existing-issue
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the feature you are requesting.
+      options:
+      - label: I have searched the existing issues
+        required: true
+  
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: 🎯 Feature description
+      description: A clear description of the feature you would like to see.
+      placeholder: |
+        - What is missing
+        - Which is your goal
+        - What workaround are you using now (if any)
+    validations:
+      required: true
+  
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 💡 Proposed solution
+      description: If you are a developer and have an idea how to implement this feature, draft it here.
+    validations:
+      required: false
+  
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: ℹ️ Additional context
+      description: Add any other information, logs, links, or references that might be helpful to solve the issue.
+    validations:
+      required: false
