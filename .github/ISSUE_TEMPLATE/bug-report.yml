@@ -1,0 +1,76 @@
+name: 🐞 Bug Report
+description: Report a bug to help us improve
+title: "[BUG] - "
+labels: ["type:bug"]
+
+body:
+
+  - type: checkboxes
+    id: verify-existing-issue
+    attributes:
+      label: 🔍 Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+      - label: I have searched the existing issues
+        required: true
+  
+  - type: input
+    id: project-version
+    attributes:
+      label: 🏷️ Project version
+      description: e.g. v1.2.3
+      placeholder: v1.2.3
+    validations:
+      required: true
+  
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: ❌ Current behavior
+      description: A clear and concise description of what actually happens.
+      placeholder: 💡 Tip: You can paste data structure (JSON, XML, ...) here
+    validations:
+      required: true
+  
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: ✅ Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: 💡 Tip: You can paste data structure (JSON, XML, ...) here
+    validations:
+      required: true
+  
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: 🔁 Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. Drag & drop screenshots
+        3. Attach logs
+        ...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: possible-solution
+    attributes:
+      label: 💡 Possible Solution
+      description: If you have ideas on how to solve the issue, share them here
+      placeholder: |
+        1. Add inline code snippet
+        2. Share a link with your proposal
+        3. Reference existing solutions
+        ...
+    validations:
+      required: false
+  
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: ℹ️ Additional context
+      description: Add any other information, logs, links, or references that might be helpful to solve the issue.
+    validations:
+      required: false

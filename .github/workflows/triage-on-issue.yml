@@ -1,13 +1,19 @@
 name: Assign Triage Label On Issue
+
 on:
   issues:
     types: [opened]
+
 permissions:
   issues: write
+
 jobs:
+
   assign-triage:
     runs-on: ubuntu-latest
+    
     steps:
+      
       - name: Add Triage Label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
