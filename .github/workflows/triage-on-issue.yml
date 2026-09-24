@@ -1,20 +1,22 @@
 name: Assign Triage Label On Issue
+
 on:
   issues:
     types: [opened]
+
 permissions:
   issues: write
+
 jobs:
+
   assign-triage:
     runs-on: ubuntu-latest
+    
     steps:
+      
       - name: Add Triage Label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          echo "Adding triage label to issue #${{ env.ISSUE_NUMBER }}"
-          gh issue edit "${{ env.ISSUE_NUMBER }}" \
-            --add-label "status:triage" \
-            --repo "${{ github.repository }}" || echo "Failed to add label, but continuing..."
-          echo "Triage label added successfully to issue #${ISSUE_NUMBER}"
+        run: bash 

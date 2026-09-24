@@ -1,25 +1,36 @@
 name: Create Branch on Issue
+
 on:
   issues:
     types: [labeled]
+    
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  
 jobs:
+
   create-branch:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'status:accepted' || github.event.label.name == 'status:confirmed'
+    
+    env:
+      BASE_DIRECTORY: .github/scripts/issue-to-branch
+    
     steps:
+    
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
+    
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
       - name: Create branch
         id: branch_creator
         env:
@@ -29,17 +40,12 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
-        run: |
-          bash .github/scripts/create-branch.sh
+        run: bash $BASE_DIRECTORY/create-branch.sh
+          
       - name: Final Comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           BRANCH_NAME: ${{ steps.branch_creator.outputs.branch_name }}
-        run: |
-          COMMENT="🚀 **Branch successfully created!**
-
-          📋 **Branch:** \`${BRANCH_NAME}\`
-
-          The branch is ready for development. Happy coding! 🎉"
-          gh issue comment ${ISSUE_NUMBER} --body "$COMMENT"
+        run: bash $BASE_DIRECTORY/comment-branch.sh
+          
