@@ -106,7 +106,7 @@ class BucketReadableByteChannel
 
 	private int readRemaining(ByteBuffer buffer)
 	{
-		var remaining = Math.min(buffer.remaining(), (int) (size - position));
+		var remaining = (int) Math.min(buffer.remaining(), size - position);
 		return remaining > 0 ? readRemaining(buffer, remaining) : 0;
 	}
 

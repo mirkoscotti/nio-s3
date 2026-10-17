@@ -57,6 +57,8 @@ class BucketSeekableByteChannelIT
 
 	private static final String HUGE_FILE = "huge.txt";
 
+	private static final String OVERSIZED_FILE = "oversized.txt";
+
 	private static final String REMOTE_FILE = "remote.txt";
 
 	private static final URI TEST_URI = URI.create("s3://".concat(TEST_BUCKET));
@@ -86,6 +88,8 @@ class BucketSeekableByteChannelIT
 
 	private static Path hugeFile;
 
+	private static Path oversizedFile;
+
 	private static Path remoteFile;
 
 	@BeforeAll
@@ -97,6 +101,8 @@ class BucketSeekableByteChannelIT
 		mediumFile = JunitHelper.tryCall(() -> createFile(MEDIUM_FILE, 1024 * 1024));
 		largeFile = JunitHelper.tryCall(() -> createFile(LARGE_FILE, PART_SIZE * 5 / 2));
 		hugeFile = JunitHelper.tryCall(() -> createFile(HUGE_FILE, PART_SIZE * 10 / 2));
+		oversizedFile = JunitHelper.tryCall(() -> createFile(OVERSIZED_FILE,
+															 Integer.MAX_VALUE + 1024l));
 		var properties = ContainerHelper.standardProperties(CONTAINER);
 		fileSystem = JunitHelper.tryCall(() -> FileSystems.newFileSystem(TEST_URI, properties));
 		remoteFile = fileSystem.getRootDirectories().iterator().next().resolve(REMOTE_FILE);
@@ -434,22 +440,44 @@ class BucketSeekableByteChannelIT
 	}
 
 	@Test
-	void readFileFromTheBeginningTest() throws IOException
+	void readOversizedFileFromTheBeginningTest() throws IOException
 	{
-		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, tinyFile);
-		try (var channel = Files.newByteChannel(remoteFile))
+		CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, oversizedFile);
+		try (var channel = Files.newByteChannel(remoteFile);
+			 var stream = Files.newInputStream(oversizedFile))
 		{
-			var expectedSize = (int) Files.size(tinyFile);
-			var buffer = ByteBuffer.allocate(expectedSize);
-			var resultSize = channel.read(buffer);
-			Assertions.assertEquals(expectedSize, resultSize);
-			var expectedContent = Files.readAllBytes(tinyFile);
-			var resultContent = buffer.array();
-			Assertions.assertArrayEquals(expectedContent, resultContent);
-			buffer = ByteBuffer.allocate(10);
-			resultSize = channel.read(buffer);
-			Assertions.assertEquals(-1, resultSize);
+			var expectedSize = Files.size(oversizedFile);
+			Assertions.assertEquals(expectedSize, channel.size());
+			var chunkSize = 64 * 1024 * 1024;
+			var buffer = ByteBuffer.allocate(chunkSize);
+			long totalSize = 0;
+			int currentSize;
+			while ((currentSize = channel.read(buffer)) != -1)
+			{
+				var expectedContent = stream.readNBytes(currentSize);
+				Assertions.assertEquals(expectedContent.length, currentSize);
+				var currentContent = Arrays.copyOf(buffer.array(), currentSize);
+				Assertions.assertArrayEquals(expectedContent, currentContent);
+				buffer.clear();
+				totalSize += currentSize;
+			}
+			Assertions.assertEquals(expectedSize, totalSize);
+			Assertions.assertEquals(-1, channel.read(ByteBuffer.allocate(10)));
 		}
+		// CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, oversizedFile);
+		// try (var channel = Files.newByteChannel(remoteFile))
+		// {
+		// var expectedSize = (int) Files.size(oversizedFile);
+		// var buffer = ByteBuffer.allocate(expectedSize);
+		// var resultSize = channel.read(buffer);
+		// Assertions.assertEquals(expectedSize, resultSize);
+		// var expectedContent = Files.readAllBytes(oversizedFile);
+		// var resultContent = buffer.array();
+		// Assertions.assertArrayEquals(expectedContent, resultContent);
+		// buffer = ByteBuffer.allocate(10);
+		// resultSize = channel.read(buffer);
+		// Assertions.assertEquals(-1, resultSize);
+		// }
 	}
 
 	@Test
