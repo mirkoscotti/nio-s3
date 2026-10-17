@@ -464,20 +464,6 @@ class BucketSeekableByteChannelIT
 			Assertions.assertEquals(expectedSize, totalSize);
 			Assertions.assertEquals(-1, channel.read(ByteBuffer.allocate(10)));
 		}
-		// CONTAINER.createObject(TEST_BUCKET, REMOTE_FILE, oversizedFile);
-		// try (var channel = Files.newByteChannel(remoteFile))
-		// {
-		// var expectedSize = (int) Files.size(oversizedFile);
-		// var buffer = ByteBuffer.allocate(expectedSize);
-		// var resultSize = channel.read(buffer);
-		// Assertions.assertEquals(expectedSize, resultSize);
-		// var expectedContent = Files.readAllBytes(oversizedFile);
-		// var resultContent = buffer.array();
-		// Assertions.assertArrayEquals(expectedContent, resultContent);
-		// buffer = ByteBuffer.allocate(10);
-		// resultSize = channel.read(buffer);
-		// Assertions.assertEquals(-1, resultSize);
-		// }
 	}
 
 	@Test

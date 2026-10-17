@@ -310,16 +310,7 @@ public class BucketPath
 		{
 			case BucketPath bucketPath when bucketPath.objectKey == null -> this;
 			case BucketPath bucketPath when bucketPath.isAbsolute() -> bucketPath;
-			default ->
-			{
-				var basePath = Optional.ofNullable(objectKey)
-									   .orElse(BucketDescriptor.PATH_SEPARATOR);
-				yield basePath.endsWith(BucketDescriptor.PATH_SEPARATOR)
-					? new BucketPath(fileSystem, basePath.concat(path.objectKey))
-					: new BucketPath(fileSystem,
-									 Stream.of(basePath, path.objectKey)
-										   .collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR)));
-			}
+			default -> createBucketPath(path);
 		};
 	}
 
@@ -531,6 +522,16 @@ public class BucketPath
 					   .map(BucketPath.class::cast)
 					   .filter(item -> fileSystem.equals(item.getFileSystem()))
 					   .orElseThrow(() -> new IllegalArgumentException("Path '%s' does not belonging to the same AWS S3 bucket.".formatted(path)));
+	}
+
+	private BucketPath createBucketPath(BucketPath bucketPath)
+	{
+		var basePath = Optional.ofNullable(objectKey).orElse(BucketDescriptor.PATH_SEPARATOR);
+		var path = basePath.endsWith(BucketDescriptor.PATH_SEPARATOR)
+			? basePath.concat(bucketPath.objectKey)
+			: Stream.of(basePath, bucketPath.objectKey)
+					.collect(Collectors.joining(BucketDescriptor.PATH_SEPARATOR));
+		return new BucketPath(fileSystem, path);
 	}
 
 	private String[] elements()
