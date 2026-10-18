@@ -314,8 +314,7 @@ public final class MultipartWriter
 		builder.bucket(bucket)
 			   .key(key)
 			   .uploadId(uploadId)
-			   .multipartUpload(item -> item.parts(parts))
-			   .checksumSHA256(bucket);
+			   .multipartUpload(item -> item.parts(parts));
 	}
 
 	private void createAbortMultipartRequest(AbortMultipartUploadRequest.Builder builder)
